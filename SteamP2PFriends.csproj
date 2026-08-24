@@ -183,6 +183,10 @@
     <Compile Include="MultiObserver\ItemObserverReplicationAdapter.cs" />
     <Compile Include="MultiObserver\ZombieRegionLifecycleAdapter.cs" />
     <Compile Include="MultiObserver\ZombieSnapshotAdapter.cs" />
+    <Compile Include="MultiObserver\SPI\LeaseTicket.cs" />
+    <Compile Include="MultiObserver\SPI\ILifecycleDomainAdapter.cs" />
+    <Compile Include="MultiObserver\SPI\IStateReplicationAdapter.cs" />
+    <Compile Include="MultiObserver\Spatial\SpatialObserverIndex.cs" />
     <Compile Include="MultiObserver\MultiObserverShadowLedger.cs" />
     <Compile Include="MultiObserver\MultiObserverShadowCoordinator.cs" />
     <Compile Include="Host\RemotePlayerRenderProbe.cs" />

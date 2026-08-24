@@ -149,6 +149,7 @@
     <Compile Include="ItemObserverReplicationAdapterTests.cs" />
     <Compile Include="ZombieRegionLifecycleAdapterTests.cs" />
     <Compile Include="ZombieSnapshotAdapterTests.cs" />
+    <Compile Include="SpatialObserverIndexTests.cs" />
     <Compile Include="Fakes\FakeWhitelistStore.cs" />
     <Compile Include="Fakes\FakeWhitelistRuntimeContext.cs" />
     <Compile Include="Fakes\FakeWhitelistDisconnectGateway.cs" />

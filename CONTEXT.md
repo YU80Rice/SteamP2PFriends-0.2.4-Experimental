@@ -4,9 +4,29 @@ Unturned P2P listen-host multiplayer ecosystem that provides server-authoritativ
 
 ## Architecture & Lifecycle
 
+**Control Plane**:
+The pure in-memory coordination engine (zero Unturned/Unity dependency) managing observers, leases, epochs, generational tokens, and spatial indexing.
+_Avoid_: Core patch, background manager
+
+**Data Plane**:
+The execution layer consisting of domain adapters and transport channels that perform IL hook interception, RPC transmission, and game state mutation.
+_Avoid_: Worker thread, hook manager
+
 **Multi-Observer Core**:
 The central engine that tracks player presence, computes region demand unions, and manages activation leases.
 _Avoid_: Patch pool, global ticker
+
+**Spatial Observer Index**:
+The unified spatial partitioning module calculating observer-to-region spatial presence masks and broadcasting diff events to all domain adapters.
+_Avoid_: Per-adapter distance check, polling grid
+
+**Domain Adapter Pipeline**:
+A declarative, pluggable registry of `ILifecycleDomainAdapter` and `IStateReplicationAdapter` implementations driven by the Control Plane.
+_Avoid_: Hardcoded switch-case, patch dispatcher
+
+**Adapter Fault Supervisor**:
+The universal circuit breaker that detects demand mismatches or runtime exceptions in specific adapters/regions, quarantining destructive actions without affecting other domains.
+_Avoid_: Global try-catch, crash handler
 
 **World Presence Observer**:
 A connected player (Host, authorized Guest, or pending Guest) who physically occupies the world and projects region demand.
