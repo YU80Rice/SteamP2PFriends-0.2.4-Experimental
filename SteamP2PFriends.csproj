@@ -122,6 +122,9 @@
     <Compile Include="Client\NativeLoadingGateDumper.cs" />
     <Compile Include="Client\P2PJoinManager.cs" />
     <Compile Include="Client\P2PQuarantineClientView.cs" />
+    <Compile Include="Core\Config\PluginConfig.cs" />
+    <Compile Include="Core\Lifecycle\SessionDisconnectDispatcher.cs" />
+    <Compile Include="Core\Lifecycle\SteamP2PFriendsPlugin.PatchRegistry.cs" />
     <Compile Include="Host\GsltInputModal.cs" />
     <Compile Include="Host\HasCheatsGuardWatcher.cs" />
     <Compile Include="Host\HostManager.cs" />
