@@ -2,13 +2,102 @@ using System;
 
 namespace SteamP2PFriends.WhitelistTests
 {
+    /// <summary>
+    /// 模块化测试启动器 (Modular TestRunner)
+    /// 统一按领域分层组织并执行全量 118 项内存单元与回归测试套件。
+    /// </summary>
     internal static class Program
     {
         private static int Main(string[] args)
         {
-            Console.WriteLine("=== SteamP2PFriends Route B regression tests ===");
+            Console.WriteLine("===============================================================");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 118 PASS) ===");
+            Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
+            #region 1. Core & Logging Policy Tests (4 Tests)
+            Console.WriteLine("\n--- [Domain 1/6: Core & Diagnostics Policy] ---");
+            RunTest("LOG1 Markers", LoggingPolicyTests.Test_LegacyDiagnosticMarkersAreClassified, ref total, ref passed, ref failed);
+            RunTest("LOG2 Defaults", LoggingPolicyTests.Test_VerboseToggleIsAtomicAndDefaultsOff, ref total, ref passed, ref failed);
+            RunTest("LOG3 Labels", LoggingPolicyTests.Test_LegacyLabelsAreRemovedAtOutputBoundary, ref total, ref passed, ref failed);
+            RunTest("LOG4 Tags", LoggingPolicyTests.Test_InternalDiagnosticTagsAreRemovedFromOperationalText, ref total, ref passed, ref failed);
+            #endregion
+
+            #region 2. MultiObserver Control Plane & Spatial Index Tests (18 Tests)
+            Console.WriteLine("\n--- [Domain 2/6: MultiObserver Control Plane & Spatial Index] ---");
+            RunTest("SPI01 Grid2DDiff", SpatialObserverIndexTests.Test_SPI01_Grid2DDiffCalculation, ref total, ref passed, ref failed);
+            RunTest("SPI02 Bound1DDiff", SpatialObserverIndexTests.Test_SPI02_Bound1DDiffCalculation, ref total, ref passed, ref failed);
+            RunTest("SPI03 DisconnectReleasesAll", SpatialObserverIndexTests.Test_SPI03_ObserverDisconnectReleasesAll, ref total, ref passed, ref failed);
+            RunTest("SPI04 ReconnectInvalidation", SpatialObserverIndexTests.Test_SPI04_ReconnectTokenInvalidatesOldState, ref total, ref passed, ref failed);
+            RunTest("M01 PendingIsObserver", MultiObserverShadowTests.Test_M01_PendingAuthorizationDoesNotRemoveWorldPresence, ref total, ref passed, ref failed);
+            RunTest("M02 DemandRefCount", MultiObserverShadowTests.Test_M02_OverlappingDemandUsesReferenceCounts, ref total, ref passed, ref failed);
+            RunTest("M03 ConnectionGeneration", MultiObserverShadowTests.Test_M03_ConnectionGenerationIsSessionMonotonic, ref total, ref passed, ref failed);
+            RunTest("M04 DisconnectEpoch", MultiObserverShadowTests.Test_M04_ObserverDisconnectDoesNotAdvanceSessionEpoch, ref total, ref passed, ref failed);
+            RunTest("M05 EdgeRelevance", MultiObserverShadowTests.Test_M05_EdgeRelevanceIsBounded, ref total, ref passed, ref failed);
+            RunTest("M06 DuplicateObserver", MultiObserverShadowTests.Test_M06_DuplicateObserverIsIgnoredWithoutDoubleDemand, ref total, ref passed, ref failed);
+            RunTest("M07 MovementDemand", MultiObserverShadowTests.Test_M07_MovementTransfersDemandAtomically, ref total, ref passed, ref failed);
+            RunTest("M08 SessionIdentity", MultiObserverShadowTests.Test_M08_UniqueHostSessionReplacesSameMapWithoutIntermediateTick, ref total, ref passed, ref failed);
+            RunTest("M09 IncompleteCapture", MultiObserverShadowTests.Test_M09_IncompleteCaptureCannotRemoveObserver, ref total, ref passed, ref failed);
+            RunTest("M10 LifecycleSequence", MultiObserverShadowTests.Test_M10_LifecycleSequenceIsMonotonicAcrossRemoveAndReadd, ref total, ref passed, ref failed);
+            RunTest("M11 FaultBackoff", MultiObserverShadowTests.Test_M11_ShutdownGateAndFaultBackoffAreBounded, ref total, ref passed, ref failed);
+            RunTest("M12 StaleLoaded", MultiObserverShadowTests.Test_M12_StaleLoadedCountIsPreserved, ref total, ref passed, ref failed);
+            RunTest("M13 ObserverCapacity", MultiObserverShadowTests.Test_M13_ObserverCapacityFailsClosed, ref total, ref passed, ref failed);
+            RunTest("M14 InvalidZombieBound", MultiObserverShadowTests.Test_M14_InvalidZombieBoundDoesNotCreateFunctionalDemand, ref total, ref passed, ref failed);
+            #endregion
+
+            #region 3. Adapters: Item Domain Tests (21 Tests)
+            Console.WriteLine("\n--- [Domain 3/6: Adapters / Item Domain (M1 + M2)] ---");
+            RunTest("G1 FirstCommit", AuthorityGenerationGateTests.Test_G1_FirstCommitBlocksSecondProducer, ref total, ref passed, ref failed);
+            RunTest("G2 Abort", AuthorityGenerationGateTests.Test_G2_AbortAllowsRetry, ref total, ref passed, ref failed);
+            RunTest("G3 Reset", AuthorityGenerationGateTests.Test_G3_ResetInvalidatesOldEpoch, ref total, ref passed, ref failed);
+            RunTest("G4 Preparing", AuthorityGenerationGateTests.Test_G4_PreparingRejectsReentry, ref total, ref passed, ref failed);
+            RunTest("M1I01 LocalVanilla", ItemGenerationAuthorityAdapterTests.Test_M1I01_LocalObserverPreservesVanillaWhenAdapterNotReady, ref total, ref passed, ref failed);
+            RunTest("M1I02 DedicatedAuthority", ItemGenerationAuthorityAdapterTests.Test_M1I02_DedicatedRemotePreservesFullMapAuthority, ref total, ref passed, ref failed);
+            RunTest("M1I03 RegistrationGate", ItemGenerationAuthorityAdapterTests.Test_M1I03_ListenRemoteRequiresRegistration, ref total, ref passed, ref failed);
+            RunTest("M1I04 RemoteEligibility", ItemGenerationAuthorityAdapterTests.Test_M1I04_UnrelatedRemoteCannotGenerate, ref total, ref passed, ref failed);
+            RunTest("M1I05 PendingObserver", ItemGenerationAuthorityAdapterTests.Test_M1I05_AuthorizationIsNotPartOfWorldPresenceDecision, ref total, ref passed, ref failed);
+            RunTest("M1I06 CurrentU3IL", ItemGenerationAuthorityAdapterTests.Test_M1I06_CurrentU3IlMatchesExactlyOneGenerationGate, ref total, ref passed, ref failed);
+            RunTest("M2I01 ReliableCommit", ItemObserverReplicationAdapterTests.Test_M2I01_ReliableReturnCommitsExactlyOnce, ref total, ref passed, ref failed);
+            RunTest("M2I02 AbortRetry", ItemObserverReplicationAdapterTests.Test_M2I02_ExceptionAbortAllowsRetry, ref total, ref passed, ref failed);
+            RunTest("M2I03 RelevanceReentry", ItemObserverReplicationAdapterTests.Test_M2I03_RelevanceExitReentryResendsSameGeneration, ref total, ref passed, ref failed);
+            RunTest("M2I04 Reconnect", ItemObserverReplicationAdapterTests.Test_M2I04_ReconnectInvalidatesOldBaselineAndToken, ref total, ref passed, ref failed);
+            RunTest("M2I05 OverlappingObservers", ItemObserverReplicationAdapterTests.Test_M2I05_OverlappingObserversHaveIndependentBaselines, ref total, ref passed, ref failed);
+            RunTest("M2I06 DifferentRegions", ItemObserverReplicationAdapterTests.Test_M2I06_DifferentRegionsDoNotCrossCommit, ref total, ref passed, ref failed);
+            RunTest("M2I07 NewWorldGeneration", ItemObserverReplicationAdapterTests.Test_M2I07_NewWorldGenerationResendsWithoutRelevanceExit, ref total, ref passed, ref failed);
+            RunTest("M2I08 ExplicitCapability", ItemObserverReplicationAdapterTests.Test_M2I08_CapabilityIsExplicitReliableEnqueue, ref total, ref passed, ref failed);
+            RunTest("M2I09 CurrentU3ReplicationGate", ItemObserverReplicationAdapterTests.Test_M2I09_CurrentU3IlUsesM2ReplicationGate, ref total, ref passed, ref failed);
+            RunTest("M2I10 LoadedRollback", ItemObserverReplicationAdapterTests.Test_M2I10_LoadedProjectionRollbackRequiresCurrentConnection, ref total, ref passed, ref failed);
+            RunTest("M2I11 ExactDisconnect", ItemObserverReplicationAdapterTests.Test_M2I11_ExactDisconnectInvalidatesEvenReusedConnectionToken, ref total, ref passed, ref failed);
+            #endregion
+
+            #region 4. Adapters: Zombie Domain Tests (22 Tests)
+            Console.WriteLine("\n--- [Domain 4/6: Adapters / Zombie Domain (M3 + M4)] ---");
+            RunTest("M3Z01 FirstAcquire", ZombieRegionLifecycleAdapterTests.Test_M3Z01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
+            RunTest("M3Z02 GenerationCommit", ZombieRegionLifecycleAdapterTests.Test_M3Z02_RepeatedAcquireAdvancesOnlyOnRealCommit, ref total, ref passed, ref failed);
+            RunTest("M3Z03 ReleaseHysteresis", ZombieRegionLifecycleAdapterTests.Test_M3Z03_ReleaseUsesHysteresis, ref total, ref passed, ref failed);
+            RunTest("M3Z04 DemandCancelsRelease", ZombieRegionLifecycleAdapterTests.Test_M3Z04_DemandCancelsRelease, ref total, ref passed, ref failed);
+            RunTest("M3Z05 StaleSession", ZombieRegionLifecycleAdapterTests.Test_M3Z05_StaleSessionCannotRelease, ref total, ref passed, ref failed);
+            RunTest("M3Z06 StaleGeneration", ZombieRegionLifecycleAdapterTests.Test_M3Z06_StaleRegionGenerationCannotRelease, ref total, ref passed, ref failed);
+            RunTest("M3Z07 DemandMismatch", ZombieRegionLifecycleAdapterTests.Test_M3Z07_NativeDemandIsComparedWithoutRewrite, ref total, ref passed, ref failed);
+            RunTest("M3Z08 QuarantineRecovery", ZombieRegionLifecycleAdapterTests.Test_M3Z08_MismatchRecoveryClearsQuarantine, ref total, ref passed, ref failed);
+            RunTest("M3Z09 BoundIsolation", ZombieRegionLifecycleAdapterTests.Test_M3Z09_BoundsAreIndependent, ref total, ref passed, ref failed);
+            RunTest("M3Z10 ReleaseIdempotence", ZombieRegionLifecycleAdapterTests.Test_M3Z10_CommitReleaseIsIdempotent, ref total, ref passed, ref failed);
+            RunTest("M3Z11 NativeDemandIsolation", ZombieRegionLifecycleAdapterTests.Test_M3Z11_NativeDemandMismatchDoesNotChangeLedgerGeneration, ref total, ref passed, ref failed);
+            RunTest("M3Z12 QuarantineReleaseGate", ZombieRegionLifecycleAdapterTests.Test_M3Z12_QuarantineBlocksReleaseUntilDemandRecovers, ref total, ref passed, ref failed);
+            RunTest("M4Z01 InitialSnapshot", ZombieSnapshotAdapterTests.Test_M4Z01_InitialSnapshotEnqueued, ref total, ref passed, ref failed);
+            RunTest("M4Z02 StaleGenerationResync", ZombieSnapshotAdapterTests.Test_M4Z02_StaleGenerationForcesResync, ref total, ref passed, ref failed);
+            RunTest("M4Z03 AbortRetry", ZombieSnapshotAdapterTests.Test_M4Z03_ExceptionAbortAllowsRetry, ref total, ref passed, ref failed);
+            RunTest("M4Z04 RelevanceReentry", ZombieSnapshotAdapterTests.Test_M4Z04_RelevanceExitAndReentry, ref total, ref passed, ref failed);
+            RunTest("M4Z05 ReconnectInvalidation", ZombieSnapshotAdapterTests.Test_M4Z05_ReconnectInvalidatesOldSnapshotToken, ref total, ref passed, ref failed);
+            RunTest("M4Z06 OverlappingSnapshots", ZombieSnapshotAdapterTests.Test_M4Z06_OverlappingObserversHaveIndependentSnapshots, ref total, ref passed, ref failed);
+            RunTest("M4Z07 BoundsDoNotCrossCommit", ZombieSnapshotAdapterTests.Test_M4Z07_DifferentBoundsDoNotCrossCommit, ref total, ref passed, ref failed);
+            RunTest("M4Z08 ExplicitCapability", ZombieSnapshotAdapterTests.Test_M4Z08_ExplicitCapabilityIsReliableEnqueue, ref total, ref passed, ref failed);
+            RunTest("M4Z09 DeltaSequenceMonotonic", ZombieSnapshotAdapterTests.Test_M4Z09_DeltaSequenceMonotonic, ref total, ref passed, ref failed);
+            RunTest("M4Z10 ExactDisconnect", ZombieSnapshotAdapterTests.Test_M4Z10_ExactDisconnectCleansObserver, ref total, ref passed, ref failed);
+            #endregion
+
+            #region 5. Adapters: Security & Whitelist Tests (32 Tests)
+            Console.WriteLine("\n--- [Domain 5/6: Adapters / Security Domain (Whitelist & Route B)] ---");
             RunTest("WL1 Bootstrap", WhitelistServiceTests.Test_Bootstrap_Success, ref total, ref passed, ref failed);
             RunTest("WL2 BootstrapSaveFailure", WhitelistServiceTests.Test_Bootstrap_SaveFailure_NoDisconnect, ref total, ref passed, ref failed);
             RunTest("WL3 BootstrapLoadFailure", WhitelistServiceTests.Test_Bootstrap_LoadFailure_NoDisconnect, ref total, ref passed, ref failed);
@@ -29,7 +118,6 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("WL15 RemoveInvalidLocal", WhitelistServiceTests.Test_Remove_InvalidLocalUser_Rejected, ref total, ref passed, ref failed);
             RunTest("WL16 JudgeEqualsLocal", WhitelistServiceTests.Test_Add_JudgeId_Equals_LocalUser, ref total, ref passed, ref failed);
             RunTest("WL17 PersistenceFault", WhitelistServiceTests.Test_PersistenceFault_Blocks_Second_Mutate_And_Reset_Restores, ref total, ref passed, ref failed);
-
             RunTest("B1 HandshakePermit", RouteBApprovalTests.Test_B1_HandshakePermitIsScopedAndRejectable, ref total, ref passed, ref failed);
             RunTest("B2 WorldEntry", RouteBApprovalTests.Test_B2_NewWorldEntryBecomesPendingQuarantine, ref total, ref passed, ref failed);
             RunTest("B3 TrustedVisitor", RouteBApprovalTests.Test_B3_TrustedVisitorSkipsQuarantine, ref total, ref passed, ref failed);
@@ -42,105 +130,36 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("B10 RevokePersistFailure", RouteBApprovalTests.Test_B10_RevokePersistenceFailureDoesNotKick, ref total, ref passed, ref failed);
             RunTest("B11 AuthoritativeGates", RouteBApprovalTests.Test_B11_PendingActionAndCommandGatesAreAuthoritative, ref total, ref passed, ref failed);
             RunTest("B12 InputSanitizer", RouteBApprovalTests.Test_B12_InputSanitizerPreservesNetworkProgress, ref total, ref passed, ref failed);
+            #endregion
+
+            #region 6. Platform: UI, Gate & Diagnostic Tests (21 Tests)
+            Console.WriteLine("\n--- [Domain 6/6: Platform UI, Readiness & Compatibility] ---");
             RunTest("E1 EntryEarlyMenu", P2PEntryReadinessGateTests.Test_E1_EarlyMenuCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E2 EntryLifecycleFailure", P2PEntryReadinessGateTests.Test_E2_FailedLifecycleCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E3 EntryIdempotentReset", P2PEntryReadinessGateTests.Test_E3_SuccessIsIdempotentAndResetFailsClosed, ref total, ref passed, ref failed);
             RunTest("E4 HandshakeCompatibilityGate", P2PEntryReadinessGateTests.Test_E4_HandshakeCompatibilityFailureCannotExposeEntry, ref total, ref passed, ref failed);
-
             RunTest("P1 PersonaEmpty", SteamPersonaDisplayTests.Test_v4_P1_Normalize_Empty_Fallback, ref total, ref passed, ref failed);
             RunTest("P2 PersonaControls", SteamPersonaDisplayTests.Test_v4_P2_Normalize_ControlChars_Stripped, ref total, ref passed, ref failed);
             RunTest("P3 PersonaTruncate", SteamPersonaDisplayTests.Test_v4_P3_Normalize_Truncates_32, ref total, ref passed, ref failed);
             RunTest("P4 PersonaValid", SteamPersonaDisplayTests.Test_v4_P4_Normalize_Valid_Preserved, ref total, ref passed, ref failed);
             RunTest("P5 PersonaFormat", SteamPersonaDisplayTests.Test_v4_P5_FormatPlayer_KeepsSteamId_AndFallback, ref total, ref passed, ref failed);
             RunTest("P6 PersonaInvalid", SteamPersonaDisplayTests.Test_v4_P6_GetRemoteDisplayName_InvalidId_Fallback, ref total, ref passed, ref failed);
-
             RunTest("HC1 Observer", HarmonyCompatibilityAuditTests.Test_ObserverPatch_IsRecordedWithoutBlocking, ref total, ref passed, ref failed);
             RunTest("HC2 ForeignTranspiler", HarmonyCompatibilityAuditTests.Test_ForeignTranspiler_OnOwnTranspiledTarget_Blocks, ref total, ref passed, ref failed);
             RunTest("HC3 TransportExclusive", HarmonyCompatibilityAuditTests.Test_P2PTransportTargets_RemainExclusive, ref total, ref passed, ref failed);
-            RunTest("LOG1 Markers", LoggingPolicyTests.Test_LegacyDiagnosticMarkersAreClassified, ref total, ref passed, ref failed);
-            RunTest("LOG2 Defaults", LoggingPolicyTests.Test_VerboseToggleIsAtomicAndDefaultsOff, ref total, ref passed, ref failed);
-            RunTest("LOG3 Labels", LoggingPolicyTests.Test_LegacyLabelsAreRemovedAtOutputBoundary, ref total, ref passed, ref failed);
-            RunTest("LOG4 Tags", LoggingPolicyTests.Test_InternalDiagnosticTagsAreRemovedFromOperationalText, ref total, ref passed, ref failed);
-
-            RunTest("G1 FirstCommit", AuthorityGenerationGateTests.Test_G1_FirstCommitBlocksSecondProducer, ref total, ref passed, ref failed);
-            RunTest("G2 Abort", AuthorityGenerationGateTests.Test_G2_AbortAllowsRetry, ref total, ref passed, ref failed);
-            RunTest("G3 Reset", AuthorityGenerationGateTests.Test_G3_ResetInvalidatesOldEpoch, ref total, ref passed, ref failed);
-            RunTest("G4 Preparing", AuthorityGenerationGateTests.Test_G4_PreparingRejectsReentry, ref total, ref passed, ref failed);
-
             RunTest("IUI1 Exact", InventoryUiProjectionTests.Test_IUI1_ExactProjectionNoRepair, ref total, ref passed, ref failed);
             RunTest("IUI2 StaleRendered", InventoryUiProjectionTests.Test_IUI2_StaleRenderedJarDetected, ref total, ref passed, ref failed);
             RunTest("IUI3 StalePending", InventoryUiProjectionTests.Test_IUI3_StalePendingJarDetected, ref total, ref passed, ref failed);
             RunTest("IUI4 Identity", InventoryUiProjectionTests.Test_IUI4_IdentityNotValueEquivalence, ref total, ref passed, ref failed);
             RunTest("IUI5 Reflection", InventoryUiProjectionTests.Test_IUI5_ReflectionContractExact, ref total, ref passed, ref failed);
             RunTest("IUI6 Production", InventoryUiProjectionTests.Test_IUI6_ProductionPostfixesActivate, ref total, ref passed, ref failed);
-
             RunTest("RC1 AnimationRestore", RemoteCollisionAnimationPolicyTests.Test_RC1_CullingPolicyIsSavedAndRestored, ref total, ref passed, ref failed);
             RunTest("RC2 PolicyBeforeActivation", RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation, ref total, ref passed, ref failed);
+            #endregion
 
-            RunTest("M01 PendingIsObserver", MultiObserverShadowTests.Test_M01_PendingAuthorizationDoesNotRemoveWorldPresence, ref total, ref passed, ref failed);
-            RunTest("M02 DemandRefCount", MultiObserverShadowTests.Test_M02_OverlappingDemandUsesReferenceCounts, ref total, ref passed, ref failed);
-            RunTest("M03 ConnectionGeneration", MultiObserverShadowTests.Test_M03_ConnectionGenerationIsSessionMonotonic, ref total, ref passed, ref failed);
-            RunTest("M04 DisconnectEpoch", MultiObserverShadowTests.Test_M04_ObserverDisconnectDoesNotAdvanceSessionEpoch, ref total, ref passed, ref failed);
-            RunTest("M05 EdgeRelevance", MultiObserverShadowTests.Test_M05_EdgeRelevanceIsBounded, ref total, ref passed, ref failed);
-            RunTest("M06 DuplicateObserver", MultiObserverShadowTests.Test_M06_DuplicateObserverIsIgnoredWithoutDoubleDemand, ref total, ref passed, ref failed);
-            RunTest("M07 MovementDemand", MultiObserverShadowTests.Test_M07_MovementTransfersDemandAtomically, ref total, ref passed, ref failed);
-            RunTest("M08 SessionIdentity", MultiObserverShadowTests.Test_M08_UniqueHostSessionReplacesSameMapWithoutIntermediateTick, ref total, ref passed, ref failed);
-            RunTest("M09 IncompleteCapture", MultiObserverShadowTests.Test_M09_IncompleteCaptureCannotRemoveObserver, ref total, ref passed, ref failed);
-            RunTest("M10 LifecycleSequence", MultiObserverShadowTests.Test_M10_LifecycleSequenceIsMonotonicAcrossRemoveAndReadd, ref total, ref passed, ref failed);
-            RunTest("M11 FaultBackoff", MultiObserverShadowTests.Test_M11_ShutdownGateAndFaultBackoffAreBounded, ref total, ref passed, ref failed);
-            RunTest("M12 StaleLoaded", MultiObserverShadowTests.Test_M12_StaleLoadedCountIsPreserved, ref total, ref passed, ref failed);
-            RunTest("M13 ObserverCapacity", MultiObserverShadowTests.Test_M13_ObserverCapacityFailsClosed, ref total, ref passed, ref failed);
-            RunTest("M14 InvalidZombieBound", MultiObserverShadowTests.Test_M14_InvalidZombieBoundDoesNotCreateFunctionalDemand, ref total, ref passed, ref failed);
-
-            RunTest("M1I01 LocalVanilla", ItemGenerationAuthorityAdapterTests.Test_M1I01_LocalObserverPreservesVanillaWhenAdapterNotReady, ref total, ref passed, ref failed);
-            RunTest("M1I02 DedicatedAuthority", ItemGenerationAuthorityAdapterTests.Test_M1I02_DedicatedRemotePreservesFullMapAuthority, ref total, ref passed, ref failed);
-            RunTest("M1I03 RegistrationGate", ItemGenerationAuthorityAdapterTests.Test_M1I03_ListenRemoteRequiresRegistration, ref total, ref passed, ref failed);
-            RunTest("M1I04 RemoteEligibility", ItemGenerationAuthorityAdapterTests.Test_M1I04_UnrelatedRemoteCannotGenerate, ref total, ref passed, ref failed);
-            RunTest("M1I05 PendingObserver", ItemGenerationAuthorityAdapterTests.Test_M1I05_AuthorizationIsNotPartOfWorldPresenceDecision, ref total, ref passed, ref failed);
-            RunTest("M1I06 CurrentU3IL", ItemGenerationAuthorityAdapterTests.Test_M1I06_CurrentU3IlMatchesExactlyOneGenerationGate, ref total, ref passed, ref failed);
-
-            RunTest("M2I01 ReliableCommit", ItemObserverReplicationAdapterTests.Test_M2I01_ReliableReturnCommitsExactlyOnce, ref total, ref passed, ref failed);
-            RunTest("M2I02 AbortRetry", ItemObserverReplicationAdapterTests.Test_M2I02_ExceptionAbortAllowsRetry, ref total, ref passed, ref failed);
-            RunTest("M2I03 RelevanceReentry", ItemObserverReplicationAdapterTests.Test_M2I03_RelevanceExitReentryResendsSameGeneration, ref total, ref passed, ref failed);
-            RunTest("M2I04 Reconnect", ItemObserverReplicationAdapterTests.Test_M2I04_ReconnectInvalidatesOldBaselineAndToken, ref total, ref passed, ref failed);
-            RunTest("M2I05 OverlappingObservers", ItemObserverReplicationAdapterTests.Test_M2I05_OverlappingObserversHaveIndependentBaselines, ref total, ref passed, ref failed);
-            RunTest("M2I06 DifferentRegions", ItemObserverReplicationAdapterTests.Test_M2I06_DifferentRegionsDoNotCrossCommit, ref total, ref passed, ref failed);
-            RunTest("M2I07 NewWorldGeneration", ItemObserverReplicationAdapterTests.Test_M2I07_NewWorldGenerationResendsWithoutRelevanceExit, ref total, ref passed, ref failed);
-            RunTest("M2I08 ExplicitCapability", ItemObserverReplicationAdapterTests.Test_M2I08_CapabilityIsExplicitReliableEnqueue, ref total, ref passed, ref failed);
-            RunTest("M2I09 CurrentU3ReplicationGate", ItemObserverReplicationAdapterTests.Test_M2I09_CurrentU3IlUsesM2ReplicationGate, ref total, ref passed, ref failed);
-            RunTest("M2I10 LoadedRollback", ItemObserverReplicationAdapterTests.Test_M2I10_LoadedProjectionRollbackRequiresCurrentConnection, ref total, ref passed, ref failed);
-            RunTest("M2I11 ExactDisconnect", ItemObserverReplicationAdapterTests.Test_M2I11_ExactDisconnectInvalidatesEvenReusedConnectionToken, ref total, ref passed, ref failed);
-
-            RunTest("M3Z01 FirstAcquire", ZombieRegionLifecycleAdapterTests.Test_M3Z01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
-            RunTest("M3Z02 GenerationCommit", ZombieRegionLifecycleAdapterTests.Test_M3Z02_RepeatedAcquireAdvancesOnlyOnRealCommit, ref total, ref passed, ref failed);
-            RunTest("M3Z03 ReleaseHysteresis", ZombieRegionLifecycleAdapterTests.Test_M3Z03_ReleaseUsesHysteresis, ref total, ref passed, ref failed);
-            RunTest("M3Z04 DemandCancelsRelease", ZombieRegionLifecycleAdapterTests.Test_M3Z04_DemandCancelsRelease, ref total, ref passed, ref failed);
-            RunTest("M3Z05 StaleSession", ZombieRegionLifecycleAdapterTests.Test_M3Z05_StaleSessionCannotRelease, ref total, ref passed, ref failed);
-            RunTest("M3Z06 StaleGeneration", ZombieRegionLifecycleAdapterTests.Test_M3Z06_StaleRegionGenerationCannotRelease, ref total, ref passed, ref failed);
-            RunTest("M3Z07 DemandMismatch", ZombieRegionLifecycleAdapterTests.Test_M3Z07_NativeDemandIsComparedWithoutRewrite, ref total, ref passed, ref failed);
-            RunTest("M3Z08 QuarantineRecovery", ZombieRegionLifecycleAdapterTests.Test_M3Z08_MismatchRecoveryClearsQuarantine, ref total, ref passed, ref failed);
-            RunTest("M3Z09 BoundIsolation", ZombieRegionLifecycleAdapterTests.Test_M3Z09_BoundsAreIndependent, ref total, ref passed, ref failed);
-            RunTest("M3Z10 ReleaseIdempotence", ZombieRegionLifecycleAdapterTests.Test_M3Z10_CommitReleaseIsIdempotent, ref total, ref passed, ref failed);
-            RunTest("M3Z11 NativeDemandIsolation", ZombieRegionLifecycleAdapterTests.Test_M3Z11_NativeDemandMismatchDoesNotChangeLedgerGeneration, ref total, ref passed, ref failed);
-            RunTest("M3Z12 QuarantineReleaseGate", ZombieRegionLifecycleAdapterTests.Test_M3Z12_QuarantineBlocksReleaseUntilDemandRecovers, ref total, ref passed, ref failed);
-
-            RunTest("M4Z01 InitialSnapshot", ZombieSnapshotAdapterTests.Test_M4Z01_InitialSnapshotEnqueued, ref total, ref passed, ref failed);
-            RunTest("M4Z02 StaleGenerationResync", ZombieSnapshotAdapterTests.Test_M4Z02_StaleGenerationForcesResync, ref total, ref passed, ref failed);
-            RunTest("M4Z03 AbortRetry", ZombieSnapshotAdapterTests.Test_M4Z03_ExceptionAbortAllowsRetry, ref total, ref passed, ref failed);
-            RunTest("M4Z04 RelevanceReentry", ZombieSnapshotAdapterTests.Test_M4Z04_RelevanceExitAndReentry, ref total, ref passed, ref failed);
-            RunTest("M4Z05 ReconnectInvalidation", ZombieSnapshotAdapterTests.Test_M4Z05_ReconnectInvalidatesOldSnapshotToken, ref total, ref passed, ref failed);
-            RunTest("M4Z06 OverlappingSnapshots", ZombieSnapshotAdapterTests.Test_M4Z06_OverlappingObserversHaveIndependentSnapshots, ref total, ref passed, ref failed);
-            RunTest("M4Z07 BoundsDoNotCrossCommit", ZombieSnapshotAdapterTests.Test_M4Z07_DifferentBoundsDoNotCrossCommit, ref total, ref passed, ref failed);
-            RunTest("M4Z08 ExplicitCapability", ZombieSnapshotAdapterTests.Test_M4Z08_ExplicitCapabilityIsReliableEnqueue, ref total, ref passed, ref failed);
-            RunTest("M4Z09 DeltaSequenceMonotonic", ZombieSnapshotAdapterTests.Test_M4Z09_DeltaSequenceMonotonic, ref total, ref passed, ref failed);
-            RunTest("M4Z10 ExactDisconnect", ZombieSnapshotAdapterTests.Test_M4Z10_ExactDisconnectCleansObserver, ref total, ref passed, ref failed);
-
-            RunTest("SPI01 Grid2DDiff", SpatialObserverIndexTests.Test_SPI01_Grid2DDiffCalculation, ref total, ref passed, ref failed);
-            RunTest("SPI02 Bound1DDiff", SpatialObserverIndexTests.Test_SPI02_Bound1DDiffCalculation, ref total, ref passed, ref failed);
-            RunTest("SPI03 DisconnectReleasesAll", SpatialObserverIndexTests.Test_SPI03_ObserverDisconnectReleasesAll, ref total, ref passed, ref failed);
-            RunTest("SPI04 ReconnectInvalidation", SpatialObserverIndexTests.Test_SPI04_ReconnectTokenInvalidatesOldState, ref total, ref passed, ref failed);
-
-            Console.WriteLine("=== Result: " + passed + "/" + total + " PASS ===");
+            Console.WriteLine("\n===============================================================");
+            Console.WriteLine($"=== Final Result: {passed}/{total} PASS (Failed: {failed}) ===");
+            Console.WriteLine("===============================================================");
             return failed == 0 ? 0 : 1;
         }
 
@@ -152,18 +171,18 @@ namespace SteamP2PFriends.WhitelistTests
                 if (test())
                 {
                     passed++;
-                    Console.WriteLine("PASS " + name);
+                    Console.WriteLine("  PASS " + name);
                 }
                 else
                 {
                     failed++;
-                    Console.WriteLine("FAIL " + name);
+                    Console.WriteLine("  FAIL " + name);
                 }
             }
             catch (Exception ex)
             {
                 failed++;
-                Console.WriteLine("FAIL " + name + ": " + ex);
+                Console.WriteLine("  FAIL " + name + ": " + ex);
             }
         }
     }

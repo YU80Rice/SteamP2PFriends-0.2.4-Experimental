@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -33,9 +33,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Stage 7-2-2 蓝图 §3：仅引用编译出的插件和现有 Libs，不生成/写入任何游戏或存档文件 -->
-    <!-- 使用 DLL 引用（SteamP2PFriends.csproj 的 ProjectGuid 历史格式问题不修改） -->
-    <!-- Private=True 让 CLR 加载 SteamP2PFriends.dll 时能解析所有传递依赖 -->
+    <!-- Stage 7-2-2 钃濆浘 搂3锛氫粎寮曠敤缂栬瘧鍑虹殑鎻掍欢鍜岀幇鏈?Libs锛屼笉鐢熸垚/鍐欏叆浠讳綍娓告垙鎴栧瓨妗ｆ枃浠?-->
+    <!-- 浣跨敤 DLL 寮曠敤锛圫teamP2PFriends.csproj 鐨?ProjectGuid 鍘嗗彶鏍煎紡闂涓嶄慨鏀癸級 -->
+    <!-- Private=True 璁?CLR 鍔犺浇 SteamP2PFriends.dll 鏃惰兘瑙ｆ瀽鎵€鏈変紶閫掍緷璧?-->
     <Reference Include="SteamP2PFriends">
       <HintPath>..\bin\Release\SteamP2PFriends.dll</HintPath>
       <Private>True</Private>
@@ -48,7 +48,7 @@
       <HintPath>..\..\Libs\0Harmony.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <!-- Stage 7-3 v4 H2：HarmonyX 运行时依赖（真实 Harmony 实例 patch 需要 MonoMod + Mono.Cecil） -->
+    <!-- Stage 7-3 v4 H2锛欻armonyX 杩愯鏃朵緷璧栵紙鐪熷疄 Harmony 瀹炰緥 patch 闇€瑕?MonoMod + Mono.Cecil锛?-->
     <Reference Include="MonoMod.RuntimeDetour">
       <HintPath>..\..\Libs\MonoMod.RuntimeDetour.dll</HintPath>
       <Private>True</Private>
@@ -125,7 +125,7 @@
       <HintPath>..\..\Libs\SDG.NetPak.Runtime.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <!-- Stage 7-3 v3：SDG.Glazier.Runtime 引用 netstandard 2.1.0.0；测试控制台需此 facade -->
+    <!-- Stage 7-3 v3锛歋DG.Glazier.Runtime 寮曠敤 netstandard 2.1.0.0锛涙祴璇曟帶鍒跺彴闇€姝?facade -->
     <Reference Include="netstandard">
       <HintPath>..\..\Libs\netstandard.dll</HintPath>
       <Private>True</Private>
@@ -135,26 +135,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="WhitelistServiceTests.cs" />
-    <Compile Include="RouteBApprovalTests.cs" />
-    <Compile Include="P2PEntryReadinessGateTests.cs" />
-    <Compile Include="SteamPersonaDisplayTests.cs" />
-    <Compile Include="HarmonyCompatibilityAuditTests.cs" />
-    <Compile Include="LoggingPolicyTests.cs" />
-    <Compile Include="AuthorityGenerationGateTests.cs" />
-    <Compile Include="InventoryUiProjectionTests.cs" />
-    <Compile Include="RemoteCollisionAnimationPolicyTests.cs" />
-    <Compile Include="MultiObserverShadowTests.cs" />
-    <Compile Include="ItemGenerationAuthorityAdapterTests.cs" />
-    <Compile Include="ItemObserverReplicationAdapterTests.cs" />
-    <Compile Include="ZombieRegionLifecycleAdapterTests.cs" />
-    <Compile Include="ZombieSnapshotAdapterTests.cs" />
-    <Compile Include="SpatialObserverIndexTests.cs" />
-    <Compile Include="Fakes\FakeWhitelistStore.cs" />
-    <Compile Include="Fakes\FakeWhitelistRuntimeContext.cs" />
-    <Compile Include="Fakes\FakeWhitelistDisconnectGateway.cs" />
+    <Compile Include="Adapters\Item\AuthorityGenerationGateTests.cs" />
+    <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapterTests.cs" />
+    <Compile Include="Adapters\Item\ItemObserverReplicationAdapterTests.cs" />
+    <Compile Include="Adapters\Security\RouteBApprovalTests.cs" />
+    <Compile Include="Adapters\Security\WhitelistServiceTests.cs" />
+    <Compile Include="Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs" />
+    <Compile Include="Adapters\Zombie\ZombieSnapshotAdapterTests.cs" />
+    <Compile Include="Core\LoggingPolicyTests.cs" />
     <Compile Include="Fakes\FakeApprovalRuntimeContext.cs" />
     <Compile Include="Fakes\FakeApprovalWhitelistProxy.cs" />
+    <Compile Include="Fakes\FakeWhitelistDisconnectGateway.cs" />
+    <Compile Include="Fakes\FakeWhitelistRuntimeContext.cs" />
+    <Compile Include="Fakes\FakeWhitelistStore.cs" />
+    <Compile Include="MultiObserver\MultiObserverShadowTests.cs" />
+    <Compile Include="MultiObserver\SpatialObserverIndexTests.cs" />
+    <Compile Include="Platform\HarmonyCompatibilityAuditTests.cs" />
+    <Compile Include="Platform\InventoryUiProjectionTests.cs" />
+    <Compile Include="Platform\P2PEntryReadinessGateTests.cs" />
+    <Compile Include="Platform\RemoteCollisionAnimationPolicyTests.cs" />
+    <Compile Include="Platform\SteamPersonaDisplayTests.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
