@@ -1,0 +1,11 @@
+﻿UMM 本地运行诊断 · 2026-08-24 23:53:08
+结论：未发现明确的致命日志特征
+分类：Normal
+说明：最近可用日志中没有匹配到 Unity 崩溃、DXVK 初始化失败或 BepInEx 异常的典型模式。该结果不排除驱动、内存或进程外部终止问题。
+排查建议：当前运行环境状态良好，未检测到明显异常。
+最近一次受管会话：2026-08-24 23:49:16 · 模组环境 · 退出码 0
+未发现可摘录的异常线索。
+来源：
+- D:\steam\steamapps\common\Unturned\Logs\Client_Prev.log
+- D:\steam\steamapps\common\Unturned\Logs\Client.log
+- D:\steam\steamapps\common\Unturned\BepInEx\LogOutput.log
