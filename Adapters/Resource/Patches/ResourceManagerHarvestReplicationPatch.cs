@@ -66,7 +66,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             }
         }
 
-        public static void ServerSetResourceDead_Postfix(byte x, byte y, ushort index, Vector3 ragdoll)
+        public static void ServerSetResourceDead_Postfix(byte x, byte y, ushort index, Vector3 baseForce)
         {
             if (!HostManager.IsP2PHostMode || !HostManager.ShouldProcessClientHostListen())
             {

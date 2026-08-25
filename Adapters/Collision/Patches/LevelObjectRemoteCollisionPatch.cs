@@ -208,6 +208,16 @@ namespace SteamP2PFriends.Patches
             }
         }
 
+        public static bool IsRegionCovered(byte x, byte y)
+        {
+            if (!HostManager.IsP2PHostMode || !HostManager.ShouldProcessClientHostListen())
+            {
+                return false;
+            }
+
+            return RemoteCoverage.Contains(EncodeRegion(x, y)) || LevelObjectCollisionAdapter.IsRemoteCollisionRequired(x, y);
+        }
+
         public static void LevelObjectsUpdate_Postfix()
         {
             try

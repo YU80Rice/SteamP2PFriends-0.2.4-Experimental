@@ -2,6 +2,7 @@ using HarmonyLib;
 using SDG.Unturned;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Host;
+using SteamP2PFriends.Patches;
 using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
@@ -75,7 +76,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             {
                 if (Regions.tryGetCoordinate(__instance.point, out byte x, out byte y))
                 {
-                    if (ResourceRegionLifecycleAdapter.IsRegionActive(x, y))
+                    if (ResourceRegionLifecycleAdapter.IsRegionActive(x, y) || LevelObjectRemoteCollisionPatch.IsRegionCovered(x, y))
                     {
                         isActive = true; // 远端观察者在此区域，保持树木/矿石碰撞体激活
                     }
