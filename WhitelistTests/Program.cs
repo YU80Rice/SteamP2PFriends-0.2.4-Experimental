@@ -11,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 157 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 165 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -143,6 +143,15 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6S04 ResourceReconnectToken", ResourceSnapshotAdapterTests.Test_M6S04_ReconnectInvalidatesOldSnapshotToken, ref total, ref passed, ref failed);
             RunTest("M6S05 ResourceOverlapping", ResourceSnapshotAdapterTests.Test_M6S05_OverlappingObserversHaveIndependentSnapshots, ref total, ref passed, ref failed);
             RunTest("M6S06 ResourceDisconnectClean", ResourceSnapshotAdapterTests.Test_M6S06_DisconnectCleansObserver, ref total, ref passed, ref failed);
+
+            RunTest("M6H01 HarvestDeadGen", ResourceHarvestReplicationTests.Test_M6H01_ResourceDeadAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M6H02 HarvestMultiDead", ResourceHarvestReplicationTests.Test_M6H02_MultipleResourcesDeadTrackedIndependently, ref total, ref passed, ref failed);
+            RunTest("M6H03 HarvestAliveRevive", ResourceHarvestReplicationTests.Test_M6H03_ResourceAliveRevivesAndAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M6H04 HarvestSnapshotDead", ResourceHarvestReplicationTests.Test_M6H04_SnapshotIncludesDeadList, ref total, ref passed, ref failed);
+            RunTest("M6H05 HarvestDeltaSeq", ResourceHarvestReplicationTests.Test_M6H05_DeltaSequenceAdvancesOnHarvest, ref total, ref passed, ref failed);
+            RunTest("M6H06 HarvestReconnect", ResourceHarvestReplicationTests.Test_M6H06_ReconnectGetsUpdatedGeneration, ref total, ref passed, ref failed);
+            RunTest("M6H07 HarvestIsolation", ResourceHarvestReplicationTests.Test_M6H07_DifferentRegionsHarvestIsolated, ref total, ref passed, ref failed);
+            RunTest("M6H08 HarvestSessionReset", ResourceHarvestReplicationTests.Test_M6H08_SessionResetClearsDeadResources, ref total, ref passed, ref failed);
             #endregion
 
             #region 7. Adapters: Security & Whitelist Tests (32 Tests)

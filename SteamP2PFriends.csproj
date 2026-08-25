@@ -114,6 +114,7 @@
     <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceSnapshotAdapter.cs" />
     <Compile Include="Adapters\Resource\Patches\LevelGroundRemoteTreeCollisionPatch.cs" />
+    <Compile Include="Adapters\Resource\Patches\ResourceManagerHarvestReplicationPatch.cs" />
     <Compile Include="Adapters\Resource\Patches\ResourceManagerRegionSyncPatch.cs" />
     <Compile Include="Adapters\Resource\Patches\ResourceManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Security\P2PWhitelistService.cs" />

@@ -79,6 +79,27 @@ namespace SteamP2PFriends.Adapters.Resource
             return true;
         }
 
+        public uint AdvanceDeltaSequence(ulong steamId, int regionKey)
+        {
+            var key = (steamId, regionKey);
+            if (!_snapshots.TryGetValue(key, out ResourceSnapshotRecord current))
+            {
+                return 0U;
+            }
+
+            uint nextSeq = current.DeltaSequence == uint.MaxValue ? 1U : current.DeltaSequence + 1U;
+            if (nextSeq == 0U) nextSeq = 1U;
+
+            _snapshots[key] = new ResourceSnapshotRecord(
+                current.SessionEpoch,
+                current.ConnectionToken,
+                current.RegionKey,
+                current.RegionGeneration,
+                nextSeq);
+
+            return nextSeq;
+        }
+
         public void OnObserverDisconnect(ulong steamId)
         {
             _connectionTokens.Remove(steamId);
@@ -98,7 +119,7 @@ namespace SteamP2PFriends.Adapters.Resource
     }
 
     /// <summary>
-    /// 资源状态全量快照与增量同步适配器 (ResourceSnapshotAdapter)
+    /// 资源状态全量快照与采伐增量同步适配器 (ResourceSnapshotAdapter)
     /// </summary>
     public static class ResourceSnapshotAdapter
     {
@@ -118,6 +139,14 @@ namespace SteamP2PFriends.Adapters.Resource
             lock (SyncLock)
             {
                 return Ledger.EnqueueInitialSnapshot(steamId, connectionToken, regionKey, regionGeneration);
+            }
+        }
+
+        public static uint AdvanceDeltaSequence(ulong steamId, int regionKey)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.AdvanceDeltaSequence(steamId, regionKey);
             }
         }
 

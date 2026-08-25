@@ -27,6 +27,7 @@ namespace SteamP2PFriends.Adapters.Resource
         private readonly Dictionary<int, uint> _generations = new Dictionary<int, uint>();
         private readonly Dictionary<int, ResourceReleaseLease> _releases = new Dictionary<int, ResourceReleaseLease>();
         private readonly HashSet<int> _activeRegions = new HashSet<int>();
+        private readonly Dictionary<int, HashSet<ushort>> _deadResources = new Dictionary<int, HashSet<ushort>>();
 
         public ulong SessionEpoch { get; private set; } = 1UL;
         public int ActiveRegionCount => _activeRegions.Count;
@@ -40,6 +41,7 @@ namespace SteamP2PFriends.Adapters.Resource
             _generations.Clear();
             _releases.Clear();
             _activeRegions.Clear();
+            _deadResources.Clear();
         }
 
         public uint GetGeneration(int regionKey) =>
@@ -102,11 +104,55 @@ namespace SteamP2PFriends.Adapters.Resource
             _releases.Remove(regionKey);
             _activeRegions.Remove(regionKey);
         }
+
+        public uint RecordResourceDead(int regionKey, ushort index)
+        {
+            if (!_deadResources.TryGetValue(regionKey, out var set))
+            {
+                set = new HashSet<ushort>();
+                _deadResources[regionKey] = set;
+            }
+
+            set.Add(index);
+            uint next = GetGeneration(regionKey);
+            next = next == uint.MaxValue ? 1U : next + 1U;
+            if (next == 0U) next = 1U;
+            _generations[regionKey] = next;
+            return next;
+        }
+
+        public uint RecordResourceAlive(int regionKey, ushort index)
+        {
+            if (_deadResources.TryGetValue(regionKey, out var set))
+            {
+                set.Remove(index);
+            }
+
+            uint next = GetGeneration(regionKey);
+            next = next == uint.MaxValue ? 1U : next + 1U;
+            if (next == 0U) next = 1U;
+            _generations[regionKey] = next;
+            return next;
+        }
+
+        public bool IsResourceDead(int regionKey, ushort index)
+        {
+            return _deadResources.TryGetValue(regionKey, out var set) && set.Contains(index);
+        }
+
+        public HashSet<ushort> GetDeadResourceIndices(int regionKey)
+        {
+            if (_deadResources.TryGetValue(regionKey, out var set))
+            {
+                return new HashSet<ushort>(set);
+            }
+            return new HashSet<ushort>();
+        }
     }
 
     /// <summary>
     /// 树木与矿物资源生命周期协调适配器 (ResourceRegionLifecycleAdapter)
-    /// 管理 2D 矩形网格 (byte x, byte y) 资源区域的按需激活与滞回释放。
+    /// 管理 2D 矩形网格 (byte x, byte y) 资源区域的按需激活、采伐破坏状态与滞回释放。
     /// </summary>
     public static class ResourceRegionLifecycleAdapter
     {
@@ -185,6 +231,42 @@ namespace SteamP2PFriends.Adapters.Resource
             lock (SyncLock)
             {
                 return Ledger.GetGeneration(regionKey);
+            }
+        }
+
+        public static uint RecordResourceDead(byte x, byte y, ushort index)
+        {
+            int regionKey = (x << 8) | y;
+            lock (SyncLock)
+            {
+                return Ledger.RecordResourceDead(regionKey, index);
+            }
+        }
+
+        public static uint RecordResourceAlive(byte x, byte y, ushort index)
+        {
+            int regionKey = (x << 8) | y;
+            lock (SyncLock)
+            {
+                return Ledger.RecordResourceAlive(regionKey, index);
+            }
+        }
+
+        public static bool IsResourceDead(byte x, byte y, ushort index)
+        {
+            int regionKey = (x << 8) | y;
+            lock (SyncLock)
+            {
+                return Ledger.IsResourceDead(regionKey, index);
+            }
+        }
+
+        public static HashSet<ushort> GetDeadResourceIndices(byte x, byte y)
+        {
+            int regionKey = (x << 8) | y;
+            lock (SyncLock)
+            {
+                return Ledger.GetDeadResourceIndices(regionKey);
             }
         }
 

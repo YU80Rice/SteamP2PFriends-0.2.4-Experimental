@@ -2837,6 +2837,16 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"LevelGroundRemoteTreeCollisionPatch.RegisterManual 失败: {ex}");
             }
 
+            //   Add resource harvest & death/alive replication hooks.
+            try
+            {
+                Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch.RegisterManual(_harmony);
+            }
+            catch (System.Exception ex)
+            {
+                RoleLogger.Error("[Shared]", $"ResourceManagerHarvestReplicationPatch.RegisterManual 失败: {ex}");
+            }
+
             RoleLogger.Info("[Shared]", "[Diag] === 手动登记完成 ===");
         }
 

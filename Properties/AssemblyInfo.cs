@@ -3,16 +3,16 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("SteamP2PFriends")]
-[assembly: AssemblyDescription("SteamP2PFriends v0.2.4.6 Multi-Observer M6 level object collision & resource synchronization experiment.")]
+[assembly: AssemblyDescription("SteamP2PFriends v0.2.4.7 Multi-Observer M6C resource harvest & death/alive replication experiment.")]
 [assembly: AssemblyCompany("YU80Rice")]
 [assembly: AssemblyProduct("SteamP2PFriends")]
 #if DEBUG
-[assembly: AssemblyConfiguration("MultiObserver-M6-Experimental")]
+[assembly: AssemblyConfiguration("MultiObserver-M6C-Experimental")]
 #endif
 [assembly: AssemblyCopyright("MIT")]
 [assembly: ComVisible(false)]
 [assembly: Guid("b3c4d5e6-f7a8-9012-3456-789abcdef012")]
-[assembly: AssemblyVersion("0.2.4.6")]
-[assembly: AssemblyFileVersion("0.2.4.6")]
+[assembly: AssemblyVersion("0.2.4.7")]
+[assembly: AssemblyFileVersion("0.2.4.7")]
 // 仅授权纯单元测试程序集访问内部实现；测试不启动 Unturned 或 Steam API。
 [assembly: InternalsVisibleTo("SteamP2PFriends.WhitelistTests")]
