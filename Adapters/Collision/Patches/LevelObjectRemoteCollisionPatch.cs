@@ -580,6 +580,37 @@ namespace SteamP2PFriends.Patches
                     }
                 }
             }
+
+            try
+            {
+                List<ResourceSpawnpoint> trees = LevelGround.GetTreesOrNullInRegion(x, y);
+                if (trees != null)
+                {
+                    bool isCovered = IsRegionCovered(x, y);
+                    for (int treeIndex = 0; treeIndex < trees.Count; treeIndex++)
+                    {
+                        ResourceSpawnpoint tree = trees[treeIndex];
+                        if (tree != null)
+                        {
+#pragma warning disable 618
+                            if (isCovered)
+                            {
+                                tree.enable();
+                            }
+                            else
+                            {
+                                tree.disable();
+                            }
+#pragma warning restore 618
+                        }
+                    }
+                }
+            }
+            catch (Exception treeEx)
+            {
+                RoleLogger.Warn("[Shared]", "[LevelObjectCollision] 刷新树木/矿石失败 region=" + encodedRegion +
+                    " cause=" + cause + " error=" + treeEx.GetType().Name);
+            }
         }
 
         private static bool DictionariesEqual(Dictionary<ulong, int> left, Dictionary<ulong, int> right)
