@@ -16,12 +16,12 @@
 
 ## Frontier (Takeable Tickets)
 
-- [Ticket 01: M5 野生动物（Animal/Fauna）多观察者生成与漫游租约适配器](ticket-01-m5-animal-lifecycle-adapter/ticket.md) (`wayfinder:task`, unblocked)
-- [Ticket 02: M6 场景物件、树木矿石资源与权限门碰撞统一接入 SPI（含 70 版本技术债归并）](ticket-02-m6-level-object-and-door-collision/ticket.md) (`wayfinder:task`, unblocked)
+- [Ticket 01: M5 野生动物（Animal/Fauna）多观察者生成与漫游租约适配器](ticket-01-m5-animal-lifecycle-adapter/ticket.md) (`wayfinder:done`, archived in 0.2.4.5)
+- [Ticket 02: M6 场景物件、树木矿石资源与权限门碰撞统一接入 SPI（含 70 版本技术债归并）](ticket-02-m6-level-object-and-door-collision/ticket.md) (`wayfinder:done`, archived in 0.2.4.6)
+- [Ticket 05: M7 玩家建筑与防御工事（Barricade / Structure）跨区域生命周期与状态复制适配器](ticket-05-m7-barricade-and-structure-replication/ticket.md) (`wayfinder:task`, IN PROGRESS)
 
 ## Not yet specified
 
-- **M7 建筑与防御工事（Barricades/Structures）多观察者快照与权限权威**：待 M6 静态场景与资源碰撞稳定后进行细化拆解。
 - **M8 载具（Vehicles）跨区域物理运算与多乘客坐姿同步**：待实体层空间租约全面成熟后进行细化拆解。
 
 ## Out of scope

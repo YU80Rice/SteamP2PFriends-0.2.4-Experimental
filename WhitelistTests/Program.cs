@@ -11,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 165 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 181 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -152,6 +152,24 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6H06 HarvestReconnect", ResourceHarvestReplicationTests.Test_M6H06_ReconnectGetsUpdatedGeneration, ref total, ref passed, ref failed);
             RunTest("M6H07 HarvestIsolation", ResourceHarvestReplicationTests.Test_M6H07_DifferentRegionsHarvestIsolated, ref total, ref passed, ref failed);
             RunTest("M6H08 HarvestSessionReset", ResourceHarvestReplicationTests.Test_M6H08_SessionResetClearsDeadResources, ref total, ref passed, ref failed);
+
+            RunTest("M7B01 BarricadeAcquire", BarricadeRegionLifecycleAdapterTests.Test_M7B01_FirstAcquireCreatesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7B02 BarricadePlace", BarricadeRegionLifecycleAdapterTests.Test_M7B02_PlaceBarricadeAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7B03 BarricadeDamage", BarricadeRegionLifecycleAdapterTests.Test_M7B03_DamageBarricadeAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7B04 BarricadeDeltaSeq", BarricadeRegionLifecycleAdapterTests.Test_M7B04_UpdateStateAdvancesDeltaSequence, ref total, ref passed, ref failed);
+            RunTest("M7B05 BarricadeHysteresis", BarricadeRegionLifecycleAdapterTests.Test_M7B05_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
+            RunTest("M7B06 BarricadeStaleSession", BarricadeRegionLifecycleAdapterTests.Test_M7B06_StaleSessionCannotRelease, ref total, ref passed, ref failed);
+            RunTest("M7B07 BarricadeReconnect", BarricadeRegionLifecycleAdapterTests.Test_M7B07_ReconnectInvalidationResync, ref total, ref passed, ref failed);
+            RunTest("M7B08 BarricadeDisconnect", BarricadeRegionLifecycleAdapterTests.Test_M7B08_DisconnectCleansObserverState, ref total, ref passed, ref failed);
+
+            RunTest("M7S01 StructureAcquire", StructureRegionLifecycleAdapterTests.Test_M7S01_FirstAcquireCreatesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7S02 StructurePlace", StructureRegionLifecycleAdapterTests.Test_M7S02_PlaceStructureAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7S03 StructureDamage", StructureRegionLifecycleAdapterTests.Test_M7S03_DamageStructureAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7S04 StructureSalvage", StructureRegionLifecycleAdapterTests.Test_M7S04_SalvageStructureAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M7S05 StructureHysteresis", StructureRegionLifecycleAdapterTests.Test_M7S05_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
+            RunTest("M7S06 StructureStaleSession", StructureRegionLifecycleAdapterTests.Test_M7S06_StaleSessionCannotRelease, ref total, ref passed, ref failed);
+            RunTest("M7S07 StructureReconnect", StructureRegionLifecycleAdapterTests.Test_M7S07_ReconnectInvalidationResync, ref total, ref passed, ref failed);
+            RunTest("M7S08 StructureDisconnect", StructureRegionLifecycleAdapterTests.Test_M7S08_DisconnectCleansObserverState, ref total, ref passed, ref failed);
             #endregion
 
             #region 7. Adapters: Security & Whitelist Tests (32 Tests)

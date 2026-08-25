@@ -2847,6 +2847,17 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"ResourceManagerHarvestReplicationPatch.RegisterManual 失败: {ex}");
             }
 
+            //   Add player barricade & structure state replication hooks (M7).
+            try
+            {
+                Adapters.Structure.Patches.BarricadeStateReplicationPatch.RegisterManual(_harmony);
+                Adapters.Structure.Patches.StructureStateReplicationPatch.RegisterManual(_harmony);
+            }
+            catch (System.Exception ex)
+            {
+                RoleLogger.Error("[Shared]", $"BuildingStateReplicationPatch.RegisterManual 失败: {ex}");
+            }
+
             RoleLogger.Info("[Shared]", "[Diag] === 手动登记完成 ===");
         }
 
