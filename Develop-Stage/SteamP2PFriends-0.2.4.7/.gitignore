@@ -1,0 +1,53 @@
+# Build outputs (root)
+bin/
+obj/
+publish/
+
+# Audit working artifacts (logs, manifests, temporary reports)
+# Key audit conclusions are summarized in AUDIT_CHECKLIST.md
+.audit/
+
+# Logs
+logs-*/
+*.log
+
+# Runtime-test evidence is locally archived through TestLogs scripts, not committed.
+TestLogs/artifacts/*
+!TestLogs/artifacts/.gitkeep
+
+# Frozen Develop-Stage overrides (preserve all frozen artifacts and stage evidence)
+!Develop-Stage/
+!Develop-Stage/**
+!Develop-Stage/**/bin/**
+!Develop-Stage/**/acceptance-evidence/**
+!Develop-Stage/**/acceptance-evidence/**/*.log
+!Develop-Stage/**/acceptance-evidence/**/*.txt
+!Develop-Stage/**/acceptance-evidence/**/*.7z
+!Develop-Stage/**/acceptance-evidence/**/*.zip
+
+# Backups
+*.bak
+*.backup
+*-backup*
+*-backup.md
+AUDIT_CHECKLIST-v1.1-backup.md
+*.v1.1-backup
+
+# IDE / Editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary
+*.tmp
+*.temp
+*.swp
+*~
