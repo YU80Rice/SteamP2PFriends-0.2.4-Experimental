@@ -22,7 +22,7 @@ namespace SteamP2PFriends
     /// 该插件仅支持 SteamUser P2P listen-host：房主客户端同时承担原版服务端和本地客户端。
     /// 不启动 U3DS，不修改全局 Dedicated Server 判定，也不伪造原版加载完成状态。
     /// </summary>
-    [BepInPlugin("com.yu80rice.steamp2pfriends", "SteamP2PFriends", "0.2.4.5")]
+    [BepInPlugin("com.yu80rice.steamp2pfriends", "SteamP2PFriends", "0.2.4.6")]
     [BepInDependency("com.yu80rice.launchinventorytidy", BepInDependency.DependencyFlags.SoftDependency)]
     public partial class SteamP2PFriendsPlugin : BaseUnityPlugin
     {
@@ -107,7 +107,7 @@ namespace SteamP2PFriends
             }
 
             RoleLogger.Info("[Shared]",
-                $"[Startup] version=0.2.4.5 architecture=MultiObserver-M5 p2pEnabled={EnableP2PCoop.Value} " +
+                $"[Startup] version=0.2.4.6 architecture=MultiObserver-M6 p2pEnabled={EnableP2PCoop.Value} " +
                 $"verboseDiagnostics={VerboseLog.Value} routeDiagnostics={RouteDiagnostics.Value} " +
                 $"multiObserverShadow={EnableMultiObserverShadow.Value} " +
                 $"worldStatus={P2PWorldStatusBroadcaster.ActivationState}");

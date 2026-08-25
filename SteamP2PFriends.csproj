@@ -104,10 +104,18 @@
     <Compile Include="Adapters\Animal\AnimalSnapshotAdapter.cs" />
     <Compile Include="Adapters\Animal\Patches\AnimalManagerP0C2SendAnimalStatesPatch.cs" />
     <Compile Include="Adapters\Animal\Patches\AnimalManagerWorldSyncDiagnosticPatch.cs" />
+    <Compile Include="Adapters\Collision\LevelObjectCollisionAdapter.cs" />
+    <Compile Include="Adapters\Collision\Patches\LevelObjectRemoteCollisionPatch.cs" />
     <Compile Include="Adapters\Item\ItemDomainAdapter.cs" />
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapter.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapter.cs" />
     <Compile Include="Adapters\Item\Patches\ItemManagerRegionSyncPatch.cs" />
+    <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
+    <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapter.cs" />
+    <Compile Include="Adapters\Resource\ResourceSnapshotAdapter.cs" />
+    <Compile Include="Adapters\Resource\Patches\LevelGroundRemoteTreeCollisionPatch.cs" />
+    <Compile Include="Adapters\Resource\Patches\ResourceManagerRegionSyncPatch.cs" />
+    <Compile Include="Adapters\Resource\Patches\ResourceManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Security\P2PWhitelistService.cs" />
     <Compile Include="Adapters\Security\Patches\P2PListenHostCommandPermissionPatch.cs" />
     <Compile Include="Adapters\Security\Patches\P2PQuarantineAdmissionPatches.cs" />
@@ -165,7 +173,6 @@
     <Compile Include="Patches\ItemManagerP0B3PreGeneratePatch.cs" />
     <Compile Include="Patches\ItemManagerP0B6RegenerateOnLevelLoadedPatch.cs" />
     <Compile Include="Patches\ItemManagerWorldSyncDiagnosticPatch.cs" />
-    <Compile Include="Patches\LevelObjectRemoteCollisionPatch.cs" />
     <Compile Include="Patches\ListenHostInventoryUiProjectionPatch.cs" />
     <Compile Include="Patches\LobbiesGameCreatedPatch.cs" />
     <Compile Include="Patches\LocalRegionProgressDiagnosticPatch.cs" />
@@ -200,8 +207,6 @@
     <Compile Include="Patches\ProviderRejectDiagnosticPatch.cs" />
     <Compile Include="Patches\QueuePositionChangedDiagnosticPatch.cs" />
     <Compile Include="Patches\RemotePlayerClothingVisibleBridgePatch.cs" />
-    <Compile Include="Patches\ResourceManagerRegionSyncPatch.cs" />
-    <Compile Include="Patches\ResourceManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Patches\SteamPlayerConstructorDiagnosticPatch.cs" />
     <Compile Include="Patches\SteamPlayerIsLocalServerHostPatch.cs" />
     <Compile Include="Patches\SteamUserP2PRedirectPatch.cs" />

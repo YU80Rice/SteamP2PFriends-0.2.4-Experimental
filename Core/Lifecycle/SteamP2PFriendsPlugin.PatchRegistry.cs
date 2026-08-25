@@ -2827,6 +2827,16 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"LevelObjectRemoteCollisionPatch.RegisterManual 失败: {ex}");
             }
 
+            //   Add remote guests' resource (trees & ores) regional collision coverage.
+            try
+            {
+                Adapters.Resource.Patches.LevelGroundRemoteTreeCollisionPatch.RegisterManual(_harmony);
+            }
+            catch (System.Exception ex)
+            {
+                RoleLogger.Error("[Shared]", $"LevelGroundRemoteTreeCollisionPatch.RegisterManual 失败: {ex}");
+            }
+
             RoleLogger.Info("[Shared]", "[Diag] === 手动登记完成 ===");
         }
 

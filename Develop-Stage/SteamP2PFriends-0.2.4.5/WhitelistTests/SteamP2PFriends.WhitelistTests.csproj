@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B3C4D5E6-F7A8-9012-3456-789ABCDEF013}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SteamP2PFriends.WhitelistTests</RootNamespace>
+    <AssemblyName>SteamP2PFriends.WhitelistTests</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <LangVersion>10</LangVersion>
+    <Deterministic>true</Deterministic>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Stage 7-2-2 钃濆浘 搂3锛氫粎寮曠敤缂栬瘧鍑虹殑鎻掍欢鍜岀幇鏈?Libs锛屼笉鐢熸垚/鍐欏叆浠讳綍娓告垙鎴栧瓨妗ｆ枃浠?-->
+    <!-- 浣跨敤 DLL 寮曠敤锛圫teamP2PFriends.csproj 鐨?ProjectGuid 鍘嗗彶鏍煎紡闂涓嶄慨鏀癸級 -->
+    <!-- Private=True 璁?CLR 鍔犺浇 SteamP2PFriends.dll 鏃惰兘瑙ｆ瀽鎵€鏈変紶閫掍緷璧?-->
+    <Reference Include="SteamP2PFriends">
+      <HintPath>..\bin\Release\SteamP2PFriends.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\Libs\BepInEx.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\Libs\0Harmony.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <!-- Stage 7-3 v4 H2锛欻armonyX 杩愯鏃朵緷璧栵紙鐪熷疄 Harmony 瀹炰緥 patch 闇€瑕?MonoMod + Mono.Cecil锛?-->
+    <Reference Include="MonoMod.RuntimeDetour">
+      <HintPath>..\..\Libs\MonoMod.RuntimeDetour.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MonoMod.Utils">
+      <HintPath>..\..\Libs\MonoMod.Utils.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>..\..\Libs\Mono.Cecil.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Cecil.Mdb">
+      <HintPath>..\..\Libs\Mono.Cecil.Mdb.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Cecil.Pdb">
+      <HintPath>..\..\Libs\Mono.Cecil.Pdb.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Mono.Cecil.Rocks">
+      <HintPath>..\..\Libs\Mono.Cecil.Rocks.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="com.rlabrecque.steamworks.net">
+      <HintPath>..\..\Libs\com.rlabrecque.steamworks.net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\Libs\Assembly-CSharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SystemEx">
+      <HintPath>..\..\Libs\SystemEx.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\Libs\UnityEngine.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>..\..\Libs\UnityEngine.AudioModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>..\..\Libs\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>..\..\Libs\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>..\..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SDG.Glazier.Runtime">
+      <HintPath>..\..\Libs\SDG.Glazier.Runtime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SDG.NetTransport">
+      <HintPath>..\..\Libs\SDG.NetTransport.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SDG.NetPak.Runtime">
+      <HintPath>..\..\Libs\SDG.NetPak.Runtime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <!-- Stage 7-3 v3锛歋DG.Glazier.Runtime 寮曠敤 netstandard 2.1.0.0锛涙祴璇曟帶鍒跺彴闇€姝?facade -->
+    <Reference Include="netstandard">
+      <HintPath>..\..\Libs\netstandard.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs" />
+    <Compile Include="Adapters\Animal\AnimalSnapshotAdapterTests.cs" />
+    <Compile Include="Adapters\Item\AuthorityGenerationGateTests.cs" />
+    <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapterTests.cs" />
+    <Compile Include="Adapters\Item\ItemObserverReplicationAdapterTests.cs" />
+    <Compile Include="Adapters\Security\RouteBApprovalTests.cs" />
+    <Compile Include="Adapters\Security\WhitelistServiceTests.cs" />
+    <Compile Include="Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs" />
+    <Compile Include="Adapters\Zombie\ZombieSnapshotAdapterTests.cs" />
+    <Compile Include="Core\LoggingPolicyTests.cs" />
+    <Compile Include="Fakes\FakeApprovalRuntimeContext.cs" />
+    <Compile Include="Fakes\FakeApprovalWhitelistProxy.cs" />
+    <Compile Include="Fakes\FakeWhitelistDisconnectGateway.cs" />
+    <Compile Include="Fakes\FakeWhitelistRuntimeContext.cs" />
+    <Compile Include="Fakes\FakeWhitelistStore.cs" />
+    <Compile Include="MultiObserver\MultiObserverShadowTests.cs" />
+    <Compile Include="MultiObserver\SpatialObserverIndexTests.cs" />
+    <Compile Include="Platform\HarmonyCompatibilityAuditTests.cs" />
+    <Compile Include="Platform\InventoryUiProjectionTests.cs" />
+    <Compile Include="Platform\P2PEntryReadinessGateTests.cs" />
+    <Compile Include="Platform\RemoteCollisionAnimationPolicyTests.cs" />
+    <Compile Include="Platform\SteamPersonaDisplayTests.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

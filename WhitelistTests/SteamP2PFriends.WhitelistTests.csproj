@@ -137,9 +137,12 @@
     <Compile Include="Program.cs" />
     <Compile Include="Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs" />
     <Compile Include="Adapters\Animal\AnimalSnapshotAdapterTests.cs" />
+    <Compile Include="Adapters\Collision\LevelObjectCollisionAdapterTests.cs" />
     <Compile Include="Adapters\Item\AuthorityGenerationGateTests.cs" />
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapterTests.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapterTests.cs" />
+    <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapterTests.cs" />
+    <Compile Include="Adapters\Resource\ResourceSnapshotAdapterTests.cs" />
     <Compile Include="Adapters\Security\RouteBApprovalTests.cs" />
     <Compile Include="Adapters\Security\WhitelistServiceTests.cs" />
     <Compile Include="Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs" />
