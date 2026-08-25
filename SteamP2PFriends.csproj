@@ -99,6 +99,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="SteamP2PFriendsPlugin.cs" />
+    <Compile Include="Adapters\Animal\AnimalDomainAdapter.cs" />
+    <Compile Include="Adapters\Animal\AnimalRegionLifecycleAdapter.cs" />
+    <Compile Include="Adapters\Animal\AnimalSnapshotAdapter.cs" />
+    <Compile Include="Adapters\Animal\Patches\AnimalManagerP0C2SendAnimalStatesPatch.cs" />
+    <Compile Include="Adapters\Animal\Patches\AnimalManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Item\ItemDomainAdapter.cs" />
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapter.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapter.cs" />
@@ -144,8 +149,6 @@
     <Compile Include="MultiObserver\SPI\ILifecycleDomainAdapter.cs" />
     <Compile Include="MultiObserver\SPI\IStateReplicationAdapter.cs" />
     <Compile Include="MultiObserver\SPI\LeaseTicket.cs" />
-    <Compile Include="Patches\AnimalManagerP0C2SendAnimalStatesPatch.cs" />
-    <Compile Include="Patches\AnimalManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Patches\AssetIntegritySnapshotPatch.cs" />
     <Compile Include="Patches\AuthHandshakeJournalPatch.cs" />
     <Compile Include="Patches\AuthoritativeItemGenerationGatePatch.cs" />

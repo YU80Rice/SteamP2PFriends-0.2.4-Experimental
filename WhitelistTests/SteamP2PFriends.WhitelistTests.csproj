@@ -135,6 +135,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs" />
+    <Compile Include="Adapters\Animal\AnimalSnapshotAdapterTests.cs" />
     <Compile Include="Adapters\Item\AuthorityGenerationGateTests.cs" />
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapterTests.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapterTests.cs" />

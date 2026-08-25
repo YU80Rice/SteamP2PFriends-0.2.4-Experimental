@@ -4,19 +4,19 @@ namespace SteamP2PFriends.WhitelistTests
 {
     /// <summary>
     /// 模块化测试启动器 (Modular TestRunner)
-    /// 统一按领域分层组织并执行全量 118 项内存单元与回归测试套件。
+    /// 统一按领域分层组织并执行全量内存单元与回归测试套件。
     /// </summary>
     internal static class Program
     {
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 118 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 135 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
             #region 1. Core & Logging Policy Tests (4 Tests)
-            Console.WriteLine("\n--- [Domain 1/6: Core & Diagnostics Policy] ---");
+            Console.WriteLine("\n--- [Domain 1/7: Core & Diagnostics Policy] ---");
             RunTest("LOG1 Markers", LoggingPolicyTests.Test_LegacyDiagnosticMarkersAreClassified, ref total, ref passed, ref failed);
             RunTest("LOG2 Defaults", LoggingPolicyTests.Test_VerboseToggleIsAtomicAndDefaultsOff, ref total, ref passed, ref failed);
             RunTest("LOG3 Labels", LoggingPolicyTests.Test_LegacyLabelsAreRemovedAtOutputBoundary, ref total, ref passed, ref failed);
@@ -24,7 +24,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 2. MultiObserver Control Plane & Spatial Index Tests (18 Tests)
-            Console.WriteLine("\n--- [Domain 2/6: MultiObserver Control Plane & Spatial Index] ---");
+            Console.WriteLine("\n--- [Domain 2/7: MultiObserver Control Plane & Spatial Index] ---");
             RunTest("SPI01 Grid2DDiff", SpatialObserverIndexTests.Test_SPI01_Grid2DDiffCalculation, ref total, ref passed, ref failed);
             RunTest("SPI02 Bound1DDiff", SpatialObserverIndexTests.Test_SPI02_Bound1DDiffCalculation, ref total, ref passed, ref failed);
             RunTest("SPI03 DisconnectReleasesAll", SpatialObserverIndexTests.Test_SPI03_ObserverDisconnectReleasesAll, ref total, ref passed, ref failed);
@@ -46,7 +46,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 3. Adapters: Item Domain Tests (21 Tests)
-            Console.WriteLine("\n--- [Domain 3/6: Adapters / Item Domain (M1 + M2)] ---");
+            Console.WriteLine("\n--- [Domain 3/7: Adapters / Item Domain (M1 + M2)] ---");
             RunTest("G1 FirstCommit", AuthorityGenerationGateTests.Test_G1_FirstCommitBlocksSecondProducer, ref total, ref passed, ref failed);
             RunTest("G2 Abort", AuthorityGenerationGateTests.Test_G2_AbortAllowsRetry, ref total, ref passed, ref failed);
             RunTest("G3 Reset", AuthorityGenerationGateTests.Test_G3_ResetInvalidatesOldEpoch, ref total, ref passed, ref failed);
@@ -71,7 +71,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
-            Console.WriteLine("\n--- [Domain 4/6: Adapters / Zombie Domain (M3 + M4)] ---");
+            Console.WriteLine("\n--- [Domain 4/7: Adapters / Zombie Domain (M3 + M4)] ---");
             RunTest("M3Z01 FirstAcquire", ZombieRegionLifecycleAdapterTests.Test_M3Z01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
             RunTest("M3Z02 GenerationCommit", ZombieRegionLifecycleAdapterTests.Test_M3Z02_RepeatedAcquireAdvancesOnlyOnRealCommit, ref total, ref passed, ref failed);
             RunTest("M3Z03 ReleaseHysteresis", ZombieRegionLifecycleAdapterTests.Test_M3Z03_ReleaseUsesHysteresis, ref total, ref passed, ref failed);
@@ -96,8 +96,29 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M4Z10 ExactDisconnect", ZombieSnapshotAdapterTests.Test_M4Z10_ExactDisconnectCleansObserver, ref total, ref passed, ref failed);
             #endregion
 
-            #region 5. Adapters: Security & Whitelist Tests (32 Tests)
-            Console.WriteLine("\n--- [Domain 5/6: Adapters / Security Domain (Whitelist & Route B)] ---");
+            #region 5. Adapters: Animal Domain Tests (17 Tests)
+            Console.WriteLine("\n--- [Domain 5/7: Adapters / Animal Domain (M5)] ---");
+            RunTest("M5A01 FirstAcquire", AnimalRegionLifecycleAdapterTests.Test_M5A01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
+            RunTest("M5A02 GenerationCommit", AnimalRegionLifecycleAdapterTests.Test_M5A02_GenerationCommitAdvancesMonotonically, ref total, ref passed, ref failed);
+            RunTest("M5A03 ReleaseHysteresis", AnimalRegionLifecycleAdapterTests.Test_M5A03_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
+            RunTest("M5A04 DemandCancelsRelease", AnimalRegionLifecycleAdapterTests.Test_M5A04_DemandCancelsRelease, ref total, ref passed, ref failed);
+            RunTest("M5A05 StaleSession", AnimalRegionLifecycleAdapterTests.Test_M5A05_StaleSessionCannotRelease, ref total, ref passed, ref failed);
+            RunTest("M5A06 StaleGeneration", AnimalRegionLifecycleAdapterTests.Test_M5A06_StaleGenerationCannotRelease, ref total, ref passed, ref failed);
+            RunTest("M5A07 BoundIsolation", AnimalRegionLifecycleAdapterTests.Test_M5A07_BoundsAreIndependent, ref total, ref passed, ref failed);
+            RunTest("M5A08 ReleaseIdempotence", AnimalRegionLifecycleAdapterTests.Test_M5A08_CommitReleaseIsIdempotentAndAdvancesGeneration, ref total, ref passed, ref failed);
+            RunTest("M5A09 DisconnectCleansLease", AnimalRegionLifecycleAdapterTests.Test_M5A09_DisconnectCleansObserverState, ref total, ref passed, ref failed);
+            RunTest("M5A10 DemandMismatchQuarantine", AnimalRegionLifecycleAdapterTests.Test_M5A10_DemandMismatchTriggersQuarantine, ref total, ref passed, ref failed);
+            RunTest("M5S01 InitialSnapshot", AnimalSnapshotAdapterTests.Test_M5S01_InitialSnapshotEnqueued, ref total, ref passed, ref failed);
+            RunTest("M5S02 DuplicateIgnored", AnimalSnapshotAdapterTests.Test_M5S02_DuplicateSnapshotIgnored, ref total, ref passed, ref failed);
+            RunTest("M5S03 StaleGenerationResync", AnimalSnapshotAdapterTests.Test_M5S03_StaleGenerationForcesResync, ref total, ref passed, ref failed);
+            RunTest("M5S04 ReconnectInvalidation", AnimalSnapshotAdapterTests.Test_M5S04_ReconnectInvalidatesOldSnapshotToken, ref total, ref passed, ref failed);
+            RunTest("M5S05 OverlappingSnapshots", AnimalSnapshotAdapterTests.Test_M5S05_OverlappingObserversHaveIndependentSnapshots, ref total, ref passed, ref failed);
+            RunTest("M5S06 BoundsDoNotCrossCommit", AnimalSnapshotAdapterTests.Test_M5S06_BoundsDoNotCrossCommit, ref total, ref passed, ref failed);
+            RunTest("M5S07 DisconnectCleansObserver", AnimalSnapshotAdapterTests.Test_M5S07_DisconnectCleansObserver, ref total, ref passed, ref failed);
+            #endregion
+
+            #region 6. Adapters: Security & Whitelist Tests (32 Tests)
+            Console.WriteLine("\n--- [Domain 6/7: Adapters / Security Domain (Whitelist & Route B)] ---");
             RunTest("WL1 Bootstrap", WhitelistServiceTests.Test_Bootstrap_Success, ref total, ref passed, ref failed);
             RunTest("WL2 BootstrapSaveFailure", WhitelistServiceTests.Test_Bootstrap_SaveFailure_NoDisconnect, ref total, ref passed, ref failed);
             RunTest("WL3 BootstrapLoadFailure", WhitelistServiceTests.Test_Bootstrap_LoadFailure_NoDisconnect, ref total, ref passed, ref failed);
@@ -132,8 +153,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("B12 InputSanitizer", RouteBApprovalTests.Test_B12_InputSanitizerPreservesNetworkProgress, ref total, ref passed, ref failed);
             #endregion
 
-            #region 6. Platform: UI, Gate & Diagnostic Tests (21 Tests)
-            Console.WriteLine("\n--- [Domain 6/6: Platform UI, Readiness & Compatibility] ---");
+            #region 7. Platform: UI, Gate & Diagnostic Tests (21 Tests)
+            Console.WriteLine("\n--- [Domain 7/7: Platform UI, Readiness & Compatibility] ---");
             RunTest("E1 EntryEarlyMenu", P2PEntryReadinessGateTests.Test_E1_EarlyMenuCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E2 EntryLifecycleFailure", P2PEntryReadinessGateTests.Test_E2_FailedLifecycleCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E3 EntryIdempotentReset", P2PEntryReadinessGateTests.Test_E3_SuccessIsIdempotentAndResetFailsClosed, ref total, ref passed, ref failed);
