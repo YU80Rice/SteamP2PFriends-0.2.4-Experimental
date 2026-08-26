@@ -107,7 +107,7 @@ namespace SteamP2PFriends
             }
 
             RoleLogger.Info("[Shared]",
-                $"[Startup] version=0.2.4.7 architecture=MultiObserver-M6C p2pEnabled={EnableP2PCoop.Value} " +
+                $"[Startup] version={typeof(SteamP2PFriendsPlugin).Assembly.GetName().Version} architecture=MultiObserver-M6C p2pEnabled={EnableP2PCoop.Value} " +
                 $"verboseDiagnostics={VerboseLog.Value} routeDiagnostics={RouteDiagnostics.Value} " +
                 $"multiObserverShadow={EnableMultiObserverShadow.Value} " +
                 $"worldStatus={P2PWorldStatusBroadcaster.ActivationState}");

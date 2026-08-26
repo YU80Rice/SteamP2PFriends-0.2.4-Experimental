@@ -1,6 +1,6 @@
 # U3-SDK Registration Trace
 
-状态：Ticket 01 已完成；注册编排拆分仍由 Ticket 02 负责
+状态：Ticket 01 已完成；Ticket 02 注册编排已接入，运行时仍待验证
 
 ## 1. 对照基线与证据范围
 
@@ -14,6 +14,8 @@
 
 - 插件入口执行 1 次 `Harmony.PatchAll(Assembly)`；
 - 当前显式 `RegisterManual` / `RegisterAtomically` 调用点共 65 个；
+- Ticket 02 以 7 个 U3-SDK 阶段包裹这些调用，并由 Registration Closure 关闭适配器登记；
+- 本记录当前 SHA-256：`CC91C15BFEF18403C35B3DE7DCEF69CA46ADAA43A024D98BB1F5FB3F50E4CD32`，共 71 条编号追踪行；
 - SteamNetworkingSockets wrapper 使用 15 个 Prefix helper 调用和 2 个 Postfix helper 调用；
 - 插件入口直接订阅 `Provider.onEnemyDisconnected` 与 `Provider.onClientDisconnected` 两个回调；
 - Route B 的 `Provider.onServerConnected` / `Provider.onServerDisconnected` 订阅在首次成功的游戏线程 Update 中延迟安装。
@@ -358,7 +360,7 @@ Zombie、Animal、Resource、Item、Object、Structure 和 Vehicle 的原生 `Up
 
 ## 6.1 版本元数据旁证
 
-当前源码存在一个不属于本 Ticket 修复范围、但必须进入后续证据门禁的版本不一致：插件特性、AssemblyInfo 和统一构建元数据为 `0.2.4.8`，而 `Awake` 启动日志仍输出 `version=0.2.4.7`。因此：
+当前启动日志版本从已加载程序集的 `AssemblyName.Version` 读取；插件特性、AssemblyInfo 和统一构建元数据均为 `0.2.4.8`。因此：
 
 - 本 Ticket 不擅自修改启动日志消费者；
 - Ticket 09 必须把该消费者纳入 Build Fingerprint/Metadata Source 收敛；

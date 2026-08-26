@@ -14,6 +14,7 @@ namespace SteamP2PFriends
     public partial class SteamP2PFriendsPlugin
     {
         private Core.Registration.RegistrationClosure _registrationClosure;
+        private bool _registrationStageFailed;
 
         private Core.Registration.PatchRegistrationPlan CreatePatchRegistrationPlan()
         {
@@ -62,130 +63,7 @@ namespace SteamP2PFriends
                 _registrationClosure, stages, HARMONY_ID, VerifyRegistrationClosure);
         }
 
-        private void RegisterRouteBPatches()
-        {
-            try
-            {
-                P2PQuarantineActionGatePatch.RegisterManual(_harmony);
-                Patch_PlayerDashboardPlayersUI.RegisterManual(_harmony);
-                P2PListenHostCommandPermissionPatch.RegisterManual(_harmony);
-                RoleLogger.Info("[Shared]",
-                    "[P2P-Approval] Route B patches registered; lifecycle hooks waiting for game thread");
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]", "[Stage7-6] manual registration failed: " + ex);
-            }
-        }
-
-        private void RegisterAssetAndAuditPatches()
-        {
-            try
-            {
-                Patches.AssetIntegritySnapshotPatch.RuntimeProbe();
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]", $"AssetIntegritySnapshotPatch.RuntimeProbe 失败: {ex}");
-            }
-
-            try
-            {
-                RegisterAssetIntegritySnapshotPatches();
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]", $"RegisterAssetIntegritySnapshotPatches 整体异常（不阻断）: {ex}");
-            }
-
-            ApplyV2AuditFixPatches();
-        }
-
-        private void RegisterDomainStage()
-        {
-            try
-            {
-                Patches.WorldSyncDiagnosticCore.RegisterSessionResetCallback(
-                    Patches.P0EBarricadeLifecycle.BarricadeLifecycleHelper.ResetHitLogs);
-                Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.MarkResetCallbackRegistered();
-                RoleLogger.Info("[Shared]",
-                    "[5B-1B/Plugin] OK RegisterSessionResetCallback(BarricadeLifecycleHelper.ResetHitLogs) 已登记 + MarkResetCallbackRegistered");
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]",
-                    $"[5B-1B/Plugin] RegisterSessionResetCallback 失败: {ex.Message}");
-            }
-
-            try
-            {
-                Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.RegisterAtomically(_harmony);
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]",
-                    $"[5B-1B/Plugin] BarricadeLifecycleRegistration.RegisterAtomically 异常: {ex.Message}");
-            }
-
-            RegisterDomainAdapters();
-        }
-
-        private void RegisterDomainAdapters()
-        {
-            var item = new ItemDomainAdapter();
-            RegisterLifecycle(item);
-            RegisterReplication(item);
-            var resource = new ResourceDomainAdapter();
-            RegisterLifecycle(resource);
-            RegisterReplication(resource);
-            var building = new BuildingDomainAdapter();
-            RegisterLifecycle(building);
-            RegisterReplication(building);
-            var zombie = new ZombieDomainAdapter();
-            RegisterLifecycle(zombie);
-            RegisterReplication(zombie);
-            var animal = new AnimalDomainAdapter();
-            RegisterLifecycle(animal);
-            RegisterReplication(animal);
-            RegisterLifecycle(new LevelObjectCollisionAdapter());
-        }
-
-        private void RegisterLifecycle(MultiObserver.SPI.ILifecycleDomainAdapter adapter)
-        {
-            string failure;
-            if (!_registrationClosure.TryRegisterLifecycle(adapter, out failure))
-                RoleLogger.Error("[Shared]", "[Registration] lifecycle adapter rejected: " + failure);
-        }
-
-        private void RegisterReplication(MultiObserver.SPI.IStateReplicationAdapter adapter)
-        {
-            string failure;
-            if (!_registrationClosure.TryRegisterReplication(adapter, out failure))
-                RoleLogger.Error("[Shared]", "[Registration] replication adapter rejected: " + failure);
-        }
-
-        private void InitializeDiagnosticStage()
-        {
-            try
-            {
-                Patches.UnityLogBridgePatch.Initialize();
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]", $"UnityLogBridgePatch.Initialize 失败: {ex}");
-            }
-
-            try
-            {
-                SteamP2PFriends.Client.NativeSnsLogProbe.Enable(RouteDiagnostics.Value, VerboseLog.Value);
-            }
-            catch (Exception ex)
-            {
-                RoleLogger.Error("[Shared]", $"NativeSnsLogProbe.Enable 失败: {ex}");
-            }
-        }
-
-        private void VerifyRegistrationStage()
+        private bool VerifyRegistrationStage()
         {
             bool redactionSelfTestPassed = false;
             try
@@ -221,9 +99,11 @@ namespace SteamP2PFriends
                     "[Stage9-2] !!! single-port Direct-IP query projection registration gate failed");
             }
 
+            return RedactionSelfTestPassed && Stage76QuarantineRegistrationValid &&
+                Stage78UnifiedRegistrationValid && Stage92SinglePortRegistrationValid;
         }
 
-        private void VerifyRegistrationClosure()
+        private bool VerifyRegistrationClosure()
         {
             foreach (Core.Registration.RegistrationRecord record in _registrationClosure.Snapshot)
             {
@@ -235,7 +115,7 @@ namespace SteamP2PFriends
                 "[Registration] Registration Closure complete; adapter catalog is immutable for this session");
 
             HarmonyCompatibilityAudit.Reset();
-            VerifyCriticalPatches(RedactionSelfTestPassed);
+            return VerifyCriticalPatches(RedactionSelfTestPassed);
         }
     }
 }

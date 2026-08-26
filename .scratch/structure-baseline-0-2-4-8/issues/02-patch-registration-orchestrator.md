@@ -16,7 +16,7 @@
 
 - 顶层入口：`Core/Lifecycle/SteamP2PFriendsPlugin.PatchRegistry.cs` 仅委托 `PatchRegistrationOrchestrator`。
 - 编排模块：`Core/Registration/PatchRegistrationOrchestrator.cs` 与 `SteamP2PFriendsPlugin.PatchRegistrationOrchestration.cs`。
-- 注册模块：`SteamP2PFriendsPlugin.PatchRegistrationModules.cs`；验证模块：`SteamP2PFriendsPlugin.PatchRegistrationVerification.cs`。
+- 注册模块：`SteamP2PFriendsPlugin.PatchRegistrationTransportModules.cs`、`SteamP2PFriendsPlugin.PatchRegistrationSecurityModules.cs`、`SteamP2PFriendsPlugin.PatchRegistrationDiagnosticsModules.cs`、`SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs`、`SteamP2PFriendsPlugin.PatchRegistrationDomainModules.cs`、`SteamP2PFriendsPlugin.PatchRegistrationAuditModules.cs`；验证模块：`SteamP2PFriendsPlugin.PatchRegistrationHarmonyVerification.cs`、`SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs`、`SteamP2PFriendsPlugin.PatchRegistrationVerification.cs`。
 - Closure seam：`Core/Registration/RegistrationClosure.cs`；测试：`WhitelistTests/Core/RegistrationClosureTests.cs`。
 - 注册顺序以 `docs/architecture/registration-trace.md` 的 U3-SDK 追踪为准；未改变 Harmony target、owner、priority 或既有调用块内部顺序。
 - Release 构建：主项目与测试项目均 `0 errors / 0 warnings`。

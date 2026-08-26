@@ -151,7 +151,14 @@
     <Compile Include="Core\Registration\PatchRegistrationOrchestrator.cs" />
     <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationOrchestration.cs" />
     <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationVerification.cs" />
-    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationModules.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationHarmonyVerification.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationAuditModules.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationTransportModules.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationDiagnosticsModules.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationSecurityModules.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationDomainModules.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs" />
     <Compile Include="Host\GsltInputModal.cs" />
     <Compile Include="Host\HasCheatsGuardWatcher.cs" />
     <Compile Include="Host\HostManager.cs" />

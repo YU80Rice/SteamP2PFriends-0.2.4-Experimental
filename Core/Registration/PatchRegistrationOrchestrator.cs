@@ -7,7 +7,7 @@ namespace SteamP2PFriends.Core.Registration
     internal sealed class PatchRegistrationStage
     {
         public PatchRegistrationStage(int order, string category, string traceId,
-            string owner, string priority, string harmonyTarget, Action execute)
+            string owner, string priority, string harmonyTarget, Func<bool> execute)
         {
             Order = order;
             Category = category ?? string.Empty;
@@ -24,7 +24,7 @@ namespace SteamP2PFriends.Core.Registration
         public string Owner { get; }
         public string Priority { get; }
         public string HarmonyTarget { get; }
-        public Action Execute { get; }
+        public Func<bool> Execute { get; }
     }
 
     internal sealed class PatchRegistrationStageRecord
@@ -107,7 +107,7 @@ namespace SteamP2PFriends.Core.Registration
     internal sealed class PatchRegistrationPlan
     {
         public PatchRegistrationPlan(RegistrationClosure adapterClosure,
-            IReadOnlyList<PatchRegistrationStage> stages, string harmonyOwner, Action verify)
+            IReadOnlyList<PatchRegistrationStage> stages, string harmonyOwner, Func<bool> verify)
         {
             AdapterClosure = adapterClosure ?? throw new ArgumentNullException(nameof(adapterClosure));
             Stages = stages ?? throw new ArgumentNullException(nameof(stages));
@@ -118,7 +118,7 @@ namespace SteamP2PFriends.Core.Registration
         public RegistrationClosure AdapterClosure { get; }
         public IReadOnlyList<PatchRegistrationStage> Stages { get; }
         public string HarmonyOwner { get; }
-        public Action Verify { get; }
+        public Func<bool> Verify { get; }
     }
 
     /// <summary>
@@ -138,7 +138,11 @@ namespace SteamP2PFriends.Core.Registration
                 if (!stageCatalog.TryRegister(stage, out failure)) return false;
                 try
                 {
-                    stage.Execute();
+                    if (!stage.Execute())
+                    {
+                        failure = stage.TraceId + " 返回失败，注册流程 fail-closed";
+                        return false;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -152,7 +156,11 @@ namespace SteamP2PFriends.Core.Registration
 
             try
             {
-                plan.Verify();
+                if (!plan.Verify())
+                {
+                    failure = "注册后关键验证失败，注册流程 fail-closed";
+                    return false;
+                }
             }
             catch (Exception ex)
             {

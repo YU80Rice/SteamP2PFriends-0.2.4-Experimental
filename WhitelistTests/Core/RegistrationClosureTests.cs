@@ -67,11 +67,11 @@ namespace SteamP2PFriends.WhitelistTests
             string failure;
             if (!catalog.TryRegister(new SteamP2PFriends.Core.Registration.PatchRegistrationStage(
                 2, "Diagnostics", "U3-REG-02-InternalDiagnostics", "owner", "default",
-                "internal NetMessages and lifecycle handlers", () => { }), out failure))
+                "internal NetMessages and lifecycle handlers", () => true), out failure))
                 return false;
             if (catalog.TryRegister(new SteamP2PFriends.Core.Registration.PatchRegistrationStage(
                 1, "Transport", "U3-REG-01-Wrapper", "owner", "default",
-                "SteamNetworkingSockets/Callback wrappers", () => { }), out failure))
+                "SteamNetworkingSockets/Callback wrappers", () => true), out failure))
                 return false;
             return failure.IndexOf("顺序", StringComparison.Ordinal) >= 0;
         }
