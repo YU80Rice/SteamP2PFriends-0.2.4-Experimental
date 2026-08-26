@@ -422,16 +422,13 @@ namespace SteamP2PFriends.WhitelistTests
             out IlCallSite matched)
         {
             matched = null;
-            Dictionary<int, IlValue> localValues = BuildAccessToolsLocalValues(instructions);
-            for (int index = 0; index < instructions.Count; index++)
+            string expectedTarget = "method:" + targetTypeName + "|" + targetMethodName;
+            string expectedPatch = "method:" + patchTypeName + "|" + patchMethodName;
+            foreach (IlCallSite site in ReadCallSites(instructions))
             {
-                MethodBase called = instructions[index].Operand as MethodBase;
-                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
-                if (!TrySimulateHarmonyPatchCall(instructions, index, localValues, out IlCallSite site)) continue;
+                if (site.Method?.DeclaringType?.FullName != "HarmonyLib.Harmony" || site.Method.Name != "Patch") continue;
                 if (site.Arguments.Count == 0 || site.Arguments[0] == null) continue;
 
-                string expectedTarget = "method:" + targetTypeName + "|" + targetMethodName;
-                string expectedPatch = "method:" + patchTypeName + "|" + patchMethodName;
                 IlValue patch = site.Arguments.FirstOrDefault(value => value?.Kind == "HarmonyMethod"
                     && value.Children.Count > 0
                     && string.Equals(value.Children[0].Value as string, expectedPatch, StringComparison.Ordinal));
@@ -484,6 +481,18 @@ namespace SteamP2PFriends.WhitelistTests
                 }
             }
             return values;
+        }
+
+        private static IEnumerable<IlCallSite> ReadCallSites(List<IlInstruction> instructions)
+        {
+            Dictionary<int, IlValue> localValues = BuildAccessToolsLocalValues(instructions);
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
+                if (TrySimulateHarmonyPatchCall(instructions, index, localValues, out IlCallSite site))
+                    yield return site;
+            }
         }
 
         private static bool TrySimulateHarmonyPatchCall(List<IlInstruction> instructions, int patchIndex,
@@ -660,8 +669,43 @@ namespace SteamP2PFriends.WhitelistTests
             IlEvidence evidence = ReadIlEvidence(method);
             return equipBound && claimsBound
                 && evidence.FieldNames.Contains(requiredFieldName)
-                && evidence.CalledMethods.Any(called => called.Name == "VerifyAll")
-                && evidence.CalledMethods.Any(called => called.Name == "RollbackBoth");
+                && HasRegistrationFailurePath(instructions);
+        }
+
+        private static bool HasRegistrationFailurePath(List<IlInstruction> instructions)
+        {
+            List<int> patchCalls = FindCallIndices(instructions,
+                called => called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == "Patch");
+            List<int> rollbackCalls = FindCallIndices(instructions,
+                called => called.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration"
+                    && called.Name == "RollbackBoth");
+            List<int> verifyCalls = FindCallIndices(instructions,
+                called => called.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration"
+                    && called.Name == "VerifyAll");
+            if (patchCalls.Count != 2 || rollbackCalls.Count < 3 || verifyCalls.Count != 1) return false;
+            if (patchCalls.Any(patch => !rollbackCalls.Any(rollback => rollback > patch))) return false;
+
+            int verify = verifyCalls[0];
+            bool verifyBranches = instructions.Skip(verify + 1).Take(6)
+                .Any(instruction => instruction.OpCode.Name == "brtrue"
+                    || instruction.OpCode.Name == "brtrue.s"
+                    || instruction.OpCode.Name == "brfalse"
+                    || instruction.OpCode.Name == "brfalse.s");
+            return verifyBranches && rollbackCalls.Any(rollback => rollback > verify);
+        }
+
+        private static List<int> FindCallIndices(List<IlInstruction> instructions,
+            Func<MethodBase, bool> predicate)
+        {
+            var indices = new List<int>();
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                if (instructions[index].Operand is MethodBase called && predicate(called))
+                    indices.Add(index);
+            }
+            return indices;
         }
 
         private static bool TryFindHarmonyPatchFieldCall(List<IlInstruction> instructions,
