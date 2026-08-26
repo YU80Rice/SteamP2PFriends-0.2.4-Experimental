@@ -371,24 +371,8 @@ namespace SteamP2PFriends.WhitelistTests
             if (method == null) return false;
 
             List<IlInstruction> instructions = ReadInstructions(method);
-            int previousPatchCall = -1;
-            for (int index = 0; index < instructions.Count; index++)
-            {
-                MethodBase called = instructions[index].Operand as MethodBase;
-                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
-
-                int start = previousPatchCall + 1;
-                previousPatchCall = index;
-                List<IlInstruction> block = instructions.Skip(start).Take(index - start + 1).ToList();
-                bool exactTarget = block.Select(item => item.Operand).OfType<Type>().Any(type => type.FullName == targetTypeName)
-                    && block.Select(item => item.Operand).OfType<string>().Contains(targetMethodName);
-                bool exactPatch = block.Select(item => item.Operand).OfType<Type>().Any(type => type.FullName == patchTypeName)
-                    && block.Select(item => item.Operand).OfType<string>().Contains(patchMethodName);
-                bool harmonyMethodCreated = block.Select(item => item.Operand).OfType<MethodBase>().Any(candidate =>
-                    candidate.DeclaringType?.FullName == "HarmonyLib.HarmonyMethod" && candidate.Name == ".ctor");
-                if (exactTarget && exactPatch && harmonyMethodCreated && HasHarmonyArgument(block)) return true;
-            }
-            return false;
+            return TryFindHarmonyPatchCall(instructions, targetTypeName, targetMethodName,
+                patchTypeName, patchMethodName, out _);
         }
 
         private static bool ContainsCachedTargetEvidence(Assembly assembly,
@@ -433,6 +417,139 @@ namespace SteamP2PFriends.WhitelistTests
             return targetEvidence && patchEvidence;
         }
 
+        private static bool TryFindHarmonyPatchCall(List<IlInstruction> instructions,
+            string targetTypeName, string targetMethodName, string patchTypeName, string patchMethodName,
+            out IlCallSite matched)
+        {
+            matched = null;
+            Dictionary<int, IlValue> localValues = BuildAccessToolsLocalValues(instructions);
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
+                if (!TrySimulateHarmonyPatchCall(instructions, index, localValues, out IlCallSite site)) continue;
+                if (site.Arguments.Count == 0 || site.Arguments[0] == null) continue;
+
+                string expectedTarget = "method:" + targetTypeName + "|" + targetMethodName;
+                string expectedPatch = "method:" + patchTypeName + "|" + patchMethodName;
+                IlValue patch = site.Arguments.FirstOrDefault(value => value?.Kind == "HarmonyMethod"
+                    && value.Children.Count > 0
+                    && string.Equals(value.Children[0].Value as string, expectedPatch, StringComparison.Ordinal));
+                if (site.Arguments[0].Kind == "Method"
+                    && string.Equals(site.Arguments[0].Value as string, expectedTarget, StringComparison.Ordinal)
+                    && patch != null)
+                {
+                    matched = site;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static Dictionary<int, IlValue> BuildAccessToolsLocalValues(List<IlInstruction> instructions)
+        {
+            var values = new Dictionary<int, IlValue>();
+            var accessCalls = new List<int>();
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName == "HarmonyLib.AccessTools" && called.Name == "Method")
+                    accessCalls.Add(index);
+            }
+
+            for (int i = 0; i < accessCalls.Count; i++)
+            {
+                int call = accessCalls[i];
+                int next = i + 1 < accessCalls.Count ? accessCalls[i + 1] : instructions.Count;
+                string typeName = instructions.Skip(i == 0 ? 0 : accessCalls[i - 1] + 1)
+                    .Take(call - (i == 0 ? 0 : accessCalls[i - 1] + 1) + 1)
+                    .Select(item => item.Operand).OfType<Type>()
+                    .Select(item => item.FullName).FirstOrDefault();
+                string methodName = instructions.Skip(i == 0 ? 0 : accessCalls[i - 1] + 1)
+                    .Take(call - (i == 0 ? 0 : accessCalls[i - 1] + 1) + 1)
+                    .Select(item => item.Operand).OfType<string>().LastOrDefault();
+                int? local = null;
+                for (int cursor = call + 1; cursor < next; cursor++)
+                {
+                    int? stored = GetStoredLocalIndex(instructions[cursor]);
+                    if (stored.HasValue) { local = stored; break; }
+                }
+                if (local.HasValue && !string.IsNullOrEmpty(typeName) && !string.IsNullOrEmpty(methodName))
+                {
+                    values[local.Value] = new IlValue
+                    {
+                        Kind = "Method",
+                        Value = "method:" + typeName + "|" + methodName
+                    };
+                }
+            }
+            return values;
+        }
+
+        private static bool TrySimulateHarmonyPatchCall(List<IlInstruction> instructions, int patchIndex,
+            Dictionary<int, IlValue> localValues, out IlCallSite site)
+        {
+            site = null;
+            int start = -1;
+            for (int index = patchIndex - 1; index >= 0; index--)
+            {
+                if (instructions[index].OpCode.Name == "ldarg.0") { start = index; break; }
+            }
+            if (start < 0 || patchIndex - start > 40) return false;
+
+            var stack = new List<IlValue>();
+            for (int index = start; index <= patchIndex; index++)
+            {
+                IlInstruction instruction = instructions[index];
+                string op = instruction.OpCode.Name;
+                if (op == "ldarg.0")
+                {
+                    stack.Add(new IlValue { Kind = "HarmonyInstance" });
+                    continue;
+                }
+                int? loadedLocal = GetLoadedLocalIndex(instruction);
+                if (loadedLocal.HasValue)
+                {
+                    stack.Add(localValues.TryGetValue(loadedLocal.Value, out IlValue value)
+                        ? value : new IlValue { Kind = "UnknownLocal", Value = loadedLocal.Value });
+                    continue;
+                }
+                if (op == "ldnull") { stack.Add(new IlValue { Kind = "Null" }); continue; }
+                if (instruction.Operand is FieldInfo field && op.StartsWith("ldsfld", StringComparison.Ordinal))
+                {
+                    stack.Add(new IlValue { Kind = "Field", Value = field.Name });
+                    continue;
+                }
+
+                MethodBase called = instruction.Operand as MethodBase;
+                if (called?.DeclaringType?.FullName == "HarmonyLib.HarmonyMethod" && called.Name == ".ctor")
+                {
+                    int count = called.GetParameters().Length;
+                    if (stack.Count < count) return false;
+                    var args = stack.Skip(stack.Count - count).Take(count).ToList();
+                    stack.RemoveRange(stack.Count - count, count);
+                    var harmonyMethod = new IlValue { Kind = "HarmonyMethod" };
+                    if (args.Count > 0) harmonyMethod.Children.Add(args[0]);
+                    stack.Add(harmonyMethod);
+                    continue;
+                }
+                if (called?.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == "Patch")
+                {
+                    int count = called.GetParameters().Length;
+                    if (stack.Count < count + 1) return false;
+                    var args = stack.Skip(stack.Count - count).Take(count).ToList();
+                    stack.RemoveRange(stack.Count - count, count);
+                    IlValue instance = stack[stack.Count - 1];
+                    stack.RemoveAt(stack.Count - 1);
+                    if (instance.Kind != "HarmonyInstance") return false;
+                    site = new IlCallSite { Index = index, Method = called };
+                    site.Arguments.AddRange(args);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private static bool ContainsIdentityRegistrationEvidence(Assembly assembly,
             string targetMethodName, string patchMethodName, string registrationLabel)
         {
@@ -443,6 +560,7 @@ namespace SteamP2PFriends.WhitelistTests
             if (method == null) return false;
 
             List<IlInstruction> instructions = ReadInstructions(method);
+            Dictionary<int, string> typeLocals = BuildTypeLocalValues(instructions);
             int previousRegistrationCall = -1;
             for (int index = 0; index < instructions.Count; index++)
             {
@@ -452,25 +570,81 @@ namespace SteamP2PFriends.WhitelistTests
 
                 int start = previousRegistrationCall + 1;
                 previousRegistrationCall = index;
-                IEnumerable<object> operands = instructions.Skip(start).Take(index - start + 1)
-                    .Select(instruction => instruction.Operand);
-                bool hasTarget = operands.OfType<string>().Contains(targetMethodName);
-                bool hasPatch = operands.OfType<string>().Contains(patchMethodName);
-                bool hasLabel = operands.OfType<string>().Contains(registrationLabel);
-                bool hasTargetType = operands.OfType<Type>().Any(target =>
-                    target.FullName == "SDG.Unturned.AnimalManager");
-                bool hasPatchResolver = instructions.Skip(start).Take(index - start + 1)
-                    .Any(instruction => (instruction.Operand as MethodBase)?.Name == "Method");
-                bool hasHarmonyArgument = HasHarmonyArgument(instructions.Skip(start).Take(index - start + 1));
-                if (hasTarget && hasPatch && hasLabel && hasTargetType && hasPatchResolver && hasHarmonyArgument) return true;
+                List<IlInstruction> block = instructions.Skip(start).Take(index - start + 1).ToList();
+                int targetTypeIndex = block.FindIndex(instruction =>
+                    (instruction.Operand as Type)?.FullName == "SDG.Unturned.AnimalManager");
+                int targetNameIndex = FindStringAfter(block, targetMethodName, targetTypeIndex + 1);
+                int patchNameIndex = FindStringAfter(block, patchMethodName, targetNameIndex + 1);
+                int resolverIndex = block.FindIndex(patchNameIndex + 1, instruction =>
+                    (instruction.Operand as MethodBase)?.DeclaringType?.FullName == "HarmonyLib.AccessTools"
+                    && (instruction.Operand as MethodBase)?.Name == "Method");
+                int labelIndex = FindStringAfter(block, registrationLabel, resolverIndex + 1);
+                bool hasPatchTypeLocal = block.Select((instruction, offset) => new { instruction, offset })
+                    .Where(item => item.offset < patchNameIndex)
+                    .Any(item => GetLoadedLocalIndex(item.instruction) is int local
+                        && typeLocals.TryGetValue(local, out string typeName)
+                        && typeName == "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch");
+                bool ordered = targetTypeIndex >= 0 && targetNameIndex >= 0 && patchNameIndex >= 0
+                    && resolverIndex >= 0 && labelIndex >= 0;
+                if (ordered && hasPatchTypeLocal && HasHarmonyArgument(block.Take(targetTypeIndex))) return true;
             }
             return false;
+        }
+
+        private static int FindStringAfter(List<IlInstruction> instructions, string expected, int start)
+        {
+            if (start < 0) return -1;
+            for (int index = start; index < instructions.Count; index++)
+            {
+                if (string.Equals(instructions[index].Operand as string, expected, StringComparison.Ordinal))
+                    return index;
+            }
+            return -1;
+        }
+
+        private static Dictionary<int, string> BuildTypeLocalValues(List<IlInstruction> instructions)
+        {
+            var values = new Dictionary<int, string>();
+            for (int index = 0; index + 2 < instructions.Count; index++)
+            {
+                Type type = instructions[index].Operand as Type;
+                MethodBase resolver = instructions[index + 1].Operand as MethodBase;
+                if (type == null || resolver?.Name != "GetTypeFromHandle") continue;
+                for (int cursor = index + 2; cursor < Math.Min(index + 5, instructions.Count); cursor++)
+                {
+                    int? local = GetStoredLocalIndex(instructions[cursor]);
+                    if (local.HasValue) { values[local.Value] = type.FullName; break; }
+                }
+            }
+            return values;
         }
 
         private static bool HasHarmonyArgument(IEnumerable<IlInstruction> instructions)
         {
             return instructions.Any(instruction => instruction.OpCode.Name == "ldarg.0"
                 || (instruction.OpCode.Name == "ldarg" && (instruction.Operand as int?) == 0));
+        }
+
+        private static int? GetLoadedLocalIndex(IlInstruction instruction)
+        {
+            string op = instruction.OpCode.Name;
+            if (op == "ldloc.0") return 0;
+            if (op == "ldloc.1") return 1;
+            if (op == "ldloc.2") return 2;
+            if (op == "ldloc.3") return 3;
+            if (op == "ldloc" && instruction.Operand is int index) return index;
+            return null;
+        }
+
+        private static int? GetStoredLocalIndex(IlInstruction instruction)
+        {
+            string op = instruction.OpCode.Name;
+            if (op == "stloc.0") return 0;
+            if (op == "stloc.1") return 1;
+            if (op == "stloc.2") return 2;
+            if (op == "stloc.3") return 3;
+            if (op == "stloc" && instruction.Operand is int index) return index;
+            return null;
         }
 
         private static bool ContainsHarmonyPatchCall(Assembly assembly, string typeName,
@@ -481,31 +655,36 @@ namespace SteamP2PFriends.WhitelistTests
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             if (method == null) return false;
             List<IlInstruction> instructions = ReadInstructions(method);
-            int previousPatchCall = -1;
-            bool equipBound = false;
-            bool claimsBound = false;
-            for (int index = 0; index < instructions.Count; index++)
-            {
-                MethodBase called = instructions[index].Operand as MethodBase;
-                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
-                int start = previousPatchCall + 1;
-                previousPatchCall = index;
-                List<IlInstruction> block = instructions.Skip(start).Take(index - start + 1).ToList();
-                HashSet<string> fields = new HashSet<string>(block.Select(item => item.Operand)
-                    .OfType<FieldInfo>().Select(field => field.Name), StringComparer.Ordinal);
-                bool validBlock = HasHarmonyArgument(block)
-                    && block.Select(item => item.Operand).OfType<MethodBase>().Any(candidate =>
-                        candidate.DeclaringType?.FullName == "HarmonyLib.HarmonyMethod" && candidate.Name == ".ctor")
-                    && fields.Contains(requiredFieldName);
-                equipBound |= validBlock && fields.Contains("_equipMethod") && fields.Contains("_equipTranspiler");
-                claimsBound |= validBlock && fields.Contains("_checkClaimsMethod") && fields.Contains("_checkClaimsTranspiler");
-            }
-
+            bool equipBound = TryFindHarmonyPatchFieldCall(instructions, "_equipMethod", "_equipTranspiler");
+            bool claimsBound = TryFindHarmonyPatchFieldCall(instructions, "_checkClaimsMethod", "_checkClaimsTranspiler");
             IlEvidence evidence = ReadIlEvidence(method);
             return equipBound && claimsBound
                 && evidence.FieldNames.Contains(requiredFieldName)
                 && evidence.CalledMethods.Any(called => called.Name == "VerifyAll")
                 && evidence.CalledMethods.Any(called => called.Name == "RollbackBoth");
+        }
+
+        private static bool TryFindHarmonyPatchFieldCall(List<IlInstruction> instructions,
+            string targetFieldName, string patchFieldName)
+        {
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
+                if (!TrySimulateHarmonyPatchCall(instructions, index,
+                    new Dictionary<int, IlValue>(), out IlCallSite site)) continue;
+                if (site.Arguments.Count < 4) continue;
+                IlValue original = site.Arguments[0];
+                IlValue transpiler = site.Arguments[3];
+                if (original?.Kind == "Field"
+                    && string.Equals(original.Value as string, targetFieldName, StringComparison.Ordinal)
+                    && transpiler?.Kind == "HarmonyMethod"
+                    && transpiler.Children.Count > 0
+                    && transpiler.Children[0].Kind == "Field"
+                    && string.Equals(transpiler.Children[0].Value as string,
+                        patchFieldName, StringComparison.Ordinal)) return true;
+            }
+            return false;
         }
 
         private sealed class IlEvidence
@@ -520,6 +699,20 @@ namespace SteamP2PFriends.WhitelistTests
         {
             internal OpCode OpCode { get; set; }
             internal object Operand { get; set; }
+        }
+
+        private sealed class IlValue
+        {
+            internal string Kind { get; set; }
+            internal object Value { get; set; }
+            internal List<IlValue> Children { get; } = new List<IlValue>();
+        }
+
+        private sealed class IlCallSite
+        {
+            internal int Index { get; set; }
+            internal MethodBase Method { get; set; }
+            internal List<IlValue> Arguments { get; } = new List<IlValue>();
         }
 
         private static readonly Dictionary<ushort, OpCode> OpCodeMap = CreateOpCodeMap();
@@ -595,8 +788,13 @@ namespace SteamP2PFriends.WhitelistTests
                     case OperandType.InlineI:
                     case OperandType.InlineI8:
                     case OperandType.InlineR:
-                    case OperandType.InlineSwitch:
                         offset += code.OperandType == OperandType.InlineI8 || code.OperandType == OperandType.InlineR ? 8 : 4;
+                        break;
+                    case OperandType.InlineSwitch:
+                        if (offset + 4 > il.Length) return evidence;
+                        int switchCount = BitConverter.ToInt32(il, offset);
+                        if (switchCount < 0 || switchCount > (il.Length - offset - 4) / 4) return evidence;
+                        offset += 4 + (switchCount * 4);
                         break;
                     case OperandType.InlineVar:
                         offset += 2;
