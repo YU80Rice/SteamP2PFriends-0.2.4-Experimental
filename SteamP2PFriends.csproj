@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="Build\Version.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -146,6 +147,11 @@
     <Compile Include="Core\Config\PluginConfig.cs" />
     <Compile Include="Core\Lifecycle\SessionDisconnectDispatcher.cs" />
     <Compile Include="Core\Lifecycle\SteamP2PFriendsPlugin.PatchRegistry.cs" />
+    <Compile Include="Core\Registration\RegistrationClosure.cs" />
+    <Compile Include="Core\Registration\PatchRegistrationOrchestrator.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationOrchestration.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationVerification.cs" />
+    <Compile Include="Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationModules.cs" />
     <Compile Include="Host\GsltInputModal.cs" />
     <Compile Include="Host\HasCheatsGuardWatcher.cs" />
     <Compile Include="Host\HostManager.cs" />

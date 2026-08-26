@@ -230,7 +230,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IUI5 Reflection", InventoryUiProjectionTests.Test_IUI5_ReflectionContractExact, ref total, ref passed, ref failed);
             RunTest("IUI6 Production", InventoryUiProjectionTests.Test_IUI6_ProductionPostfixesActivate, ref total, ref passed, ref failed);
             RunTest("RC1 AnimationRestore", RemoteCollisionAnimationPolicyTests.Test_RC1_CullingPolicyIsSavedAndRestored, ref total, ref passed, ref failed);
-            RunTest("RC2 PolicyBeforeActivation", RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation, ref total, ref passed, ref failed);
+            RunTest("RC2 PolicyBeforeActivation + RegistrationClosure", () =>
+                RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation() &&
+                RegistrationClosureTests.Test_All(), ref total, ref passed, ref failed);
             #endregion
 
             Console.WriteLine("\n===============================================================");
