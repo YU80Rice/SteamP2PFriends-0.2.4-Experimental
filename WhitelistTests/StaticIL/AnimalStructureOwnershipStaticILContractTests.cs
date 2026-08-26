@@ -340,17 +340,115 @@ namespace SteamP2PFriends.WhitelistTests
             if (!requiredMethods || createPlan == null || verifyClosure == null || executePlan == null)
                 return false;
 
-            IlEvidence executeEvidence = ReadIlEvidence(executePlan);
             bool planBuildsClosure = TryFindRegistrationPlanCall(
                 ReadInstructions(createPlan), out IlCallSite planSite)
                 && IsRegistrationClosurePlan(planSite);
-            bool executeClosesThenVerifies = HasOrderedCalls(executeEvidence.CalledMethods,
-                called => called.DeclaringType?.FullName ==
-                    "SteamP2PFriends.Core.Registration.RegistrationClosure" && called.Name == "TryClose",
-                called => called.DeclaringType?.FullName ==
-                    "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog" && called.Name == "TryClose",
-                called => called.Name == "Invoke");
+            bool executeClosesThenVerifies = HasRegistrationClosureDataFlow(ReadInstructions(executePlan));
             return planBuildsClosure && executeClosesThenVerifies;
+        }
+
+        private static bool HasRegistrationClosureDataFlow(List<IlInstruction> instructions)
+        {
+            int adapterClose = FindInstructionIndex(instructions, called =>
+                called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.RegistrationClosure"
+                && called.Name == "TryClose");
+            int stageClose = FindInstructionIndex(instructions, called =>
+                called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog"
+                && called.Name == "TryClose");
+            if (adapterClose < 0 || stageClose <= adapterClose) return false;
+
+            bool adapterIsPlanProperty = HasPlanPropertyCall(instructions, adapterClose,
+                "get_AdapterClosure");
+            bool adapterCloseIsFailClosed = HasFailClosedBooleanBranch(instructions, adapterClose);
+            bool stageCatalogIsLocal = IsStageCatalogLocalClose(instructions, stageClose);
+            bool stageCloseIsFailClosed = HasFailClosedBooleanBranch(instructions, stageClose);
+            int verifyInvoke = FindPlanVerifyInvoke(instructions);
+            return adapterIsPlanProperty && adapterCloseIsFailClosed && stageCatalogIsLocal
+                && stageCloseIsFailClosed
+                && verifyInvoke > stageClose;
+        }
+
+        private static bool HasPlanPropertyCall(List<IlInstruction> instructions, int callIndex,
+            string getterName)
+        {
+            for (int index = Math.Max(0, callIndex - 4); index < callIndex; index++)
+            {
+                if (instructions[index].OpCode.Name != "ldarg.1") continue;
+                MethodBase getter = instructions[index + 1].Operand as MethodBase;
+                if (getter?.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
+                    && getter.Name == getterName) return true;
+            }
+            return false;
+        }
+
+        private static bool IsStageCatalogLocalClose(List<IlInstruction> instructions, int closeIndex)
+        {
+            for (int index = 0; index < closeIndex; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName !=
+                    "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog"
+                    || called.Name != ".ctor") continue;
+
+                int? local = index + 1 < instructions.Count
+                    ? GetStoredLocalIndex(instructions[index + 1]) : null;
+                if (!local.HasValue) continue;
+                MethodBase ownerGetter = index > 1 ? instructions[index - 1].Operand as MethodBase : null;
+                if (index < 2 || instructions[index - 2].OpCode.Name != "ldarg.1"
+                    || ownerGetter?.DeclaringType?.FullName !=
+                    "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
+                    || ownerGetter.Name != "get_HarmonyOwner") return false;
+
+                ParameterInfo[] constructorParameters = called.GetParameters();
+                if (constructorParameters.Length != 1
+                    || constructorParameters[0].ParameterType != typeof(string)) return false;
+
+                for (int cursor = index + 2; cursor < closeIndex; cursor++)
+                {
+                    if (GetStoredLocalIndex(instructions[cursor]) == local.Value) return false;
+                }
+                return GetLoadedLocalIndex(instructions[closeIndex - 2]) == local.Value;
+            }
+            return false;
+        }
+
+        private static bool HasFailClosedBooleanBranch(List<IlInstruction> instructions, int callIndex)
+        {
+            if (callIndex + 3 >= instructions.Count) return false;
+            IlInstruction branch = instructions[callIndex + 1];
+            if (branch.OpCode.Name != "brtrue" && branch.OpCode.Name != "brtrue.s") return false;
+            if (!(branch.Operand is int successTargetOffset)) return false;
+            return instructions[callIndex + 2].OpCode.Name == "ldc.i4.0"
+                && instructions[callIndex + 3].OpCode.Name == "ret"
+                && successTargetOffset > branch.Offset;
+        }
+
+        private static int FindPlanVerifyInvoke(List<IlInstruction> instructions)
+        {
+            for (int index = 0; index + 2 < instructions.Count; index++)
+            {
+                if (instructions[index].OpCode.Name != "ldarg.1") continue;
+                MethodBase getter = instructions[index + 1].Operand as MethodBase;
+                MethodBase invoke = instructions[index + 2].Operand as MethodBase;
+                if (getter?.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
+                    && getter.Name == "get_Verify"
+                    && invoke?.DeclaringType?.FullName?.StartsWith("System.Func`1",
+                        StringComparison.Ordinal) == true
+                    && invoke.Name == "Invoke") return index + 2;
+            }
+            return -1;
+        }
+
+        private static int FindInstructionIndex(List<IlInstruction> instructions,
+            Func<MethodBase, bool> predicate)
+        {
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                if (instructions[index].Operand is MethodBase called && predicate(called)) return index;
+            }
+            return -1;
         }
 
         private static bool TryFindRegistrationPlanCall(List<IlInstruction> instructions,
@@ -414,7 +512,7 @@ namespace SteamP2PFriends.WhitelistTests
                 {
                     if (op.StartsWith("ldsfld", StringComparison.Ordinal))
                     {
-                        stack.Add(new IlValue { Kind = "Field", Value = field.Name });
+                        stack.Add(new IlValue { Kind = "Field", Value = field.Name, Field = field });
                         continue;
                     }
                     if (op == "ldfld")
@@ -422,7 +520,7 @@ namespace SteamP2PFriends.WhitelistTests
                         if (stack.Count == 0) return false;
                         IlValue instance = stack[stack.Count - 1];
                         stack.RemoveAt(stack.Count - 1);
-                        var fieldValue = new IlValue { Kind = "Field", Value = field.Name };
+                        var fieldValue = new IlValue { Kind = "Field", Value = field.Name, Field = field };
                         if (instance.Kind == "This"
                             && fields.TryGetValue(field.Name, out IlValue assigned))
                             fieldValue.Children.Add(assigned);
@@ -555,19 +653,6 @@ namespace SteamP2PFriends.WhitelistTests
                 && method.GetParameters().Length == 0
                 && method is MethodInfo methodInfo
                 && methodInfo.ReturnType == typeof(bool);
-        }
-
-        private static bool HasOrderedCalls(IReadOnlyList<MethodBase> calls,
-            params Func<MethodBase, bool>[] predicates)
-        {
-            int cursor = 0;
-            foreach (Func<MethodBase, bool> predicate in predicates)
-            {
-                while (cursor < calls.Count && !predicate(calls[cursor])) cursor++;
-                if (cursor >= calls.Count) return false;
-                cursor++;
-            }
-            return true;
         }
 
         private static bool Test_RegistrationCallIL(Assembly assembly)
@@ -778,7 +863,7 @@ namespace SteamP2PFriends.WhitelistTests
                 if (op == "ldnull") { stack.Add(new IlValue { Kind = "Null" }); continue; }
                 if (instruction.Operand is FieldInfo field && op.StartsWith("ldsfld", StringComparison.Ordinal))
                 {
-                    stack.Add(new IlValue { Kind = "Field", Value = field.Name });
+                    stack.Add(new IlValue { Kind = "Field", Value = field.Name, Field = field });
                     continue;
                 }
 
@@ -854,7 +939,7 @@ namespace SteamP2PFriends.WhitelistTests
                 }
                 if (instruction.Operand is FieldInfo field && op.StartsWith("ldsfld", StringComparison.Ordinal))
                 {
-                    stack.Add(new IlValue { Kind = "Field", Value = field.Name });
+                    stack.Add(new IlValue { Kind = "Field", Value = field.Name, Field = field });
                     continue;
                 }
                 if (op == "ldnull") { stack.Add(new IlValue { Kind = "Null" }); continue; }
@@ -891,7 +976,7 @@ namespace SteamP2PFriends.WhitelistTests
                 if (called.DeclaringType?.FullName == "SteamP2PFriends.Core.Patches.WorldSyncDiagnosticCore"
                     && called.Name == "RegisterIdentityPatch")
                 {
-                    if (stack.Count < count) return false;
+                    if (!IsIdentityRegistrationMethod(called) || stack.Count < count) return false;
                     List<IlValue> args = stack.Skip(stack.Count - count).Take(count).ToList();
                     stack.RemoveRange(stack.Count - count, count);
                     site = new IlCallSite { Method = called };
@@ -913,8 +998,63 @@ namespace SteamP2PFriends.WhitelistTests
                 && string.Equals(value.Value as string, "method:" + typeName + "|" + methodName,
                     StringComparison.Ordinal);
 
-        private static bool IsFieldValue(IlValue value, string expected)
-            => value?.Kind == "Field" && string.Equals(value.Value as string, expected, StringComparison.Ordinal);
+        private static bool IsParameterTypeArrayValue(IlValue value, string targetMethodName)
+        {
+            if (value?.Kind != "Field" || !(value.Field is FieldInfo field)
+                || field.Name != ExpectedAnimalParameterField(targetMethodName)
+                || field.FieldType != typeof(Type[]) || !field.IsStatic
+                || field.DeclaringType?.FullName !=
+                "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch") return false;
+
+            Type[] actual;
+            try { actual = field.GetValue(null) as Type[]; }
+            catch { return false; }
+            Type[] expected = ExpectedAnimalParameterTypes(targetMethodName);
+            if (actual == null || expected == null || !actual.SequenceEqual(expected)) return false;
+
+            MethodInfo[] matchingTargets = typeof(SDG.Unturned.AnimalManager).GetMethods(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                .Where(candidate => candidate.Name == targetMethodName
+                    && candidate.GetParameters().Select(parameter => parameter.ParameterType)
+                        .SequenceEqual(actual))
+                .ToArray();
+            return matchingTargets.Length == 1;
+        }
+
+        private static Type[] ExpectedAnimalParameterTypes(string targetMethodName)
+        {
+            switch (targetMethodName)
+            {
+                case "Update":
+                case "sendAnimalStates":
+                    return Type.EmptyTypes;
+                case "spawnAnimal":
+                    return new[] { typeof(ushort), typeof(UnityEngine.Vector3), typeof(UnityEngine.Quaternion) };
+                case "ReceiveMultipleAnimals":
+                case "ReceiveAnimalStates":
+                    return new[] { typeof(SDG.Unturned.ClientInvocationContext).MakeByRefType() };
+                default:
+                    return null;
+            }
+        }
+
+        private static bool IsIdentityRegistrationMethod(MethodBase method)
+        {
+            if (method?.DeclaringType?.FullName != "SteamP2PFriends.Core.Patches.WorldSyncDiagnosticCore"
+                || method.Name != "RegisterIdentityPatch") return false;
+            ParameterInfo[] parameters = method.GetParameters();
+            if (parameters.Length != 7 || parameters[3].ParameterType != typeof(Type[])
+                || parameters[5].ParameterType.FullName != "HarmonyLib.HarmonyPatchType") return false;
+            try
+            {
+                object prefix = Enum.Parse(parameters[5].ParameterType, "Prefix");
+                return Convert.ToInt32(prefix) == 1;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         private static bool IsIntegerValue(IlValue value, int expected)
             => value?.Kind == "Integer" && Convert.ToInt32(value.Value) == expected;
@@ -960,7 +1100,7 @@ namespace SteamP2PFriends.WhitelistTests
                 if (site.Arguments.Count < 7) continue;
                 bool target = IsTypeValue(site.Arguments[1], "SDG.Unturned.AnimalManager")
                     && IsStringValue(site.Arguments[2], targetMethodName);
-                bool parameters = IsFieldValue(site.Arguments[3], ExpectedAnimalParameterField(targetMethodName));
+                bool parameters = IsParameterTypeArrayValue(site.Arguments[3], targetMethodName);
                 bool patch = IsMethodValue(site.Arguments[4],
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     patchMethodName);
@@ -1060,40 +1200,28 @@ namespace SteamP2PFriends.WhitelistTests
             }
 
             int verify = verifyCalls[0];
-            bool verifyBranches = instructions.Skip(verify + 1).Take(6)
-                .Any(instruction => instruction.OpCode.Name == "brtrue"
-                    || instruction.OpCode.Name == "brtrue.s"
-                    || instruction.OpCode.Name == "brfalse"
-                    || instruction.OpCode.Name == "brfalse.s");
             int? verifyLocal = verify + 1 < instructions.Count
                 ? GetStoredLocalIndex(instructions[verify + 1]) : null;
-            int verifyLoad = verifyLocal.HasValue
-                ? FindLoadedLocalAfter(instructions, verify + 2, verifyLocal.Value, 8) : -1;
-            int branch = verifyLoad >= 0 ? FindConditionalBranchAfter(instructions, verifyLoad + 1, 3) : -1;
-            bool rollbackOnFailurePath = branch >= 0 && instructions.Skip(branch + 1).Take(12)
-                .Any(instruction => instruction.Operand is MethodBase called
-                    && called.Name == "RollbackBoth");
-            return verifyBranches && rollbackOnFailurePath;
-        }
+            if (!verifyLocal.HasValue || verify + 3 >= instructions.Count
+                || GetLoadedLocalIndex(instructions[verify + 2]) != verifyLocal.Value)
+                return false;
 
-        private static int FindLoadedLocalAfter(List<IlInstruction> instructions, int start,
-            int local, int limit)
-        {
-            for (int index = start; index < Math.Min(instructions.Count, start + limit); index++)
-            {
-                if (GetLoadedLocalIndex(instructions[index]) == local) return index;
-            }
-            return -1;
-        }
+            IlInstruction branchInstruction = instructions[verify + 3];
+            if (branchInstruction.OpCode.Name != "brtrue"
+                && branchInstruction.OpCode.Name != "brtrue.s") return false;
+            if (!(branchInstruction.Operand is int successTargetOffset)) return false;
 
-        private static int FindConditionalBranchAfter(List<IlInstruction> instructions, int start, int limit)
-        {
-            for (int index = start; index < Math.Min(instructions.Count, start + limit); index++)
+            // brtrue 跳到成功路径；其 fall-through 区间必须明确包含 RollbackBoth。
+            // 这样断言的是 VerifyAll 返回值驱动的失败控制流，而不是“方法同处一个方法”。
+            for (int index = verify + 4; index < instructions.Count
+                && instructions[index].Offset < successTargetOffset; index++)
             {
-                string op = instructions[index].OpCode.Name;
-                if (op == "brtrue" || op == "brtrue.s" || op == "brfalse" || op == "brfalse.s") return index;
+                if (instructions[index].Operand is MethodBase called
+                    && called.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration"
+                    && called.Name == "RollbackBoth") return true;
             }
-            return -1;
+            return false;
         }
 
         private static List<int> FindCallIndices(List<IlInstruction> instructions,
@@ -1153,6 +1281,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             internal string Kind { get; set; }
             internal object Value { get; set; }
+            internal FieldInfo Field { get; set; }
             internal List<IlValue> Children { get; } = new List<IlValue>();
         }
 
@@ -1239,10 +1368,7 @@ namespace SteamP2PFriends.WhitelistTests
                         offset += evidenceOperandSize;
                         break;
                     case OperandType.InlineSwitch:
-                        if (offset + 4 > il.Length) return evidence;
-                        int switchCount = BitConverter.ToInt32(il, offset);
-                        if (switchCount < 0 || switchCount > (il.Length - offset - 4) / 4) return evidence;
-                        offset += 4 + (switchCount * 4);
+                        if (!TryAdvanceInlineSwitch(il, ref offset)) return evidence;
                         break;
                     case OperandType.InlineVar:
                         offset += 2;
@@ -1291,10 +1417,13 @@ namespace SteamP2PFriends.WhitelistTests
                         offset += 4;
                         break;
                     case OperandType.ShortInlineBrTarget:
+                        if (offset >= il.Length) return instructions;
+                        instruction.Operand = offset + 1 + (sbyte)il[offset];
+                        offset += 1;
+                        break;
                     case OperandType.ShortInlineI:
                         if (offset >= il.Length) return instructions;
-                        if (code.OperandType == OperandType.ShortInlineI)
-                            instruction.Operand = (int)(sbyte)il[offset];
+                        instruction.Operand = (int)(sbyte)il[offset];
                         offset += 1;
                         break;
                     case OperandType.ShortInlineVar:
@@ -1304,7 +1433,9 @@ namespace SteamP2PFriends.WhitelistTests
                     case OperandType.InlineBrTarget:
                     case OperandType.InlineI:
                         if (offset + 4 > il.Length) return instructions;
-                        if (code.OperandType == OperandType.InlineI)
+                        if (code.OperandType == OperandType.InlineBrTarget)
+                            instruction.Operand = offset + 4 + BitConverter.ToInt32(il, offset);
+                        else
                             instruction.Operand = BitConverter.ToInt32(il, offset);
                         offset += 4;
                         break;
@@ -1319,15 +1450,22 @@ namespace SteamP2PFriends.WhitelistTests
                         offset += 2;
                         break;
                     case OperandType.InlineSwitch:
-                        if (offset + 4 > il.Length) return instructions;
-                        int count = BitConverter.ToInt32(il, offset);
-                        if (count < 0 || count > (il.Length - offset - 4) / 4) return instructions;
-                        offset += 4 + (count * 4);
+                        if (!TryAdvanceInlineSwitch(il, ref offset)) return instructions;
                         break;
                 }
                 instructions.Add(instruction);
             }
             return instructions;
+        }
+
+        private static bool TryAdvanceInlineSwitch(byte[] il, ref int offset)
+        {
+            if (il == null || offset < 0 || offset > il.Length - 4) return false;
+            int count = BitConverter.ToInt32(il, offset);
+            int remaining = il.Length - offset - 4;
+            if (count < 0 || (long)count * 4L > remaining) return false;
+            offset += 4 + (count * 4);
+            return offset <= il.Length;
         }
 
         private static bool HasPatchKind(MethodInfo method, string patchKind)
