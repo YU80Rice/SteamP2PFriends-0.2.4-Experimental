@@ -59,7 +59,7 @@ namespace SteamP2PFriends
             };
 
             return new Core.Registration.PatchRegistrationPlan(
-                _registrationClosure, stages, VerifyRegistrationClosure);
+                _registrationClosure, stages, HARMONY_ID, VerifyRegistrationClosure);
         }
 
         private void RegisterRouteBPatches()

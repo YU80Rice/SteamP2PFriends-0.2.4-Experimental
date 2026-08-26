@@ -63,13 +63,15 @@ namespace SteamP2PFriends.WhitelistTests
 
         private static bool Test_REG03_StageCatalogRejectsOrderConflict()
         {
-            var catalog = new SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog();
+            var catalog = new SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog("owner");
             string failure;
             if (!catalog.TryRegister(new SteamP2PFriends.Core.Registration.PatchRegistrationStage(
-                2, "Transport", "trace-2", "owner", "default", "target", () => { }), out failure))
+                2, "Diagnostics", "U3-REG-02-InternalDiagnostics", "owner", "default",
+                "internal NetMessages and lifecycle handlers", () => { }), out failure))
                 return false;
             if (catalog.TryRegister(new SteamP2PFriends.Core.Registration.PatchRegistrationStage(
-                1, "Diagnostics", "trace-1", "owner", "default", "target", () => { }), out failure))
+                1, "Transport", "U3-REG-01-Wrapper", "owner", "default",
+                "SteamNetworkingSockets/Callback wrappers", () => { }), out failure))
                 return false;
             return failure.IndexOf("顺序", StringComparison.Ordinal) >= 0;
         }

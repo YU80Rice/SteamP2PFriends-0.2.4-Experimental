@@ -51,8 +51,14 @@ namespace SteamP2PFriends.Core.Registration
     {
         private readonly List<PatchRegistrationStageRecord> _records =
             new List<PatchRegistrationStageRecord>();
+        private readonly string _expectedOwner;
         private int _lastOrder;
         private bool _closed;
+
+        public PatchRegistrationStageCatalog(string expectedOwner)
+        {
+            _expectedOwner = expectedOwner ?? string.Empty;
+        }
 
         public IReadOnlyList<PatchRegistrationStageRecord> Snapshot =>
             new ReadOnlyCollection<PatchRegistrationStageRecord>(
@@ -70,6 +76,8 @@ namespace SteamP2PFriends.Core.Registration
                 failure = "注册阶段不能为 null";
                 return false;
             }
+            if (!RegistrationTraceBaseline.TryValidate(stage, _expectedOwner, out failure))
+                return false;
             if (_records.Count > 0 && stage.Order <= _lastOrder)
             {
                 failure = "注册顺序冲突: " + stage.TraceId + " order=" + stage.Order +
@@ -99,15 +107,17 @@ namespace SteamP2PFriends.Core.Registration
     internal sealed class PatchRegistrationPlan
     {
         public PatchRegistrationPlan(RegistrationClosure adapterClosure,
-            IReadOnlyList<PatchRegistrationStage> stages, Action verify)
+            IReadOnlyList<PatchRegistrationStage> stages, string harmonyOwner, Action verify)
         {
             AdapterClosure = adapterClosure ?? throw new ArgumentNullException(nameof(adapterClosure));
             Stages = stages ?? throw new ArgumentNullException(nameof(stages));
+            HarmonyOwner = harmonyOwner ?? throw new ArgumentNullException(nameof(harmonyOwner));
             Verify = verify ?? throw new ArgumentNullException(nameof(verify));
         }
 
         public RegistrationClosure AdapterClosure { get; }
         public IReadOnlyList<PatchRegistrationStage> Stages { get; }
+        public string HarmonyOwner { get; }
         public Action Verify { get; }
     }
 
@@ -122,7 +132,7 @@ namespace SteamP2PFriends.Core.Registration
         {
             if (plan == null) throw new ArgumentNullException(nameof(plan));
 
-            var stageCatalog = new PatchRegistrationStageCatalog();
+            var stageCatalog = new PatchRegistrationStageCatalog(plan.HarmonyOwner);
             foreach (PatchRegistrationStage stage in plan.Stages)
             {
                 if (!stageCatalog.TryRegister(stage, out failure)) return false;
@@ -147,6 +157,85 @@ namespace SteamP2PFriends.Core.Registration
             catch (Exception ex)
             {
                 failure = "注册后验证异常: " + ex.GetType().Name;
+                return false;
+            }
+
+            failure = string.Empty;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Ticket 01 的阶段级静态基线。它不是 Harmony 运行时 metadata 的替代品，
+    /// 而是防止编排入口悄然改写 trace id、分类、priority 或 target 摘要。
+    /// </summary>
+    internal static class RegistrationTraceBaseline
+    {
+        internal const string U3SdkCommit = "ea7b4973af5ba10f62baad2bfde36ab2e5b060eb";
+
+        internal static bool TryValidate(PatchRegistrationStage stage, string expectedOwner,
+            out string failure)
+        {
+            string category;
+            string traceId;
+            string priority;
+            string harmonyTarget;
+            switch (stage.Order)
+            {
+                case 1:
+                    category = "Transport";
+                    traceId = "U3-REG-01-Wrapper";
+                    priority = "default";
+                    harmonyTarget = "SteamNetworkingSockets/Callback wrappers";
+                    break;
+                case 2:
+                    category = "Diagnostics";
+                    traceId = "U3-REG-02-InternalDiagnostics";
+                    priority = "default";
+                    harmonyTarget = "internal NetMessages and lifecycle handlers";
+                    break;
+                case 3:
+                    category = "Security";
+                    traceId = "U3-REG-03-RouteB";
+                    priority = "declared by patch";
+                    harmonyTarget = "Route B admission and command permission";
+                    break;
+                case 4:
+                    category = "Diagnostics";
+                    traceId = "U3-REG-04-AssetAndAudit";
+                    priority = "declared by patch";
+                    harmonyTarget = "asset integrity and audit fixes";
+                    break;
+                case 5:
+                    category = "Domain";
+                    traceId = "U3-REG-05-WorldSyncAndAdapters";
+                    priority = "declared by patch";
+                    harmonyTarget = "world-sync reset, barricade lifecycle and adapter catalog";
+                    break;
+                case 6:
+                    category = "Diagnostics";
+                    traceId = "U3-REG-06-Probes";
+                    priority = "n/a";
+                    harmonyTarget = "Unity log bridge, SNS probe and redaction self-test";
+                    break;
+                case 7:
+                    category = "Verification";
+                    traceId = "U3-REG-07-ClosureAndVerification";
+                    priority = "n/a";
+                    harmonyTarget = "post-registration verification and closure";
+                    break;
+                default:
+                    failure = "未知的 U3-SDK 注册阶段 order=" + stage.Order;
+                    return false;
+            }
+
+            if (!string.Equals(stage.Owner, expectedOwner, StringComparison.Ordinal) ||
+                !string.Equals(stage.Category, category, StringComparison.Ordinal) ||
+                !string.Equals(stage.TraceId, traceId, StringComparison.Ordinal) ||
+                !string.Equals(stage.Priority, priority, StringComparison.Ordinal) ||
+                !string.Equals(stage.HarmonyTarget, harmonyTarget, StringComparison.Ordinal))
+            {
+                failure = "注册阶段 metadata 与 Ticket 01 基线不一致: " + stage.TraceId;
                 return false;
             }
 

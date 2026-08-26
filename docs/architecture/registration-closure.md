@@ -25,7 +25,7 @@ Lifecycle 与 Replication 是两个独立角色。同一领域可以由同一个
 - 要求的角色缺失；
 - Closure 关闭后的任何追加登记。
 
-Patch 阶段另由 `PatchRegistrationStageCatalog` 按 `registration-trace.md` 的递增 Order 验证阶段顺序。该阶段目录保存 category、trace id、Harmony owner、priority 和 target 摘要，不能把抽象目录顺序当作 U3-SDK 真实执行顺序。
+Patch 阶段另由 `PatchRegistrationStageCatalog` 按 `registration-trace.md` 与 Ticket 01 固定 commit 的阶段基线验证递增 Order、category、trace id、Harmony owner、priority 和 target 摘要；现有 `VerifyCriticalPatches` 继续负责实际 Harmony metadata 的注册后验证。
 
 ## 当前登记范围
 
