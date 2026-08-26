@@ -352,16 +352,8 @@ namespace SteamP2PFriends.WhitelistTests
                     "RegisterAskStructuresPrefix", "SDG.Unturned.StructureManager", "askStructures",
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
                     "AskStructures_Prefix", true),
-                ContainsRegistrationEvidence(assembly,
-                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration",
-                    "CacheAllMethodInfos", "SDG.Unturned.UseableBarricade", "equip",
-                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleTranspiler",
-                    "Equip_Transpiler", false),
-                ContainsRegistrationEvidence(assembly,
-                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration",
-                    "CacheAllMethodInfos", "SDG.Unturned.UseableBarricade", "checkClaims",
-                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleTranspiler",
-                    "CheckClaims_Transpiler", false),
+                ContainsCachedTargetEvidence(assembly, "equip", "Equip_Transpiler"),
+                ContainsCachedTargetEvidence(assembly, "checkClaims", "CheckClaims_Transpiler"),
                 ContainsHarmonyPatchCall(assembly,
                     "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration",
                     "RegisterAtomically", "RegisteredTranspilerPriority")
@@ -378,14 +370,67 @@ namespace SteamP2PFriends.WhitelistTests
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             if (method == null) return false;
 
-            IlEvidence evidence = ReadIlEvidence(method);
-            if (!evidence.TypeNames.Contains(targetTypeName)
-                || !evidence.TypeNames.Contains(patchTypeName)
-                || !evidence.Strings.Contains(targetMethodName)
-                || !evidence.Strings.Contains(patchMethodName)) return false;
+            List<IlInstruction> instructions = ReadInstructions(method);
+            int previousPatchCall = -1;
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
 
-            return !requireHarmonyPatchCall || evidence.CalledMethods.Any(called =>
-                called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == "Patch");
+                int start = previousPatchCall + 1;
+                previousPatchCall = index;
+                List<IlInstruction> block = instructions.Skip(start).Take(index - start + 1).ToList();
+                bool exactTarget = block.Select(item => item.Operand).OfType<Type>().Any(type => type.FullName == targetTypeName)
+                    && block.Select(item => item.Operand).OfType<string>().Contains(targetMethodName);
+                bool exactPatch = block.Select(item => item.Operand).OfType<Type>().Any(type => type.FullName == patchTypeName)
+                    && block.Select(item => item.Operand).OfType<string>().Contains(patchMethodName);
+                bool harmonyMethodCreated = block.Select(item => item.Operand).OfType<MethodBase>().Any(candidate =>
+                    candidate.DeclaringType?.FullName == "HarmonyLib.HarmonyMethod" && candidate.Name == ".ctor");
+                if (exactTarget && exactPatch && harmonyMethodCreated && HasHarmonyArgument(block)) return true;
+            }
+            return false;
+        }
+
+        private static bool ContainsCachedTargetEvidence(Assembly assembly,
+            string targetMethodName, string patchMethodName)
+        {
+            Type type = assembly.GetType(
+                "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration", false);
+            MethodInfo method = type?.GetMethod("CacheAllMethodInfos",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (method == null) return false;
+
+            List<IlInstruction> instructions = ReadInstructions(method);
+            List<int> accessToolsCalls = new List<int>();
+            bool targetEvidence = false;
+            bool patchEvidence = false;
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName == "HarmonyLib.AccessTools" && called.Name == "Method")
+                    accessToolsCalls.Add(index);
+            }
+
+            for (int i = 0; i < accessToolsCalls.Count; i++)
+            {
+                int previous = i == 0 ? -1 : accessToolsCalls[i - 1];
+                int next = i + 1 < accessToolsCalls.Count ? accessToolsCalls[i + 1] : instructions.Count;
+                IEnumerable<object> callOperands = instructions.Skip(previous + 1)
+                    .Take(next - previous - 1).Select(item => item.Operand).ToList();
+                bool targetOk = callOperands.OfType<Type>().Any(item =>
+                        item.FullName == "SDG.Unturned.UseableBarricade")
+                    && callOperands.OfType<string>().Contains(targetMethodName)
+                    && callOperands.OfType<FieldInfo>().Any(item => item.Name ==
+                        (targetMethodName == "equip" ? "_equipMethod" : "_checkClaimsMethod"));
+                bool patchOk = callOperands.OfType<Type>().Any(item => item.FullName ==
+                        "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleTranspiler")
+                    && callOperands.OfType<string>().Contains(patchMethodName)
+                    && callOperands.OfType<FieldInfo>().Any(item => item.Name ==
+                        (patchMethodName == "Equip_Transpiler" ? "_equipTranspiler" : "_checkClaimsTranspiler"));
+                if (targetOk) targetEvidence = true;
+                if (patchOk) patchEvidence = true;
+            }
+            return targetEvidence && patchEvidence;
         }
 
         private static bool ContainsIdentityRegistrationEvidence(Assembly assembly,
@@ -416,9 +461,16 @@ namespace SteamP2PFriends.WhitelistTests
                     target.FullName == "SDG.Unturned.AnimalManager");
                 bool hasPatchResolver = instructions.Skip(start).Take(index - start + 1)
                     .Any(instruction => (instruction.Operand as MethodBase)?.Name == "Method");
-                if (hasTarget && hasPatch && hasLabel && hasTargetType && hasPatchResolver) return true;
+                bool hasHarmonyArgument = HasHarmonyArgument(instructions.Skip(start).Take(index - start + 1));
+                if (hasTarget && hasPatch && hasLabel && hasTargetType && hasPatchResolver && hasHarmonyArgument) return true;
             }
             return false;
+        }
+
+        private static bool HasHarmonyArgument(IEnumerable<IlInstruction> instructions)
+        {
+            return instructions.Any(instruction => instruction.OpCode.Name == "ldarg.0"
+                || (instruction.OpCode.Name == "ldarg" && (instruction.Operand as int?) == 0));
         }
 
         private static bool ContainsHarmonyPatchCall(Assembly assembly, string typeName,
@@ -428,9 +480,29 @@ namespace SteamP2PFriends.WhitelistTests
             MethodInfo method = type?.GetMethod(methodName,
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             if (method == null) return false;
+            List<IlInstruction> instructions = ReadInstructions(method);
+            int previousPatchCall = -1;
+            bool equipBound = false;
+            bool claimsBound = false;
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != "Patch") continue;
+                int start = previousPatchCall + 1;
+                previousPatchCall = index;
+                List<IlInstruction> block = instructions.Skip(start).Take(index - start + 1).ToList();
+                HashSet<string> fields = new HashSet<string>(block.Select(item => item.Operand)
+                    .OfType<FieldInfo>().Select(field => field.Name), StringComparer.Ordinal);
+                bool validBlock = HasHarmonyArgument(block)
+                    && block.Select(item => item.Operand).OfType<MethodBase>().Any(candidate =>
+                        candidate.DeclaringType?.FullName == "HarmonyLib.HarmonyMethod" && candidate.Name == ".ctor")
+                    && fields.Contains(requiredFieldName);
+                equipBound |= validBlock && fields.Contains("_equipMethod") && fields.Contains("_equipTranspiler");
+                claimsBound |= validBlock && fields.Contains("_checkClaimsMethod") && fields.Contains("_checkClaimsTranspiler");
+            }
+
             IlEvidence evidence = ReadIlEvidence(method);
-            return evidence.CalledMethods.Any(called =>
-                       called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == "Patch")
+            return equipBound && claimsBound
                 && evidence.FieldNames.Contains(requiredFieldName)
                 && evidence.CalledMethods.Any(called => called.Name == "VerifyAll")
                 && evidence.CalledMethods.Any(called => called.Name == "RollbackBoth");
@@ -514,6 +586,8 @@ namespace SteamP2PFriends.WhitelistTests
                         break;
                     case OperandType.ShortInlineBrTarget:
                     case OperandType.ShortInlineI:
+                        offset += 1;
+                        break;
                     case OperandType.ShortInlineVar:
                         offset += 1;
                         break;
@@ -572,7 +646,10 @@ namespace SteamP2PFriends.WhitelistTests
                         break;
                     case OperandType.ShortInlineBrTarget:
                     case OperandType.ShortInlineI:
+                        offset += 1;
+                        break;
                     case OperandType.ShortInlineVar:
+                        instruction.Operand = (int)il[offset];
                         offset += 1;
                         break;
                     case OperandType.InlineBrTarget:
@@ -584,6 +661,7 @@ namespace SteamP2PFriends.WhitelistTests
                         offset += 8;
                         break;
                     case OperandType.InlineVar:
+                        instruction.Operand = (int)BitConverter.ToUInt16(il, offset);
                         offset += 2;
                         break;
                     case OperandType.InlineSwitch:
