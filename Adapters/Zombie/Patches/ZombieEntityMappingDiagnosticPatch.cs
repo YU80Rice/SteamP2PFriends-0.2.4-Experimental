@@ -2,6 +2,7 @@ using HarmonyLib;
 using SDG.NetPak;
 using SDG.NetTransport;
 using SDG.Unturned;
+using U3Zombie = SDG.Unturned.Zombie;
 using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ using UnityEngine;
 
 using Patches = SteamP2PFriends.Core.Patches;
 
-namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
+namespace SteamP2PFriends.Adapters.Zombie.Patches
 {
     /// <summary>
     ///
@@ -182,9 +183,9 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
                 HarmonyPatchType.Postfix, "DP-5-onBoundUpdated-Postfix");
 
             // DP-6 sendZombieDead + sendZombieAlive Prefix
-            System.Type[] sendZombieDeadParams = { typeof(Zombie), typeof(Vector3), typeof(ERagdollEffect) };
+            System.Type[] sendZombieDeadParams = { typeof(U3Zombie), typeof(Vector3), typeof(ERagdollEffect) };
             System.Type[] sendZombieAliveParams = {
-                typeof(Zombie), typeof(byte), typeof(byte), typeof(byte),
+                typeof(U3Zombie), typeof(byte), typeof(byte), typeof(byte),
                 typeof(byte), typeof(byte), typeof(byte), typeof(Vector3), typeof(byte)
             };
             DP6_SendZombieDead_Registered = RegisterOne(harmony, "sendZombieDead",
@@ -410,7 +411,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
             return arr;
         }
 
-        private static string FormatEntitySignature(Zombie z)
+        private static string FormatEntitySignature(U3Zombie z)
         {
             if (z == null) return "null";
             try
@@ -432,7 +433,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
         /// <summary>
         /// 复用 GetSampleIndices 与 FormatEntitySignature，不新增反射、不新增 Tick。
         /// </summary>
-        private static string FormatRegionEntitySnapshot(byte bound, int totalCount, List<Zombie> zombies, int maxSamples = 10)
+        private static string FormatRegionEntitySnapshot(byte bound, int totalCount, List<U3Zombie> zombies, int maxSamples = 10)
         {
             if (totalCount <= 0 || zombies == null) return "count=0 samples=[]";
             int[] indices = GetSampleIndices(bound, totalCount);
@@ -608,7 +609,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
                     {
                         for (int i = 0; i < count && sampled < MAX_SAMPLE_PER_BOUND; i++)
                         {
-                            Zombie z = region.zombies[i];
+                            U3Zombie z = region.zombies[i];
                             if (z != null && z.isUpdated)
                             {
                                 sigs.Append($"[{i}] {FormatEntitySignature(z)}; ");
@@ -837,7 +838,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
 
             // DP-6: sendZombieDead Prefix - 主机端发起事件
             // 签名：public static void sendZombieDead(Zombie zombie, Vector3 newRagdoll, ERagdollEffect newRagdollEffect)
-            internal static void SendZombieDeadPrefix(Zombie zombie, Vector3 newRagdoll, ERagdollEffect newRagdollEffect)
+            internal static void SendZombieDeadPrefix(U3Zombie zombie, Vector3 newRagdoll, ERagdollEffect newRagdollEffect)
             {
                 try
                 {
@@ -857,7 +858,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
             }
 
             // DP-6: sendZombieAlive Prefix - 主机端发起事件
-            internal static void SendZombieAlivePrefix(Zombie zombie, byte newType, byte newSpeciality,
+            internal static void SendZombieAlivePrefix(U3Zombie zombie, byte newType, byte newSpeciality,
                 byte newShirt, byte newPants, byte newHat, byte newGear,
                 Vector3 newPosition, byte newAngle)
             {
@@ -898,7 +899,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
                             count = r?.zombies?.Count ?? -1;
                             if (r != null && r.zombies != null && id < r.zombies.Count)
                             {
-                                Zombie z = r.zombies[id];
+                                U3Zombie z = r.zombies[id];
                                 if (z != null)
                                 {
                                     currentPos = z.transform.position;
@@ -943,7 +944,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
                             count = r?.zombies?.Count ?? -1;
                             if (r != null && r.zombies != null && id < r.zombies.Count)
                             {
-                                Zombie z = r.zombies[id];
+                                U3Zombie z = r.zombies[id];
                                 if (z != null)
                                 {
                                     currentPos = z.transform.position;
@@ -990,7 +991,7 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
                     bool isNetworked = false;
                     int playerCountInRegion = -1;
                     int bound = -1;
-                    List<Zombie> zombiesList = null;
+                    List<U3Zombie> zombiesList = null;
 
                     try
                     {

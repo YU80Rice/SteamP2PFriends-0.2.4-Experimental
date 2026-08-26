@@ -128,7 +128,7 @@ namespace SteamP2PFriends.Host
                 {
                     Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
                     Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
-                    Core.Patches.ItemManagerRegionSyncPatch.ResetAll();
+                    Adapters.Item.Patches.ItemManagerRegionSyncPatch.ResetAll();
                     ResourceManagerRegionSyncPatch.ResetAll();
                     Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();
                     LevelObjectRemoteCollisionPatch.ResetAll();
@@ -1006,7 +1006,7 @@ namespace SteamP2PFriends.Host
 
                 try
                 {
-                    Core.Patches.AuthoritativeItemGenerationGatePatch.ResetForSession();
+                    Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.ResetForSession();
                 }
                 catch (Exception ex)
                 {
@@ -1120,7 +1120,7 @@ namespace SteamP2PFriends.Host
 
                 try
                 {
-                    Core.Patches.AuthoritativeItemGenerationGatePatch.ResetForSession();
+                    Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.ResetForSession();
                 }
                 catch (Exception ex)
                 {

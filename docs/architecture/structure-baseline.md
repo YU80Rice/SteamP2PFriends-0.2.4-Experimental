@@ -42,7 +42,7 @@ Tests/
   Runtime/
 ```
 
-当前已完成 `Core/Identity`、`Core/ControlPlane`、`Core/Shared`、`Platform/*`、`Security`、`Adapters/Animal`、`Adapters/Zombie` 的本批次归属整理。无法证明单一领域归属的补丁统一位于 `Core/Patches`，并由 `docs/architecture/module-ownership.md` 登记原因。
+当前已完成 `Core/Identity`、`Core/ControlPlane`、`Core/Shared`、`Platform/*`、`Security`、`Adapters/Item`、`Adapters/Animal`、`Adapters/Resource`、`Adapters/Collision`、`Adapters/Zombie` 的本批次归属整理。无法证明单一领域归属的补丁统一位于 `Core/Patches`，并由 `docs/architecture/module-ownership.md` 登记原因。
 
 ## 不变量
 
@@ -58,3 +58,4 @@ Tests/
 - [Migration Manifest](./migration-manifest.md)
 - [ADR-0006](../adr/0006-behavior-preserving-structure-baseline-and-resource-migration.md)
 - [ADR-0008](../adr/0008-core-platform-security-module-ownership.md)
+- [Item / Zombie Ownership](./item-zombie-ownership.md)

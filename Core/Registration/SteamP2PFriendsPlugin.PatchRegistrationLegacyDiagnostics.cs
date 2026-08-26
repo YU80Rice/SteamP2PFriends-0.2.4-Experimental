@@ -315,7 +315,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Core.Patches.ItemManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Adapters.Item.Patches.ItemManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -325,7 +325,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Core.Patches.AuthoritativeItemGenerationGatePatch.RegisterManual(_harmony);
+                Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -396,7 +396,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Core.Patches.ZombieManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Adapters.Zombie.Patches.ZombieManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -409,7 +409,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Core.Patches.ZombieManagerP0DGenerateZombiesPatch.RegisterManual(_harmony);
+                Adapters.Zombie.Patches.ZombieManagerP0DGenerateZombiesPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -422,7 +422,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Core.Patches.P0EZombieLifecycle.ZombieLifecyclePatch.RegisterManual(_harmony);
+                Adapters.Zombie.Patches.ZombieLifecyclePatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -435,7 +435,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegisterManual(_harmony);
+                Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -523,7 +523,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.RegisterManual(_harmony);
+                Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {

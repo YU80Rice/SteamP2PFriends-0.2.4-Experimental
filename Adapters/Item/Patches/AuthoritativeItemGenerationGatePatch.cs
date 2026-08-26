@@ -1,11 +1,12 @@
 using HarmonyLib;
 using SDG.Unturned;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Item.Patches
 {
     internal enum RegionGenerationState : byte
     {

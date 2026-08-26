@@ -6,9 +6,9 @@ using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
 
-using Patches = SteamP2PFriends.Core.Patches;
+using Patches = SteamP2PFriends.Adapters.Item.Patches;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Item.Patches
 {
     /// <summary>
     ///

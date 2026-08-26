@@ -1,10 +1,12 @@
 using HarmonyLib;
 using SDG.Unturned;
+using U3Item = SDG.Unturned.Item;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Item.Patches
 {
     /// <summary>
     /// ItemManager 世界同步链路五段证据诊断。
@@ -58,7 +60,7 @@ namespace SteamP2PFriends.Core.Patches
         };
         private static readonly System.Type[] VanillaDropItemParamTypes =
         {
-            typeof(Item),
+            typeof(U3Item),
             typeof(Vector3),
             typeof(bool), typeof(bool), typeof(bool)
         };
@@ -317,7 +319,7 @@ namespace SteamP2PFriends.Core.Patches
         [HarmonyPrefix]
         [HarmonyPatch(typeof(ItemManager), "dropItem")]
         public static void DropItem_Prefix(
-            Item item,
+            U3Item item,
             Vector3 point,
             bool playEffect,
             bool isDropped,

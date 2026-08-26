@@ -792,7 +792,7 @@ namespace SteamP2PFriends
             //   任一链路失败即 DiagnosticBuildValid=false
             try
             {
-                if (!Core.Patches.ItemManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Adapters.Item.Patches.ItemManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -805,17 +805,17 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Core.Patches.AuthoritativeItemGenerationGatePatch.AllRegistrationsSucceeded
-                    || !Core.Patches.AuthoritativeItemGenerationGatePatch.VerifyRegistration())
+                if (!Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.AllRegistrationsSucceeded
+                    || !Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.VerifyRegistration())
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[ItemAuthorityGate] DIAGNOSTIC BUILD INVALID: {Core.Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
+                        $"[ItemAuthorityGate] DIAGNOSTIC BUILD INVALID: {Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[ItemAuthorityGate] registration verified: {Core.Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
+                        $"[ItemAuthorityGate] registration verified: {Adapters.Item.Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -914,7 +914,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Core.Patches.ZombieManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Adapters.Zombie.Patches.ZombieManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -929,7 +929,7 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Core.Patches.ZombieManagerP0DGenerateZombiesPatch.VerifyRegistration())
+                if (!Adapters.Zombie.Patches.ZombieManagerP0DGenerateZombiesPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -945,7 +945,7 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Core.Patches.P0EZombieLifecycle.ZombieLifecyclePatch.VerifyRegistration())
+                if (!Adapters.Zombie.Patches.ZombieLifecyclePatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -958,8 +958,8 @@ namespace SteamP2PFriends
 
             try
             {
-                bool m3Ready = Core.Patches.ZombieManagerP0DGenerateZombiesPatch.AllRegistrationsSucceeded
-                    && Core.Patches.P0EZombieLifecycle.ZombieLifecyclePatch.AllRegistrationsSucceeded;
+                bool m3Ready = Adapters.Zombie.Patches.ZombieManagerP0DGenerateZombiesPatch.AllRegistrationsSucceeded
+                    && Adapters.Zombie.Patches.ZombieLifecyclePatch.AllRegistrationsSucceeded;
                 Adapters.Zombie.ZombieRegionLifecycleAdapter.SetRegistrationReady(m3Ready);
                 if (!m3Ready)
                 {
@@ -985,19 +985,19 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.AllRegistrationsSucceeded)
+                if (!Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-C-1/Zombie] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary} " +
-                        $"replacement={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.ReplacementCount} " +
-                        $"signature={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.SignatureResolved} " +
-                        $"transpilerOwner={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.TranspilerOwnerVerified}");
+                        $"[P0-C-1/Zombie] !!! DIAGNOSTIC BUILD INVALID: summary={Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary} " +
+                        $"replacement={Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.ReplacementCount} " +
+                        $"signature={Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.SignatureResolved} " +
+                        $"transpilerOwner={Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.TranspilerOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-C-1/Zombie] OK summary={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary}");
+                        $"[P0-C-1/Zombie] OK summary={Adapters.Zombie.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1062,11 +1062,11 @@ namespace SteamP2PFriends
             try
             {
                 if (!Adapters.Item.ItemGenerationAuthorityAdapter.IsReady
-                    || Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount != 1)
+                    || Adapters.Item.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount != 1)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[MultiObserver/M1-Item] DIAGNOSTIC BUILD INVALID: ready={Adapters.Item.ItemGenerationAuthorityAdapter.IsReady} " +
-                        $"generationReplacement={Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1");
+                        $"generationReplacement={Adapters.Item.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1");
                     allOk = false;
                 }
                 else
@@ -1085,17 +1085,17 @@ namespace SteamP2PFriends
             try
             {
                 if (!Adapters.Item.ItemObserverReplicationAdapter.IsReady
-                    || !Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered
-                    || !Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered
-                    || !Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered
-                    || !Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered)
+                    || !Adapters.Item.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered
+                    || !Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered
+                    || !Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered
+                    || !Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[MultiObserver/M2-Item] DIAGNOSTIC BUILD INVALID: ready={Adapters.Item.ItemObserverReplicationAdapter.IsReady} " +
-                        $"regionPrefix={Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
-                        $"askItems={Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
-                        $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
-                        $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered}");
+                        $"regionPrefix={Adapters.Item.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
+                        $"askItems={Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
+                        $"{Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
+                        $"{Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered}");
                     allOk = false;
                 }
                 else
@@ -1189,36 +1189,36 @@ namespace SteamP2PFriends
             //   - ObjectManagerRegionSyncPatch
             //   每个要求：signature=true, replacement=1/1, prefix=true, transpilerOwner=true, prefixOwner=true
             //   任一失败强制 DiagnosticBuildValid=false
-            bool itemRegionOk = Core.Patches.ItemManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool itemRegionOk = Adapters.Item.Patches.ItemManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!itemRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: ItemManagerRegionSyncPatch " +
-                    $"summary={Core.Patches.ItemManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"sendReplacement={Core.Patches.ItemManagerRegionSyncPatch.ReplacementCount} " +
-                    $"generationReplacement={Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount} " +
-                    $"signature={Core.Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
-                    $"regionPrefix={Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
-                    $"askItemsTransaction={Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
-                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
-                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
-                    $"transpilerOwner={Core.Patches.ItemManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Core.Patches.ItemManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={Adapters.Item.Patches.ItemManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"sendReplacement={Adapters.Item.Patches.ItemManagerRegionSyncPatch.ReplacementCount} " +
+                    $"generationReplacement={Adapters.Item.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount} " +
+                    $"signature={Adapters.Item.Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
+                    $"regionPrefix={Adapters.Item.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
+                    $"askItemsTransaction={Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
+                    $"{Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
+                    $"{Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
+                    $"transpilerOwner={Adapters.Item.Patches.ItemManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={Adapters.Item.Patches.ItemManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK ItemManagerRegionSyncPatch: " +
-                    $"sendReplacement={Core.Patches.ItemManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"generationReplacement={Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1 " +
-                    $"signature={Core.Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
-                    $"regionPrefix={Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
-                    $"askItemsTransaction={Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
-                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
-                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
-                    $"transpilerOwner={Core.Patches.ItemManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Core.Patches.ItemManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"sendReplacement={Adapters.Item.Patches.ItemManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"generationReplacement={Adapters.Item.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1 " +
+                    $"signature={Adapters.Item.Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
+                    $"regionPrefix={Adapters.Item.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
+                    $"askItemsTransaction={Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
+                    $"{Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
+                    $"{Adapters.Item.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
+                    $"transpilerOwner={Adapters.Item.Patches.ItemManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={Adapters.Item.Patches.ItemManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
             bool resourceRegionOk = SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch.AllRegistrationsSucceeded;
@@ -1333,36 +1333,36 @@ namespace SteamP2PFriends
             }
             try
             {
-                if (!Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.AllRegistrationsSucceeded)
+                if (!Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[P0-E-1-Diag/Zombie] !!! DIAGNOSTIC BUILD INVALID: ZombieEntityMappingDiagnosticPatch " +
-                        $"dp1={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
-                        $"dp2={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
-                        $"dp3={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
-                        $"dp4={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
-                        $"dp5={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
-                        $"dp6={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
-                        $"dp7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
-                        $"dp8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
-                        $"owner8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
-                        $"reflectionFailed={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
+                        $"dp1={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
+                        $"dp2={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
+                        $"dp3={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
+                        $"dp4={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
+                        $"dp5={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
+                        $"dp6={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
+                        $"dp7={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
+                        $"dp8_7={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
+                        $"owner8_7={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
+                        $"reflectionFailed={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
                         $"[P0-E-1-Diag/Zombie] OK " +
-                        $"dp1={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
-                        $"dp2={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
-                        $"dp3={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
-                        $"dp4={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
-                        $"dp5={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
-                        $"dp6={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
-                        $"dp7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
-                        $"dp8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
-                        $"owner8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
-                        $"reflectionFailed={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
+                        $"dp1={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
+                        $"dp2={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
+                        $"dp3={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
+                        $"dp4={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
+                        $"dp5={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
+                        $"dp6={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
+                        $"dp7={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
+                        $"dp8_7={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
+                        $"owner8_7={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
+                        $"reflectionFailed={Adapters.Zombie.Patches.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
                 }
             }
             catch (System.Exception ex)

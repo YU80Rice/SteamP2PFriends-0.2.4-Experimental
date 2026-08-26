@@ -18,6 +18,8 @@
 | Security | `Security` | `P2PApprovalManager` + `P2PWhitelistService` | `U3-REG-03` |
 | Resource adapter | `Adapters/Resource` | `ResourceDomainAdapter`（生命周期/复制）；`Adapters/Resource/Patches`（Resource 补丁） | `U3-REG-05` |
 | Collision adapter | `Adapters/Collision` | `LevelObjectCollisionAdapter`（生命周期）；`Adapters/Collision/Patches`（静态物体碰撞补丁） | `U3-REG-05` |
+| Item adapter | `Adapters/Item` | `ItemDomainAdapter`（生命周期/复制）；`Adapters/Item/Patches`（Item 生成、区域同步、诊断补丁） | `U3-REG-05` |
+| Zombie adapter | `Adapters/Zombie` | `ZombieDomainAdapter`（生命周期/复制）；`Adapters/Zombie/Patches`（Bound 生命周期、生成、状态复制、实体诊断） | `U3-REG-05` |
 
 ## 受控跨领域位置
 
@@ -42,6 +44,13 @@ Resource 与 Collision 的物理目录和编译命名空间现在一致：
 资源补丁仍由 `PatchRegistrationOrchestrator` 的既有 Wrapper/Region 阶段按原调用顺序登记；
 Host 会话复位、断线清理和注册后验证只改为指向同一领域入口。旧生产 Authority Writer 仍是唯一
 生产权威，Resource Production Control Seam 本票不接线。
+
+## Ticket 06：Item / Zombie 归属
+
+Item 与 Zombie 的补丁、生命周期辅助类型和领域适配器已统一到各自 `Adapters/<Domain>/Patches`
+与 `Adapters/<Domain>` 物理根；`Core/Identity` 继续是 `RegionKey`、`BoundKey` 和生命周期轴的唯一身份来源。
+旧 `Core.Patches`、`Core.Patches.P0EZombieLifecycle` 与 `Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch`
+不再编译出 Item/Zombie 权威类型。注册与验证仍由原有 Registration Trace 入口执行，未添加兼容副本或并行 writer。
 
 ## 保持不变
 

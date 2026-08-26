@@ -192,3 +192,35 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | StaticIL | PASS（结构 + 注册元数据） | `ModuleOwnershipStaticILContractTests` 通过；Registration Trace 71 行/65 单元矩阵已绑定 target、patch type/method、owner、priority、order |
 | BuildArtifact | PASS（独立快照） | Release DLL/测试 EXE 的版本、FileVersion、MVID 与 SHA-256 已写入 Ticket 04 交付报告；本次重建产物以报告值为准 |
 | Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
+
+## Batch 6：Item、Zombie 领域所有权与命名空间
+
+状态：源码结构、Release 构建、现有 PureMemory 与结构 StaticIL 已完成；Runtime Pending
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Adapters/Item/Patches/*` | 已整理 | Item 区域同步、世界同步诊断、生成 Authority Gate、预生成与 level-loaded 重生补丁统一到 Item 领域 |
+| `Adapters/Zombie/Patches/*` | 已整理 | Zombie 世界同步诊断、Bound 生命周期、生成、状态复制和实体映射诊断补丁统一到 Zombie 领域 |
+| `Adapters/Item/*` / `Adapters/Zombie/*` | 已确认 | Item/Zombie domain adapter、Region/Bound ledger 和快照适配器保持单一物理根 |
+| `Core/Identity/*` | 保持唯一 | `RegionKey`、`BoundKey`、生命周期轴不复制；Zombie 继续使用 `BoundKey`，Item 的原生 byte 转换保留在边界 |
+| `WhitelistTests/StaticIL/ItemZombieOwnershipStaticILContractTests.cs` | 新增 | 验证领域 FullName 唯一、旧 Core 权威类型缺失和 ModuleOwnershipCatalog 记录 |
+| 注册/复位/验证调用方 | 已整理 | 仅更新命名空间引用；U3-SDK 注册顺序、Harmony target/owner/priority 和日志语义不变 |
+
+### 保持不变与未决项
+
+- Item generation gate、区域快照事务、Zombie Acquire/Hysteresis Release、Snapshot token、Region/Bound 和 generation 行为保持原实现；
+- 未新增并行 Authority Writer，未将结构迁移描述成功能修复；Resource Production Control Seam 未接线；
+- 现有 Item/Zombie PureMemory 测试未复制，只增加结构 StaticIL 接缝；
+- `ZombieEntityMappingDiagnosticPatch` 随 Zombie 诊断入口归属 Zombie，但仍只读观察，不拥有 Zombie 生产状态；
+- SP、listen-host、U3DS、P2P Runtime 及最终 Harmony 运行排序仍 Pending。
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | 现有 Item/Zombie 测试并入全量入口；本次结果 `186/186 PASS` |
+| StaticIL | PASS | `ItemZombieOwnershipStaticILContractTests`；领域入口各 1 个，旧 Core Item/Zombie 权威类型为 0 |
+| BuildArtifact | PASS | 主项目与 WhitelistTests Release 构建均 0 errors / 0 warnings；本次交付报告绑定重新计算的 DLL/EXE SHA-256 与 MVID |
+| Runtime | PENDING | 未执行 SP、listen-host、U3DS 或 P2P 运行验收 |

@@ -6,6 +6,7 @@ using Steamworks;
 using System;
 using System.Collections.Generic;
 using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.Adapters.Item.Patches;
 using UnityEngine;
 
 using SteamP2PFriends.Security;

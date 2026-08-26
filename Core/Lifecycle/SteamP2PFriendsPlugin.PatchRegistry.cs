@@ -90,7 +90,7 @@ namespace SteamP2PFriends
             Core.Patches.PlayerLifecycleReadyDiagnosticPatch.Shutdown();
             Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
             Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
-            Core.Patches.ItemManagerRegionSyncPatch.ResetAll();
+            Adapters.Item.Patches.ItemManagerRegionSyncPatch.ResetAll();
             SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch.ResetAll();
             Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();
             SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.ResetAll();

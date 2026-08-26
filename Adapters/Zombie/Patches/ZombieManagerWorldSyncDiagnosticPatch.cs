@@ -2,12 +2,13 @@ using HarmonyLib;
 using SDG.NetPak;
 using SDG.NetTransport;
 using SDG.Unturned;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Zombie.Patches
 {
     /// <summary>
     /// ZombieManager 世界同步链路五段证据诊断。

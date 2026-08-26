@@ -110,7 +110,7 @@ namespace SteamP2PFriends
             //   仅对远程非 loopback 玩家开放 askItems 资格。
             try
             {
-                if (!Core.Patches.ItemManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Adapters.Item.Patches.ItemManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {

@@ -1,7 +1,7 @@
 using SDG.Unturned;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Core.Patches.P0EZombieLifecycle;
+using SteamP2PFriends.Adapters.Zombie.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.Core.Identity;
 using System;

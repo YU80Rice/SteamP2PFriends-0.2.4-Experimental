@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 
-using Patches = SteamP2PFriends.Core.Patches;
+using Patches = SteamP2PFriends.Adapters.Zombie.Patches;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Zombie.Patches
 {
     /// <summary>
     ///

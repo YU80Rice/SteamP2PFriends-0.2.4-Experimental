@@ -117,6 +117,10 @@
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapter.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapter.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemManagerRegionSyncPatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\AuthoritativeItemGenerationGatePatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemManagerP0B3PreGeneratePatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemManagerP0B6RegenerateOnLevelLoadedPatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceSnapshotAdapter.cs" />
@@ -143,6 +147,7 @@
     <Compile Include="Adapters\Zombie\Patches\\ZombieLifecycleState.cs" />
     <Compile Include="Adapters\Zombie\Patches\\ZombieManagerP0C1SendZombieStatesPatch.cs" />
     <Compile Include="Adapters\Zombie\Patches\\ZombieManagerP0DGenerateZombiesPatch.cs" />
+    <Compile Include="Adapters\Zombie\Patches\\ZombieManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Platform\Client\ClientLobbyListener.cs" />
     <Compile Include="Platform\Client\DisconnectTracer.cs" />
     <Compile Include="Platform\Client\FriendStatusObserver.cs" />
@@ -187,7 +192,6 @@
     <Compile Include="Core\ControlPlane\SPI\LeaseTicket.cs" />
     <Compile Include="Core\Patches\AssetIntegritySnapshotPatch.cs" />
     <Compile Include="Core\Patches\AuthHandshakeJournalPatch.cs" />
-    <Compile Include="Core\Patches\AuthoritativeItemGenerationGatePatch.cs" />
     <Compile Include="Core\Patches\AuthStatusCallbackSafetyPatch.cs" />
     <Compile Include="Core\Patches\BarricadeManagerRegionSyncPatch.cs" />
     <Compile Include="Core\Patches\CallbackCreateGameServerRedirectPatch.cs" />
@@ -198,9 +202,6 @@
     <Compile Include="Core\Patches\InitialStateReceiveDiagnosticPatch.cs" />
     <Compile Include="Core\Patches\InventoryWorldAuthorityProbe.cs" />
     <Compile Include="Core\Patches\Issue7ObjectBinaryStateDiagnosticPatch.cs" />
-    <Compile Include="Core\Patches\ItemManagerP0B3PreGeneratePatch.cs" />
-    <Compile Include="Core\Patches\ItemManagerP0B6RegenerateOnLevelLoadedPatch.cs" />
-    <Compile Include="Core\Patches\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Core\Patches\ListenHostInventoryUiProjectionPatch.cs" />
     <Compile Include="Core\Patches\LobbiesGameCreatedPatch.cs" />
     <Compile Include="Core\Patches\LocalRegionProgressDiagnosticPatch.cs" />
@@ -244,7 +245,6 @@
     <Compile Include="Core\Patches\VehicleEnterDiagnosticPatch.cs" />
     <Compile Include="Core\Patches\VehicleManagerP0C1ReplicationPatch.cs" />
     <Compile Include="Core\Patches\VehicleManagerWorldSyncDiagnosticPatch.cs" />
-    <Compile Include="Core\Patches\ZombieManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Core\Patches\P0EBarricadeLifecycle\BarricadeLifecycleDiagQuota.cs" />
     <Compile Include="Core\Patches\P0EBarricadeLifecycle\BarricadeLifecycleHelper.cs" />
     <Compile Include="Core\Patches\P0EBarricadeLifecycle\BarricadeLifecycleILMatcher.cs" />
@@ -265,7 +265,7 @@
     <Compile Include="Platform\Diagnostics\Patches\\UnityTagErrorSourceDiagnosticPatch.cs" />
     <Compile Include="Platform\Diagnostics\Patches\\UseableBarricadeDiagnosticPatch.cs" />
     <Compile Include="Platform\Diagnostics\Patches\\WorldSyncDiagnosticCore.cs" />
-    <Compile Include="Platform\Diagnostics\Patches\\ZombieEntityMappingDiagnosticPatch.cs" />
+    <Compile Include="Adapters\Zombie\Patches\\ZombieEntityMappingDiagnosticPatch.cs" />
     <Compile Include="Platform\Transport\ExplicitDnsDirectIpController.cs" />
     <Compile Include="Platform\Transport\SystemDnsResolveBackend.cs" />
     <Compile Include="Platform\Transport\UnifiedJoinAddressClassifier.cs" />

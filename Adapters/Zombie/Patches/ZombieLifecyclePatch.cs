@@ -1,5 +1,6 @@
 using HarmonyLib;
 using SDG.Unturned;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.Adapters.Zombie;
@@ -8,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace SteamP2PFriends.Core.Patches.P0EZombieLifecycle
+namespace SteamP2PFriends.Adapters.Zombie.Patches
 {
     /// <summary>
     ///

@@ -92,6 +92,12 @@ namespace SteamP2PFriends.Core.Ownership
                 new ModuleOwnershipRecord("Adapters.Collision", ModuleOwnershipKind.DomainAdapter,
                     "Adapters/Collision", "LevelObjectCollisionAdapter",
                     "U3-REG-05-WorldSyncAndAdapters", string.Empty),
+                new ModuleOwnershipRecord("Adapters.Item", ModuleOwnershipKind.DomainAdapter,
+                    "Adapters/Item", "ItemDomainAdapter",
+                    "U3-REG-05-WorldSyncAndAdapters", string.Empty),
+                new ModuleOwnershipRecord("Adapters.Zombie", ModuleOwnershipKind.DomainAdapter,
+                    "Adapters/Zombie", "ZombieDomainAdapter",
+                    "U3-REG-05-WorldSyncAndAdapters", string.Empty),
                 new ModuleOwnershipRecord("Adapters", ModuleOwnershipKind.DomainAdapter,
                     "Adapters", "RegistrationClosure",
                     "U3-REG-05-WorldSyncAndAdapters", string.Empty)
@@ -159,6 +165,19 @@ namespace SteamP2PFriends.Core.Ownership
                 && collision.AuthorityType == "LevelObjectCollisionAdapter"
                 && resource.RegistrationTrace == "U3-REG-05-WorldSyncAndAdapters"
                 && collision.RegistrationTrace == "U3-REG-05-WorldSyncAndAdapters";
+        }
+
+        internal static bool HasItemZombieOwnership()
+        {
+            ModuleOwnershipRecord item = Find("Adapters.Item");
+            ModuleOwnershipRecord zombie = Find("Adapters.Zombie");
+            return item != null && zombie != null
+                && item.PhysicalRoot == "Adapters/Item"
+                && item.AuthorityType == "ItemDomainAdapter"
+                && item.RegistrationTrace == "U3-REG-05-WorldSyncAndAdapters"
+                && zombie.PhysicalRoot == "Adapters/Zombie"
+                && zombie.AuthorityType == "ZombieDomainAdapter"
+                && zombie.RegistrationTrace == "U3-REG-05-WorldSyncAndAdapters";
         }
 
         private static ModuleOwnershipRecord Find(string moduleId)
