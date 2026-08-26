@@ -111,7 +111,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_All()
         {
             Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
-            return Test_AnimalAuthority(assembly)
+            bool result = Test_AnimalAuthority(assembly)
                 && Test_StructureAuthority(assembly)
                 && Test_LegacyStructureAuthoritiesAbsent(assembly)
                 && Test_LegacyAnimalAuthoritiesAbsent(assembly)
@@ -120,6 +120,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && ModuleOwnershipCatalog.HasRegistrationTraceCoverage()
                 && Test_RegistrationEvidence(assembly)
                 && Test_RegistrationPostVerificationShape(assembly);
+            return result;
         }
 
         private static bool Test_AnimalAuthority(Assembly assembly)
@@ -271,10 +272,17 @@ namespace SteamP2PFriends.WhitelistTests
             Type plugin = assembly.GetType("SteamP2PFriends.SteamP2PFriendsPlugin", false);
             MethodInfo awake = plugin?.GetMethod("Awake", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (awake == null) return false;
-            IlEvidence evidence = ReadIlEvidence(awake);
-            return evidence.Strings.Contains(ExpectedOwner)
-                && evidence.CalledMethods.Any(called =>
-                    called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == ".ctor");
+            List<IlInstruction> instructions = ReadInstructions(awake);
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "HarmonyLib.Harmony" || called.Name != ".ctor") continue;
+                bool ownerArgument = instructions.Skip(Math.Max(0, index - 6)).Take(6)
+                    .Any(instruction => string.Equals(instruction.Operand as string,
+                        ExpectedOwner, StringComparison.Ordinal));
+                if (ownerArgument) return true;
+            }
+            return false;
         }
 
         private static int ExpectedOrder(RegistrationEvidence evidence)
@@ -335,15 +343,30 @@ namespace SteamP2PFriends.WhitelistTests
                 && createEvidence.CalledMethods.Any(called =>
                     called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
                     && called.Name == ".ctor")
-                && createEvidence.CalledMethods.Any(called => called.Name == "VerifyRegistrationClosure");
-            bool executeClosesThenVerifies = executeEvidence.CalledMethods.Any(called =>
-                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.RegistrationClosure"
-                    && called.Name == "TryClose")
-                && executeEvidence.CalledMethods.Any(called =>
-                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog"
-                    && called.Name == "TryClose")
-                && executeEvidence.CalledMethods.Any(called => called.Name == "Invoke");
+                && createEvidence.CalledMethods.Any(called => called.Name == "VerifyRegistrationClosure")
+                && createEvidence.CalledMethods.Any(called =>
+                    (called.DeclaringType?.FullName ?? string.Empty).StartsWith("System.Func`1",
+                        StringComparison.Ordinal) && called.Name == ".ctor");
+            bool executeClosesThenVerifies = HasOrderedCalls(executeEvidence.CalledMethods,
+                called => called.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Core.Registration.RegistrationClosure" && called.Name == "TryClose",
+                called => called.DeclaringType?.FullName ==
+                    "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog" && called.Name == "TryClose",
+                called => called.Name == "Invoke");
             return planBuildsClosure && executeClosesThenVerifies;
+        }
+
+        private static bool HasOrderedCalls(IReadOnlyList<MethodBase> calls,
+            params Func<MethodBase, bool>[] predicates)
+        {
+            int cursor = 0;
+            foreach (Func<MethodBase, bool> predicate in predicates)
+            {
+                while (cursor < calls.Count && !predicate(calls[cursor])) cursor++;
+                if (cursor >= calls.Count) return false;
+                cursor++;
+            }
+            return true;
         }
 
         private static bool Test_RegistrationCallIL(Assembly assembly)
@@ -579,7 +602,7 @@ namespace SteamP2PFriends.WhitelistTests
                     IlValue instance = stack[stack.Count - 1];
                     stack.RemoveAt(stack.Count - 1);
                     if (instance.Kind != "HarmonyInstance") return false;
-                    site = new IlCallSite { Index = index, Method = called };
+                    site = new IlCallSite { Method = called };
                     site.Arguments.AddRange(args);
                     return true;
                 }
@@ -670,7 +693,7 @@ namespace SteamP2PFriends.WhitelistTests
                     if (stack.Count < count) return false;
                     List<IlValue> args = stack.Skip(stack.Count - count).Take(count).ToList();
                     stack.RemoveRange(stack.Count - count, count);
-                    site = new IlCallSite { Index = index, Method = called };
+                    site = new IlCallSite { Method = called };
                     site.Arguments.AddRange(args);
                     return true;
                 }
@@ -688,6 +711,25 @@ namespace SteamP2PFriends.WhitelistTests
             => value?.Kind == "Method"
                 && string.Equals(value.Value as string, "method:" + typeName + "|" + methodName,
                     StringComparison.Ordinal);
+
+        private static bool IsFieldValue(IlValue value, string expected)
+            => value?.Kind == "Field" && string.Equals(value.Value as string, expected, StringComparison.Ordinal);
+
+        private static bool IsIntegerValue(IlValue value, int expected)
+            => value?.Kind == "Integer" && Convert.ToInt32(value.Value) == expected;
+
+        private static string ExpectedAnimalParameterField(string targetMethodName)
+        {
+            switch (targetMethodName)
+            {
+                case "Update": return "VanillaUpdateParamTypes";
+                case "sendAnimalStates": return "VanillaSendAnimalStatesParamTypes";
+                case "spawnAnimal": return "VanillaSpawnAnimalParamTypes";
+                case "ReceiveMultipleAnimals": return "VanillaReceiveMultipleAnimalsParamTypes";
+                case "ReceiveAnimalStates": return "VanillaReceiveAnimalStatesParamTypes";
+                default: return string.Empty;
+            }
+        }
 
         private static int GetIntegerConstant(IlInstruction instruction)
         {
@@ -717,12 +759,15 @@ namespace SteamP2PFriends.WhitelistTests
                 if (site.Arguments.Count < 7) continue;
                 bool target = IsTypeValue(site.Arguments[1], "SDG.Unturned.AnimalManager")
                     && IsStringValue(site.Arguments[2], targetMethodName);
+                bool parameters = IsFieldValue(site.Arguments[3], ExpectedAnimalParameterField(targetMethodName));
                 bool patch = IsMethodValue(site.Arguments[4],
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     patchMethodName);
+                bool patchKind = IsIntegerValue(site.Arguments[5], 1);
                 bool label = IsStringValue(site.Arguments[6], registrationLabel);
                 if (site.Arguments[0].Kind == "Argument"
-                    && Convert.ToInt32(site.Arguments[0].Value) == 0 && target && patch && label) return true;
+                    && Convert.ToInt32(site.Arguments[0].Value) == 0
+                    && target && parameters && patch && patchKind && label) return true;
             }
             return false;
         }
@@ -819,7 +864,35 @@ namespace SteamP2PFriends.WhitelistTests
                     || instruction.OpCode.Name == "brtrue.s"
                     || instruction.OpCode.Name == "brfalse"
                     || instruction.OpCode.Name == "brfalse.s");
-            return verifyBranches && rollbackCalls.Any(rollback => rollback > verify);
+            int? verifyLocal = verify + 1 < instructions.Count
+                ? GetStoredLocalIndex(instructions[verify + 1]) : null;
+            int verifyLoad = verifyLocal.HasValue
+                ? FindLoadedLocalAfter(instructions, verify + 2, verifyLocal.Value, 8) : -1;
+            int branch = verifyLoad >= 0 ? FindConditionalBranchAfter(instructions, verifyLoad + 1, 3) : -1;
+            bool rollbackOnFailurePath = branch >= 0 && instructions.Skip(branch + 1).Take(12)
+                .Any(instruction => instruction.Operand is MethodBase called
+                    && called.Name == "RollbackBoth");
+            return verifyBranches && rollbackOnFailurePath;
+        }
+
+        private static int FindLoadedLocalAfter(List<IlInstruction> instructions, int start,
+            int local, int limit)
+        {
+            for (int index = start; index < Math.Min(instructions.Count, start + limit); index++)
+            {
+                if (GetLoadedLocalIndex(instructions[index]) == local) return index;
+            }
+            return -1;
+        }
+
+        private static int FindConditionalBranchAfter(List<IlInstruction> instructions, int start, int limit)
+        {
+            for (int index = start; index < Math.Min(instructions.Count, start + limit); index++)
+            {
+                string op = instructions[index].OpCode.Name;
+                if (op == "brtrue" || op == "brtrue.s" || op == "brfalse" || op == "brfalse.s") return index;
+            }
+            return -1;
         }
 
         private static List<int> FindCallIndices(List<IlInstruction> instructions,
@@ -863,7 +936,6 @@ namespace SteamP2PFriends.WhitelistTests
 
         private sealed class IlEvidence
         {
-            internal readonly HashSet<string> TypeNames = new HashSet<string>(StringComparer.Ordinal);
             internal readonly HashSet<string> Strings = new HashSet<string>(StringComparer.Ordinal);
             internal readonly HashSet<string> FieldNames = new HashSet<string>(StringComparer.Ordinal);
             internal readonly List<MethodBase> CalledMethods = new List<MethodBase>();
@@ -885,7 +957,6 @@ namespace SteamP2PFriends.WhitelistTests
 
         private sealed class IlCallSite
         {
-            internal int Index { get; set; }
             internal MethodBase Method { get; set; }
             internal List<IlValue> Arguments { get; } = new List<IlValue>();
         }
@@ -942,7 +1013,6 @@ namespace SteamP2PFriends.WhitelistTests
                             MemberInfo member = method.Module.ResolveMember(token);
                             Type resolvedType = member as Type ?? (member as MethodBase)?.DeclaringType
                                 ?? (member as FieldInfo)?.DeclaringType;
-                            if (resolvedType != null) evidence.TypeNames.Add(resolvedType.FullName);
                             if (member is FieldInfo field) evidence.FieldNames.Add(field.Name);
                         }
                         catch { }
@@ -954,6 +1024,7 @@ namespace SteamP2PFriends.WhitelistTests
                         break;
                     case OperandType.ShortInlineBrTarget:
                     case OperandType.ShortInlineI:
+                        if (offset >= il.Length) return evidence;
                         offset += 1;
                         break;
                     case OperandType.ShortInlineVar:
@@ -963,7 +1034,10 @@ namespace SteamP2PFriends.WhitelistTests
                     case OperandType.InlineI:
                     case OperandType.InlineI8:
                     case OperandType.InlineR:
-                        offset += code.OperandType == OperandType.InlineI8 || code.OperandType == OperandType.InlineR ? 8 : 4;
+                        int evidenceOperandSize = code.OperandType == OperandType.InlineI8
+                            || code.OperandType == OperandType.InlineR ? 8 : 4;
+                        if (offset + evidenceOperandSize > il.Length) return evidence;
+                        offset += evidenceOperandSize;
                         break;
                     case OperandType.InlineSwitch:
                         if (offset + 4 > il.Length) return evidence;
@@ -1019,6 +1093,9 @@ namespace SteamP2PFriends.WhitelistTests
                         break;
                     case OperandType.ShortInlineBrTarget:
                     case OperandType.ShortInlineI:
+                        if (offset >= il.Length) return instructions;
+                        if (code.OperandType == OperandType.ShortInlineI)
+                            instruction.Operand = (int)(sbyte)il[offset];
                         offset += 1;
                         break;
                     case OperandType.ShortInlineVar:
@@ -1027,18 +1104,25 @@ namespace SteamP2PFriends.WhitelistTests
                         break;
                     case OperandType.InlineBrTarget:
                     case OperandType.InlineI:
+                        if (offset + 4 > il.Length) return instructions;
+                        if (code.OperandType == OperandType.InlineI)
+                            instruction.Operand = BitConverter.ToInt32(il, offset);
                         offset += 4;
                         break;
                     case OperandType.InlineI8:
                     case OperandType.InlineR:
+                        if (offset + 8 > il.Length) return instructions;
                         offset += 8;
                         break;
                     case OperandType.InlineVar:
+                        if (offset + 2 > il.Length) return instructions;
                         instruction.Operand = (int)BitConverter.ToUInt16(il, offset);
                         offset += 2;
                         break;
                     case OperandType.InlineSwitch:
+                        if (offset + 4 > il.Length) return instructions;
                         int count = BitConverter.ToInt32(il, offset);
+                        if (count < 0 || count > (il.Length - offset - 4) / 4) return instructions;
                         offset += 4 + (count * 4);
                         break;
                 }
