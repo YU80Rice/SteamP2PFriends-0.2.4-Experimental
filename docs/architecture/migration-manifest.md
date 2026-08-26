@@ -79,6 +79,39 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | BuildArtifact | PASS | 主项目、WhitelistTests Release 构建 0 errors / 0 warnings |
 | Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
 
+## Batch 5：Resource、Collision 领域所有权与命名空间
+
+状态：源码结构、Release 构建、PureMemory 与结构 StaticIL 已完成；Runtime Pending
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Adapters/Resource/Patches/ResourceManagerWorldSyncDiagnosticPatch.cs` | 已整理 | namespace 与物理目录统一为 `SteamP2PFriends.Adapters.Resource.Patches` |
+| `Adapters/Resource/Patches/ResourceManagerRegionSyncPatch.cs` | 已整理 | 保留 Resource 区域同步与发送 writer 逻辑及全部注册元数据 |
+| `Adapters/Collision/Patches/LevelObjectRemoteCollisionPatch.cs` | 已整理 | namespace 与物理目录统一为 `SteamP2PFriends.Adapters.Collision.Patches` |
+| 注册、复位、断线清理、关键验证引用 | 已整理 | 统一指向上述领域入口，未创建兼容副本 |
+| `ModuleOwnershipCatalog` | 已扩展 | 显式记录 `Adapters.Resource` 与 `Adapters.Collision` 的唯一权威入口 |
+| `ResourceCollisionOwnershipStaticILContractTests` | 新增 | 编译产物级唯一命名空间/旧入口缺失接缝 |
+| `docs/architecture/resource-collision-ownership.md` | 新增 | 领域边界、入口映射、跨领域依赖与未决项 |
+
+### 保持不变与未决项
+
+- 原生 U3-SDK Resource step 3、Object/Collision step 4、Harmony target、patch method、owner、priority、登记调用顺序与注册后验证保持不变；
+- P2P 通道、SteamID、配置键、插件 GUID、日志语义、当前标签和已归档版本未修改；
+- 旧 Resource 生产 Authority Writer 仍是唯一生产权威；Production Control Seam 暂不接线；
+- Resource 既有 PureMemory 测试未复制，只增加结构 StaticIL；
+- Harmony 最终运行排序、碰撞/采伐/状态复制实际双端行为以及 SP/U3DS/P2P Runtime 仍 Pending，需在 Ticket 10/11 验证。
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | Resource/Collision 既有测试 + 新结构接缝，共 185 项测试 |
+| StaticIL | PASS | `ResourceCollisionOwnershipStaticILContractTests`；Resource/Collision 五个补丁均有且仅有一个期望 FullName，五个旧 `Core.Patches` 权威类型均不存在 |
+| BuildArtifact | PASS | 最终 Release 重建产物：插件 DLL SHA-256 `FE6A8D3EF30711A20285E86F5642F17FEC1CE29E8AAAFA693583C9025245FD15`、MVID `b8093107-d624-4aa8-8f44-bdfd265e8a08`；测试 EXE SHA-256 `1A0D5091CC0052A78FE6A046021FFFC38223E20126C93C88D61FE5DCC2402140`、MVID `25666cf0-679d-4366-bd5c-66df5594a775` |
+| Runtime | PENDING | 本票不执行运行时迁移验收 |
+
 ## Batch 3：Domain Ownership、Namespace 与 Identity
 
 状态：源码、构建、PureMemory 与身份 StaticIL 验证完成；Runtime 未执行

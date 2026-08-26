@@ -29,9 +29,9 @@ Ticket 03 将跨模块身份集中到 `SteamP2PFriends.Core.Identity`。身份�
 
 ## 领域归属
 
-- `Adapters.Resource`：Resource 生命周期、快照和 Resource patches；本票据不接入 Production Control Seam。
+- `Adapters.Resource`：Resource 生命周期、快照和 `Adapters.Resource.Patches` 下的 Resource patches；本票据不接入 Production Control Seam。
 - `Adapters.Zombie`：Zombie 生命周期、快照和 Zombie patches。
 - `Adapters.Animal`：Animal 生命周期、快照和 Animal patches。
-- `Adapters.Structure`、`Adapters.Collision`、`Adapters.Item`：保持现有领域归属。
+- `Adapters.Structure`、`Adapters.Item`：保持现有领域归属；`Adapters.Collision` 只拥有静态 LevelObject 碰撞适配器和其补丁。
 - `MultiObserver`：只保留观察者控制面、Spatial Index 和 SPI；领域实现不得以 `SteamP2PFriends.MultiObserver` 作为命名空间归属。
 - `Core.Identity`：只提供身份值对象与固定 Domain Id 来源，不拥有领域行为。

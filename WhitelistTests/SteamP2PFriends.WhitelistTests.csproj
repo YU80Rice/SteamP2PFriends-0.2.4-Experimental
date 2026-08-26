@@ -155,6 +155,7 @@
     <Compile Include="Core\IdentityContractTests.cs" />
     <Compile Include="StaticIL\IdentityStaticILContractTests.cs" />
     <Compile Include="StaticIL\ModuleOwnershipStaticILContractTests.cs" />
+    <Compile Include="StaticIL\ResourceCollisionOwnershipStaticILContractTests.cs" />
     <Compile Include="Core\RegistrationClosureTests.cs" />
     <Compile Include="Fakes\FakeApprovalRuntimeContext.cs" />
     <Compile Include="Fakes\FakeApprovalWhitelistProxy.cs" />

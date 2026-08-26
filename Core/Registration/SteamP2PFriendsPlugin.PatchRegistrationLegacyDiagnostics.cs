@@ -6,6 +6,7 @@ using SDG.NetPak;
 using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Client;
+using SteamP2PFriends.Adapters.Resource.Patches;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
@@ -345,7 +346,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Core.Patches.ResourceManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                ResourceManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {

@@ -6,6 +6,8 @@ using SDG.NetPak;
 using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Client;
+using SteamP2PFriends.Adapters.Collision.Patches;
+using SteamP2PFriends.Adapters.Resource.Patches;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
@@ -121,7 +123,7 @@ namespace SteamP2PFriends
             //   SendResources 为 ClientStaticMethod 字段无独立 ask 方法，Prefix 挂在 SendResources_Write。
             try
             {
-                if (!Core.Patches.ResourceManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!ResourceManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -145,7 +147,7 @@ namespace SteamP2PFriends
             //   Add remote guests' regional collision coverage while leaving renderer visibility host-local.
             try
             {
-                if (!Core.Patches.LevelObjectRemoteCollisionPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!LevelObjectRemoteCollisionPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {

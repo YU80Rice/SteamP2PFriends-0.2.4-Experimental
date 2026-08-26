@@ -86,6 +86,12 @@ namespace SteamP2PFriends.Core.Ownership
                 new ModuleOwnershipRecord("Security", ModuleOwnershipKind.Security,
                     "Security", "P2PApprovalManager",
                     "U3-REG-03-RouteB", string.Empty),
+                new ModuleOwnershipRecord("Adapters.Resource", ModuleOwnershipKind.DomainAdapter,
+                    "Adapters/Resource", "ResourceDomainAdapter",
+                    "U3-REG-05-WorldSyncAndAdapters", string.Empty),
+                new ModuleOwnershipRecord("Adapters.Collision", ModuleOwnershipKind.DomainAdapter,
+                    "Adapters/Collision", "LevelObjectCollisionAdapter",
+                    "U3-REG-05-WorldSyncAndAdapters", string.Empty),
                 new ModuleOwnershipRecord("Adapters", ModuleOwnershipKind.DomainAdapter,
                     "Adapters", "RegistrationClosure",
                     "U3-REG-05-WorldSyncAndAdapters", string.Empty)
@@ -140,6 +146,29 @@ namespace SteamP2PFriends.Core.Ownership
                     required.Remove(trace);
             }
             return required.Count == 0;
+        }
+
+        internal static bool HasResourceCollisionOwnership()
+        {
+            ModuleOwnershipRecord resource = Find("Adapters.Resource");
+            ModuleOwnershipRecord collision = Find("Adapters.Collision");
+            return resource != null && collision != null
+                && resource.PhysicalRoot == "Adapters/Resource"
+                && resource.AuthorityType == "ResourceDomainAdapter"
+                && collision.PhysicalRoot == "Adapters/Collision"
+                && collision.AuthorityType == "LevelObjectCollisionAdapter"
+                && resource.RegistrationTrace == "U3-REG-05-WorldSyncAndAdapters"
+                && collision.RegistrationTrace == "U3-REG-05-WorldSyncAndAdapters";
+        }
+
+        private static ModuleOwnershipRecord Find(string moduleId)
+        {
+            foreach (ModuleOwnershipRecord record in _records)
+            {
+                if (record.ModuleId == moduleId)
+                    return record;
+            }
+            return null;
         }
     }
 }

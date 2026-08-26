@@ -3,6 +3,8 @@ using SDG.Provider.Services.Multiplayer.Server;
 using SDG.Unturned;
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.Adapters.Item;
+using SteamP2PFriends.Adapters.Collision.Patches;
+using SteamP2PFriends.Adapters.Resource.Patches;
 using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.Shared.Enums;
@@ -127,9 +129,9 @@ namespace SteamP2PFriends.Host
                     Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
                     Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
                     Core.Patches.ItemManagerRegionSyncPatch.ResetAll();
-                    Core.Patches.ResourceManagerRegionSyncPatch.ResetAll();
+                    ResourceManagerRegionSyncPatch.ResetAll();
                     Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();
-                    Core.Patches.LevelObjectRemoteCollisionPatch.ResetAll();
+                    LevelObjectRemoteCollisionPatch.ResetAll();
                     RemotePlayerRenderProbe.ResetAll();
                     Core.Patches.WorldSyncDiagnosticCore.ResetAll();
                     Security.Patches.P2PListenHostCommandPermissionPatch.ResetForSession();
@@ -1072,7 +1074,7 @@ namespace SteamP2PFriends.Host
             {
                 if (wasP2P)
                 {
-                    try { Core.Patches.LevelObjectRemoteCollisionPatch.ResetAll(); }
+                    try { LevelObjectRemoteCollisionPatch.ResetAll(); }
                     catch (Exception collisionEx) { RoleLogger.Warn("[Host]", "[LevelObjectCollision] ResetAll (Abort) 异常: " + collisionEx.GetType().Name); }
                     string stage6BFailure;
                     if (!TryCleanupStage6BForExit(out stage6BFailure))
@@ -1200,7 +1202,7 @@ namespace SteamP2PFriends.Host
             {
                 if (wasP2P)
                 {
-                    try { Core.Patches.LevelObjectRemoteCollisionPatch.ResetAll(); }
+                    try { LevelObjectRemoteCollisionPatch.ResetAll(); }
                     catch (Exception collisionEx) { RoleLogger.Warn("[Host]", "[LevelObjectCollision] ResetAll (Stop) 异常: " + collisionEx.GetType().Name); }
                     string stage6BFailure;
                     if (!TryCleanupStage6BForExit(out stage6BFailure))

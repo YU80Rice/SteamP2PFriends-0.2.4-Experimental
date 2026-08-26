@@ -1,4 +1,5 @@
 using SDG.Unturned;
+using SteamP2PFriends.Adapters.Collision.Patches;
 using SteamP2PFriends.Client;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.Core.Patches;

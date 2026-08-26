@@ -91,9 +91,9 @@ namespace SteamP2PFriends
             Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
             Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
             Core.Patches.ItemManagerRegionSyncPatch.ResetAll();
-            Core.Patches.ResourceManagerRegionSyncPatch.ResetAll();
+            SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch.ResetAll();
             Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();
-            Core.Patches.LevelObjectRemoteCollisionPatch.ResetAll();
+            SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.ResetAll();
             SteamP2PFriends.Host.RemotePlayerRenderProbe.ResetAll();
             SteamP2PFriends.Client.ClientRemotePlayerRenderProbe.ResetAll();
             Core.Patches.WorldSyncDiagnosticCore.ResetAll();

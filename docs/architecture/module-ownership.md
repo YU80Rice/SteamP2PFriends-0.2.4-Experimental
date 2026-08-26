@@ -16,7 +16,8 @@
 | Platform UI | `Platform/UI` | `P2PNativeMenuUI` | `U3-REG-03` / `U3-REG-05` |
 | Platform Diagnostics | `Platform/Diagnostics` | `RoleLogger` | `U3-REG-02` / `U3-REG-04` / `U3-REG-06` |
 | Security | `Security` | `P2PApprovalManager` + `P2PWhitelistService` | `U3-REG-03` |
-| Domain adapters | `Adapters/<Domain>` | `RegistrationClosure` 登记的生命周期/复制角色 | `U3-REG-05` |
+| Resource adapter | `Adapters/Resource` | `ResourceDomainAdapter`（生命周期/复制）；`Adapters/Resource/Patches`（Resource 补丁） | `U3-REG-05` |
+| Collision adapter | `Adapters/Collision` | `LevelObjectCollisionAdapter`（生命周期）；`Adapters/Collision/Patches`（静态物体碰撞补丁） | `U3-REG-05` |
 
 ## 受控跨领域位置
 
@@ -28,6 +29,19 @@
 Security 的准入补丁已经从 `Adapters/Security` 迁入 `Security/Patches`；领域适配器目录不再
 承担准入状态机的权威实现。Transport/UI/Diagnostics 的补丁仍在各自物理子目录中，后续可
 独立迁移 namespace，但本票不改变 Harmony target、owner、priority 或注册顺序。
+
+## Ticket 05：Resource / Collision 归属
+
+Resource 与 Collision 的物理目录和编译命名空间现在一致：
+
+- `Adapters/Resource` 只拥有 Resource 生命周期、快照、区域同步、世界同步诊断、采伐复制和资源碰撞补丁；
+- `Adapters/Collision` 只拥有静态 LevelObject 碰撞适配器及远端静态物体碰撞补丁；
+- `LevelGroundRemoteTreeCollisionPatch` 保留在 Resource，因为它以 ResourceSpawnpoint 和树木/矿石资源状态为原生锚点；
+- `Core/Patches` 不再编译出上述 Resource/Collision 五个旧命名空间权威类型，避免物理目录与注册入口分裂。
+
+资源补丁仍由 `PatchRegistrationOrchestrator` 的既有 Wrapper/Region 阶段按原调用顺序登记；
+Host 会话复位、断线清理和注册后验证只改为指向同一领域入口。旧生产 Authority Writer 仍是唯一
+生产权威，Resource Production Control Seam 本票不接线。
 
 ## 保持不变
 
