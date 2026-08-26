@@ -224,3 +224,31 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | StaticIL | PASS | `ItemZombieOwnershipStaticILContractTests`；领域入口各 1 个，旧 Core Item/Zombie 权威类型为 0 |
 | BuildArtifact | PASS | 主项目与 WhitelistTests Release 构建均 0 errors / 0 warnings；本次交付报告绑定重新计算的 DLL/EXE SHA-256 与 MVID |
 | Runtime | PENDING | 未执行 SP、listen-host、U3DS 或 P2P 运行验收 |
+
+## Batch 7：Animal、Structure、Barricade 与其他领域所有权
+
+状态：源码结构、Release 构建、PureMemory 与结构 StaticIL 已完成；Runtime Pending
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Adapters/Animal/Patches/AnimalManagerP0C2SendAnimalStatesPatch.cs` | 已整理 | namespace 与物理目录统一为 `SteamP2PFriends.Adapters.Animal.Patches` |
+| `Adapters/Animal/Patches/AnimalManagerWorldSyncDiagnosticPatch.cs` | 已整理 | namespace 与物理目录统一为 `SteamP2PFriends.Adapters.Animal.Patches`，共享 Diagnostics core |
+| `Adapters/Structure/Patches/BarricadeManagerRegionSyncPatch.cs` | 已迁移 | 从 `Core/Patches` 移入 Structure/Barricade 领域唯一入口 |
+| `Adapters/Structure/Patches/StructureManagerRegionSyncPatch.cs` | 已迁移 | 从 `Core/Patches` 移入 Structure 领域唯一入口 |
+| `Adapters/Structure/Patches/P0EBarricadeLifecycle/*` | 已迁移 | Barricade lifecycle 相关 Helper、Matcher、Registration、Transpiler 统一归属 |
+| `Core/Registration/*`、Host/Session reset 引用 | 已更新 | 仅指向新入口，保持 Registration Trace 顺序 |
+| `Core/Lifecycle/SteamP2PFriendsPlugin.PatchRegistry.cs` | 已更新 | Session reset 指向 Structure/Barricade 新入口；仅更新 namespace 引用 |
+| `WhitelistTests/StaticIL/AnimalStructureOwnershipStaticILContractTests.cs` | 新增 | 验证 Animal/Structure/Barricade 唯一入口、旧类型缺失、Vehicle/Object Pending、Registration Trace 覆盖与注册入口形状 |
+| `docs/architecture/animal-structure-ownership.md` | 新增 | 逐领域状态、Pending 原因、边界与证据 |
+| `Core/Patches/Vehicle*` | Pending | Vehicle 归属证据不足，保留原位置，不创建并行目录/权威入口 |
+| `Core/Patches/ObjectManager*`、`Issue7ObjectBinaryStateDiagnosticPatch.cs` | Pending | Object 区域同步、世界诊断和二进制观察尚无单一领域适配器边界，保留原位置 |
+| 其他未确认跨领域补丁 | Pending | 保留在 `Core/Patches`，由 `Adapters.OtherPending` 记录原因 |
+
+### 行为保持与证据边界
+
+- Harmony target、owner、priority、patch method、注册顺序、生命周期、网络协议和生产 Authority Writer 未改变。
+- Resource Production Control Seam 未接线；本批次不宣称功能修复或 Runtime 通过。
+- PureMemory/既有领域测试与结构 StaticIL 全量入口通过；Runtime 仍需分别执行 SP、listen-host、U3DS、P2P 验收。
+- 独立 Standards/Spec 审核记录与 BuildArtifact 指纹归档于本票 `audit/2026-08-26/Implementation-0.2.4.8-1933.md`。

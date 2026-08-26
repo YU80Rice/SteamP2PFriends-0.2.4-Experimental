@@ -654,52 +654,52 @@ namespace SteamP2PFriends
             //   - TranspilerOwnerVerified=true（owner=com.yu80rice.steamp2pfriends + method=OnRegionUpdated_Transpiler + count=1）
             //   - PrefixOwnerVerified=true（owner=com.yu80rice.steamp2pfriends + method=SendRegion_Prefix + count=1）
             //   任一不满足强制 DiagnosticBuildValid=false
-            bool barricadeRegionOk = Core.Patches.BarricadeManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool barricadeRegionOk = SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!barricadeRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: BarricadeManagerRegionSyncPatch " +
-                    $"summary={Core.Patches.BarricadeManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"replacement={Core.Patches.BarricadeManagerRegionSyncPatch.ReplacementCount} " +
-                    $"signature={Core.Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
-                    $"sendRegionPrefix={Core.Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
-                    $"transpilerOwner={Core.Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Core.Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"replacement={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.ReplacementCount} " +
+                    $"signature={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
+                    $"sendRegionPrefix={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
+                    $"transpilerOwner={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK BarricadeManagerRegionSyncPatch: " +
-                    $"replacement={Core.Patches.BarricadeManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"signature={Core.Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
-                    $"sendRegionPrefix={Core.Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
-                    $"transpilerOwner={Core.Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Core.Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"replacement={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"signature={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
+                    $"sendRegionPrefix={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
+                    $"transpilerOwner={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool structureRegionOk = Core.Patches.StructureManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool structureRegionOk = SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!structureRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: StructureManagerRegionSyncPatch " +
-                    $"summary={Core.Patches.StructureManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"replacement={Core.Patches.StructureManagerRegionSyncPatch.ReplacementCount} " +
-                    $"signature={Core.Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
-                    $"askStructuresPrefix={Core.Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
-                    $"transpilerOwner={Core.Patches.StructureManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Core.Patches.StructureManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"replacement={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.ReplacementCount} " +
+                    $"signature={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
+                    $"askStructuresPrefix={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
+                    $"transpilerOwner={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK StructureManagerRegionSyncPatch: " +
-                    $"replacement={Core.Patches.StructureManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"signature={Core.Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
-                    $"askStructuresPrefix={Core.Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
-                    $"transpilerOwner={Core.Patches.StructureManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Core.Patches.StructureManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"replacement={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"signature={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
+                    $"askStructuresPrefix={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
+                    $"transpilerOwner={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
             bool p0S1S2Ok = Core.Patches.PlayerManagerBroadcastPatch.AllRegistrationsSucceeded;
@@ -901,7 +901,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Core.Patches.AnimalManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -1036,19 +1036,19 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.AllRegistrationsSucceeded)
+                if (!SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-C-2/Animal] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary} " +
-                        $"replacement={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.ReplacementCount} " +
-                        $"signature={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.SignatureResolved} " +
-                        $"transpilerOwner={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.TranspilerOwnerVerified}");
+                        $"[P0-C-2/Animal] !!! DIAGNOSTIC BUILD INVALID: summary={SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary} " +
+                        $"replacement={SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.ReplacementCount} " +
+                        $"signature={SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.SignatureResolved} " +
+                        $"transpilerOwner={SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.TranspilerOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-C-2/Animal] OK summary={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary}");
+                        $"[P0-C-2/Animal] OK summary={SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1401,24 +1401,24 @@ namespace SteamP2PFriends
             //   仅两个 Transpiler：equip + checkClaims；不全局伪造 Dedicator.IsDedicatedServer。
             try
             {
-                if (!Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.DiagnosticBuildValid)
+                if (!SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.DiagnosticBuildValid)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[5B-1B] !!! DIAGNOSTIC BUILD INVALID: BarricadeLifecycleRegistration " +
-                        $"registrationSucceeded={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
-                        $"rollbackAttempted={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.WasRollbackAttempted} " +
-                        $"rollbackClean={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRollbackClean} " +
-                        $"equipReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
-                        $"checkClaimsReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
+                        $"registrationSucceeded={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
+                        $"rollbackAttempted={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.WasRollbackAttempted} " +
+                        $"rollbackClean={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRollbackClean} " +
+                        $"equipReplacementApplied={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
+                        $"checkClaimsReplacementApplied={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
                         $"[5B-1B] OK BarricadeLifecycleRegistration " +
-                        $"registrationSucceeded={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
-                        $"equipReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
-                        $"checkClaimsReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
+                        $"registrationSucceeded={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
+                        $"equipReplacementApplied={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
+                        $"checkClaimsReplacementApplied={SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
                 }
             }
             catch (System.Exception ex)

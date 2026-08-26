@@ -88,8 +88,8 @@ namespace SteamP2PFriends
             MultiObserverShadowCoordinator.Shutdown();
             Core.Patches.UnityTagErrorSourceDiagnosticPatch.Shutdown();
             Core.Patches.PlayerLifecycleReadyDiagnosticPatch.Shutdown();
-            Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
-            Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
+            SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
+            SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.ResetAll();
             Adapters.Item.Patches.ItemManagerRegionSyncPatch.ResetAll();
             SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch.ResetAll();
             Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();

@@ -1,10 +1,11 @@
 using HarmonyLib;
 using SDG.Unturned;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Animal.Patches
 {
     /// <summary>
     /// AnimalManager 世界同步链路五段证据诊断。

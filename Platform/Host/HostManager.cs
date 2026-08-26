@@ -126,8 +126,8 @@ namespace SteamP2PFriends.Host
                 //   导致新会话同 SteamID 玩家的诊断日志被静默。
                 try
                 {
-                    Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
-                    Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
+                    SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
+                    SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.ResetAll();
                     Adapters.Item.Patches.ItemManagerRegionSyncPatch.ResetAll();
                     ResourceManagerRegionSyncPatch.ResetAll();
                     Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();

@@ -3,7 +3,7 @@ using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
 using System.Threading;
 
-namespace SteamP2PFriends.Core.Patches.P0EBarricadeLifecycle
+namespace SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle
 {
     /// <summary>
     /// Barricade 客机放置修复的两个薄 Helper + 共用核心判定 + 有界命中日志。

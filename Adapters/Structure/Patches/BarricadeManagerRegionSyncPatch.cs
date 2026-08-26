@@ -1,5 +1,4 @@
 using HarmonyLib;
-using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Shared;
 using System.Collections.Generic;
@@ -8,37 +7,41 @@ using System.Reflection.Emit;
 
 using Patches = SteamP2PFriends.Core.Patches;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Structure.Patches
 {
     /// <summary>
-    /// StructureManager.onRegionUpdated step 1 远程区域同步资格 patch + askStructures 决定性日志。
+    /// BarricadeManager.onRegionUpdated step 2 远程区域同步资格 patch + SendRegion 决定性日志。
     ///
     ///
-    /// 目标：解除 listen server 模式下"主机不向远程客机发送 Structures RPC"的诅咒。
-    /// vanilla 源码（U3-SDK StructureManager.cs:1074-1096）：
-    ///   if (step == 1)
+    /// 目标：解除 listen server 模式下"主机不向远程客机发送 Barricades RPC"的诅咒。
+    /// vanilla 源码（U3-SDK BarricadeManager.cs:2886-2908）：
+    ///   if (step == 2)
     ///   {
     ///       if (Dedicator.IsDedicatedServer)   <-- Transpiler 替换此调用
     ///       {
-    ///           // 遍历玩家周围 STRUCTURE_REGIONS 范围，调 askStructures 发送
+    ///           // 遍历玩家周围 BARRICADE_REGIONS 范围，调 SendRegion 发送
     ///       }
     ///   }
     ///
     ///   - onRegionUpdated 签名精确解析（private instance, 7 args）
-    ///   - askStructures 签名精确解析（internal instance, 4 args: ITransportConnection, byte, byte, float）
+    ///   - SendRegion 签名精确解析（internal instance, 6 args）
     ///   - Transpiler replacement count 必须精确等于 1
-    ///   - askStructures Prefix 必须登记成功
-    ///   - Transpiler owner 为 com.yu80rice.steamp2pfriends，patch method 为 StructureManagerRegionSyncPatch.OnRegionUpdated_Transpiler，count=1
-    ///   - askStructures Prefix owner 为 com.yu80rice.steamp2pfriends，patch method 为 StructureManagerRegionSyncPatch.AskStructures_Prefix，count=1
+    ///   - SendRegion Prefix 必须登记成功
+    ///   - Transpiler owner 为 com.yu80rice.steamp2pfriends，patch method 为 BarricadeManagerRegionSyncPatch.OnRegionUpdated_Transpiler，count=1
+    ///   - SendRegion Prefix owner 为 com.yu80rice.steamp2pfriends，patch method 为 BarricadeManagerRegionSyncPatch.SendRegion_Prefix，count=1
+    ///
+    ///   - 不全局伪造 Dedicator.IsDedicatedServer
+    ///   - 不修改 BarricadeManager.onLevelLoaded 中的 if (Provider.isServer) load() 守卫
+    ///   - 不引入自定义 RPC（继续使用原生 SendRegion / ReceiveMultipleBarricades）
     /// </summary>
-    public static class StructureManagerRegionSyncPatch
+    public static class BarricadeManagerRegionSyncPatch
     {
         public static bool AllRegistrationsSucceeded { get; private set; }
         public static string RegistrationSummary { get; private set; } = "未登记";
         public static int ReplacementCount { get; private set; } = -1;
         public static bool SignatureResolved { get; private set; }
         public static string SignatureSummary { get; private set; } = "未自检";
-        public static bool AskStructuresPrefixRegistered { get; private set; }
+        public static bool SendRegionPrefixRegistered { get; private set; }
 
         public static bool TranspilerOwnerVerified { get; private set; }
         public static bool PrefixOwnerVerified { get; private set; }
@@ -50,19 +53,21 @@ namespace SteamP2PFriends.Core.Patches
 
         private const string HarmonyId = SteamP2PFriendsPlugin.HARMONY_ID;
         private const string TargetMethodName = "onRegionUpdated";
-        private const string AskStructuresMethodName = "askStructures";
+        private const string SendRegionMethodName = "SendRegion";
         private const string PatchTranspilerName = nameof(OnRegionUpdated_Transpiler);
-        private const string PatchAskStructuresPrefixName = nameof(AskStructures_Prefix);
+        private const string PatchSendRegionPrefixName = nameof(SendRegion_Prefix);
 
+        /// <summary>
+        /// </summary>
         public static bool RegisterManual(Harmony harmony)
         {
-            RoleLogger.Info("[Shared]", "[StructureRegionSync] === 手动登记 Transpiler + askStructures Prefix（P0-B + P0-D + P1-1）===");
+            RoleLogger.Info("[Shared]", "[BarricadeRegionSync] === 手动登记 Transpiler + SendRegion Prefix（P0-B + P0-D + P1-1）===");
 
             if (harmony == null)
             {
                 AllRegistrationsSucceeded = false;
                 RegistrationSummary = "harmony=null";
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! {RegistrationSummary}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! {RegistrationSummary}");
                 return false;
             }
 
@@ -71,7 +76,7 @@ namespace SteamP2PFriends.Core.Patches
             {
                 AllRegistrationsSucceeded = false;
                 RegistrationSummary = $"onRegionUpdated 签名自检失败 ({SignatureSummary})";
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! {RegistrationSummary}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! {RegistrationSummary}");
                 return false;
             }
 
@@ -80,25 +85,25 @@ namespace SteamP2PFriends.Core.Patches
             {
                 AllRegistrationsSucceeded = false;
                 RegistrationSummary = $"Transpiler 登记失败 (replacement={ReplacementCount})";
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! {RegistrationSummary}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! {RegistrationSummary}");
                 return false;
             }
 
-            bool prefixOk = RegisterAskStructuresPrefix(harmony);
-            AskStructuresPrefixRegistered = prefixOk;
+            bool prefixOk = RegisterSendRegionPrefix(harmony);
+            SendRegionPrefixRegistered = prefixOk;
             if (!prefixOk)
             {
                 AllRegistrationsSucceeded = false;
-                RegistrationSummary = "askStructures Prefix 登记失败";
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! {RegistrationSummary}");
+                RegistrationSummary = "SendRegion Prefix 登记失败";
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! {RegistrationSummary}");
                 return false;
             }
 
             AllRegistrationsSucceeded = true;
-            RegistrationSummary = $"signature={SignatureResolved}, replacement=1/1, askStructuresPrefix=true, " +
+            RegistrationSummary = $"signature={SignatureResolved}, replacement=1/1, sendRegionPrefix=true, " +
                 $"transpilerOwner={TranspilerOwnerVerified}, prefixOwner={PrefixOwnerVerified}";
             RoleLogger.Info("[Shared]",
-                $"[StructureRegionSync] OK 手动登记成功 summary={RegistrationSummary}");
+                $"[BarricadeRegionSync] OK 手动登记成功 summary={RegistrationSummary}");
             return true;
         }
 
@@ -106,17 +111,17 @@ namespace SteamP2PFriends.Core.Patches
         {
             try
             {
-                MethodInfo original = AccessTools.Method(typeof(StructureManager), TargetMethodName);
+                MethodInfo original = AccessTools.Method(typeof(BarricadeManager), TargetMethodName);
                 if (original == null)
                 {
-                    RoleLogger.Error("[Shared]", "[StructureRegionSync] !!! onRegionUpdated AccessTools.Method 返回 null");
+                    RoleLogger.Error("[Shared]", "[BarricadeRegionSync] !!! onRegionUpdated AccessTools.Method 返回 null");
                     return false;
                 }
 
-                MethodInfo transpiler = AccessTools.Method(typeof(StructureManagerRegionSyncPatch), PatchTranspilerName);
+                MethodInfo transpiler = AccessTools.Method(typeof(BarricadeManagerRegionSyncPatch), PatchTranspilerName);
                 if (transpiler == null)
                 {
-                    RoleLogger.Error("[Shared]", "[StructureRegionSync] !!! Transpiler 方法未找到");
+                    RoleLogger.Error("[Shared]", "[BarricadeRegionSync] !!! Transpiler 方法未找到");
                     return false;
                 }
 
@@ -125,7 +130,7 @@ namespace SteamP2PFriends.Core.Patches
                 if (ReplacementCount != 1)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[StructureRegionSync] !!! DIAGNOSTIC BUILD INVALID: replacement count={ReplacementCount} 期望=1");
+                        $"[BarricadeRegionSync] !!! DIAGNOSTIC BUILD INVALID: replacement count={ReplacementCount} 期望=1");
                     return false;
                 }
 
@@ -133,38 +138,37 @@ namespace SteamP2PFriends.Core.Patches
                 if (!ownerOk)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[StructureRegionSync] !!! DIAGNOSTIC BUILD INVALID: Transpiler owner 自检失败 summary={TranspilerOwnerSummary}");
+                        $"[BarricadeRegionSync] !!! DIAGNOSTIC BUILD INVALID: Transpiler owner 自检失败 summary={TranspilerOwnerSummary}");
                     return false;
                 }
 
                 RoleLogger.Info("[Shared]",
-                    $"[StructureRegionSync] OK Transpiler 已登记 (replacement=1/1, owner={TranspilerOwnerVerified})");
+                    $"[BarricadeRegionSync] OK Transpiler 已登记 (replacement=1/1, owner={TranspilerOwnerVerified})");
                 return true;
             }
             catch (System.Exception ex)
             {
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! RegisterTranspiler 异常: {ex}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! RegisterTranspiler 异常: {ex}");
                 return false;
             }
         }
 
-        private static bool RegisterAskStructuresPrefix(Harmony harmony)
+        private static bool RegisterSendRegionPrefix(Harmony harmony)
         {
             try
             {
-                // askStructures internal 方法签名：void askStructures(ITransportConnection, byte, byte, float)
-                MethodInfo original = AccessTools.Method(typeof(StructureManager), AskStructuresMethodName,
-                    new System.Type[] { typeof(ITransportConnection), typeof(byte), typeof(byte), typeof(float) });
+                // SendRegion 是 internal 方法，AccessTools 能访问到
+                MethodInfo original = AccessTools.Method(typeof(BarricadeManager), SendRegionMethodName);
                 if (original == null)
                 {
-                    RoleLogger.Error("[Shared]", "[StructureRegionSync] !!! askStructures(4 args) AccessTools.Method 返回 null");
+                    RoleLogger.Error("[Shared]", "[BarricadeRegionSync] !!! SendRegion AccessTools.Method 返回 null");
                     return false;
                 }
 
-                MethodInfo prefix = AccessTools.Method(typeof(StructureManagerRegionSyncPatch), PatchAskStructuresPrefixName);
+                MethodInfo prefix = AccessTools.Method(typeof(BarricadeManagerRegionSyncPatch), PatchSendRegionPrefixName);
                 if (prefix == null)
                 {
-                    RoleLogger.Error("[Shared]", "[StructureRegionSync] !!! askStructures Prefix 方法未找到");
+                    RoleLogger.Error("[Shared]", "[BarricadeRegionSync] !!! SendRegion Prefix 方法未找到");
                     return false;
                 }
 
@@ -174,22 +178,24 @@ namespace SteamP2PFriends.Core.Patches
                 if (!ownerOk)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[StructureRegionSync] !!! DIAGNOSTIC BUILD INVALID: askStructures Prefix owner 自检失败 summary={PrefixOwnerSummary}");
+                        $"[BarricadeRegionSync] !!! DIAGNOSTIC BUILD INVALID: SendRegion Prefix owner 自检失败 summary={PrefixOwnerSummary}");
                     return false;
                 }
 
                 RoleLogger.Info("[Shared]",
-                    $"[StructureRegionSync] OK askStructures Prefix 已登记 (owner={PrefixOwnerVerified})");
+                    $"[BarricadeRegionSync] OK SendRegion Prefix 已登记 (owner={PrefixOwnerVerified})");
                 return true;
             }
             catch (System.Exception ex)
             {
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! RegisterAskStructuresPrefix 异常: {ex}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! RegisterSendRegionPrefix 异常: {ex}");
                 return false;
             }
         }
 
         /// <summary>
+        /// 验证目标方法上 owner=com.yu80rice.steamp2pfriends 的 patch 精确为 1 个，
+        /// 且 patch method 的 DeclaringType 和 Name 与本类期望一致。
         /// </summary>
         private static bool VerifyPatchOwner(MethodInfo original, bool isTranspiler)
         {
@@ -215,8 +221,8 @@ namespace SteamP2PFriends.Core.Patches
                     return false;
                 }
 
-                string expectedMethodName = isTranspiler ? PatchTranspilerName : PatchAskStructuresPrefixName;
-                System.Type expectedDeclaringType = typeof(StructureManagerRegionSyncPatch);
+                string expectedMethodName = isTranspiler ? PatchTranspilerName : PatchSendRegionPrefixName;
+                System.Type expectedDeclaringType = typeof(BarricadeManagerRegionSyncPatch);
 
                 int ownCount = 0;
                 bool methodMatched = false;
@@ -286,11 +292,14 @@ namespace SteamP2PFriends.Core.Patches
             }
         }
 
+        /// <summary>
+        /// 期望：private instance method，7 个参数 (Player, byte, byte, byte, byte, byte, ref bool)
+        /// </summary>
         private static bool VerifyTargetSignature()
         {
             try
             {
-                MethodInfo method = AccessTools.Method(typeof(StructureManager), TargetMethodName);
+                MethodInfo method = AccessTools.Method(typeof(BarricadeManager), TargetMethodName);
                 if (method == null)
                 {
                     SignatureResolved = false;
@@ -354,24 +363,32 @@ namespace SteamP2PFriends.Core.Patches
                 SignatureResolved = true;
                 SignatureSummary = "private instance void onRegionUpdated(Player,byte,byte,byte,byte,byte,ref bool)";
                 RoleLogger.Info("[Shared]",
-                    $"[StructureRegionSync] OK 签名自检通过: {SignatureSummary}");
+                    $"[BarricadeRegionSync] OK 签名自检通过: {SignatureSummary}");
                 return true;
             }
             catch (System.Exception ex)
             {
                 SignatureResolved = false;
                 SignatureSummary = $"异常: {ex.Message}";
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] !!! 签名自检异常: {ex}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] !!! 签名自检异常: {ex}");
                 return false;
             }
         }
 
         /// <summary>
-        ///   - 改用 CodeInstruction.Calls(dedicatedGetter) 替代 ReferenceEquals
-        ///   - 原地修改 codes[i].opcode/operand，保留 labels/blocks
+        /// 替换 vanilla onRegionUpdated 中的 Dedicator.get_IsDedicatedServer() 调用
+        /// 为 ListenRegionSyncEligibility.IsDedicatedOrP2PRemoteRecipient(player)。
+        ///
+        ///   - 改用 CodeInstruction.Calls(dedicatedGetter) 替代 ReferenceEquals（不依赖 MethodInfo 对象引用）
+        ///   - 原地修改 codes[i].opcode/operand（保留 labels/blocks），避免未来游戏更新或 Harmony 组合 patch 后控制流元数据被破坏
+        ///
+        /// 栈平衡验证：
+        ///   原版：call get_IsDedicatedServer()（无参数，返回 bool i4）=> 栈净变化 +1
+        ///   替换：ldarg.1（压入 Player）+ call IsDedicatedOrP2PRemoteRecipient(Player)（消费 1，返回 bool i4）=> 栈净变化 +1
+        ///   一致。
         /// </summary>
         [HarmonyTranspiler]
-        [HarmonyPatch(typeof(StructureManager), TargetMethodName)]
+        [HarmonyPatch(typeof(BarricadeManager), TargetMethodName)]
         public static IEnumerable<CodeInstruction> OnRegionUpdated_Transpiler(
             IEnumerable<CodeInstruction> instructions, ILGenerator generator)
         {
@@ -387,14 +404,14 @@ namespace SteamP2PFriends.Core.Patches
             {
                 ReplacementCount = -1;
                 throw new System.InvalidOperationException(
-                    "StructureManagerRegionSyncPatch: Dedicator.get_IsDedicatedServer not found");
+                    "BarricadeManagerRegionSyncPatch: Dedicator.get_IsDedicatedServer not found");
             }
 
             if (eligibilityMethod == null)
             {
                 ReplacementCount = -1;
                 throw new System.InvalidOperationException(
-                    "StructureManagerRegionSyncPatch: IsDedicatedOrP2PRemoteRecipient not found");
+                    "BarricadeManagerRegionSyncPatch: IsDedicatedOrP2PRemoteRecipient not found");
             }
 
             int replacementCount = 0;
@@ -418,35 +435,25 @@ namespace SteamP2PFriends.Core.Patches
             if (replacementCount != 1)
             {
                 throw new System.InvalidOperationException(
-                    $"StructureManagerRegionSyncPatch: replacement count={replacementCount} expected=1");
+                    $"BarricadeManagerRegionSyncPatch: replacement count={replacementCount} expected=1");
             }
 
             RoleLogger.Info("[Shared]",
-                $"[StructureRegionSync] OK Transpiler replacement=1/1，IL 修改已应用（原地修改，保留 labels/blocks）");
+                $"[BarricadeRegionSync] OK Transpiler replacement=1/1，IL 修改已应用（原地修改，保留 labels/blocks）");
             return codes;
         }
 
         /// <summary>
-        /// 仅记录日志，不影响原方法行为。
-        /// askStructures 签名：void askStructures(ITransportConnection, byte, byte, float)
+        /// 仅记录日志，不影响原方法行为（不返回 false，不修改参数）。
+        /// 形成完整链路证据：主机 eligible/send -> ClientMethod remote attempt/send-success -> 客机 Receive。
         /// </summary>
         [HarmonyPrefix]
-        [HarmonyPatch(typeof(StructureManager), AskStructuresMethodName)]
-        public static void AskStructures_Prefix(ITransportConnection transportConnection, byte x, byte y)
+        [HarmonyPatch(typeof(BarricadeManager), SendRegionMethodName)]
+        public static void SendRegion_Prefix(SteamPlayer client, byte x, byte y)
         {
-            if (transportConnection == null) return;
+            if (client == null) return;
 
-            // 从 Provider.clients 反查 SteamPlayer（askStructures 只接收 ITransportConnection）
-            ulong steamId = 0UL;
-            foreach (SteamPlayer sp in Provider.clients)
-            {
-                if (sp != null && sp.transportConnection == transportConnection)
-                {
-                    steamId = sp.playerID?.steamID.m_SteamID ?? 0UL;
-                    break;
-                }
-            }
-
+            ulong steamId = client.playerID?.steamID.m_SteamID ?? 0UL;
             if (steamId == 0UL) return;
 
             int count;
@@ -459,18 +466,21 @@ namespace SteamP2PFriends.Core.Patches
 
             if (count > EligibilityLogLimit) return;
 
-            string transportDesc = transportConnection.GetType().Name;
+            string transportDesc = client.transportConnection != null
+                ? client.transportConnection.GetType().Name
+                : "null";
 
             string escPrefix = SteamP2PFriends.Host.HostManager.EscPauseDetectorEnabled
                 ? $"escPaused={SteamP2PFriends.Host.HostManager.IsEscPausedCurrent} "
                 : "";
 
             RoleLogger.Info("[Host]",
-                $"[ListenRegionSync/Structure] send #{count}/{EligibilityLogLimit} " +
-                $"{escPrefix}steamId={steamId} transport={transportDesc} step=1 region=({x},{y})");
+                $"[ListenRegionSync/Barricade] send #{count}/{EligibilityLogLimit} " +
+                $"{escPrefix}steamId={steamId} transport={transportDesc} step=2 region=({x},{y})");
         }
 
         /// <summary>
+        /// 断线时清除已不在 Provider.clients 中的 SteamID 计数，避免同一 SteamID 重连后丢失诊断日志。
         /// </summary>
         public static void OnClientDisconnected()
         {
@@ -507,23 +517,24 @@ namespace SteamP2PFriends.Core.Patches
                 if (keysToRemove.Count > 0)
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[StructureRegionSync] OnClientDisconnected 清除断线玩家计数 ({keysToRemove.Count} 个 steamId)");
+                        $"[BarricadeRegionSync] OnClientDisconnected 清除断线玩家计数 ({keysToRemove.Count} 个 steamId)");
                 }
             }
             catch (System.Exception ex)
             {
-                RoleLogger.Error("[Shared]", $"[StructureRegionSync] OnClientDisconnected 异常: {ex}");
+                RoleLogger.Error("[Shared]", $"[BarricadeRegionSync] OnClientDisconnected 异常: {ex}");
             }
         }
 
         /// <summary>
+        /// 由 HostManager.StartP2PServer / Plugin.OnDestroy 调用。
         /// </summary>
         public static void ResetAll()
         {
             int cleared = _eligibilityLogCounts.Count;
             _eligibilityLogCounts.Clear();
             RoleLogger.Info("[Shared]",
-                $"[StructureRegionSync] ResetAll 清空所有计数 ({cleared} 个 steamId)");
+                $"[BarricadeRegionSync] ResetAll 清空所有计数 ({cleared} 个 steamId)");
         }
     }
 }

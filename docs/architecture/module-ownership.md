@@ -58,3 +58,20 @@ Item 与 Zombie 的补丁、生命周期辅助类型和领域适配器已统一�
 - Registration Trace 的七个阶段及其 U3-SDK 锚点不变；
 - Resource Production Control Seam 与旧 Authority Writer 未迁移；
 - `Core/ControlPlane` 仍是纯内存控制面，物理目录整理不代表 Runtime 已接线。
+
+## Ticket 07：Animal / Structure / Barricade / Vehicle
+
+`Adapters.Animal` 的两个 AnimalManager 补丁已与 `Adapters/Animal/Patches` 对齐；
+`Adapters.Structure` 与 `Adapters.Barricade` 共享 `BuildingDomainAdapter`，但分别保留
+Structure/Barricade 的补丁入口。区域同步补丁和 `P0EBarricadeLifecycle` 已从
+`Core/Patches` 移入 `Adapters/Structure/Patches`，旧命名空间不再编译出权威类型。
+
+`Adapters.Vehicle` 为 Pending：VehicleManager 世界同步、原生生命周期和交互诊断仍由
+`Core/Patches` 承载，当前没有足够源码证据证明单一领域适配器边界，因此不移动、不新增
+兼容入口。其他未确认的跨领域诊断/审计补丁同样保留在 `Core/Patches`，原因登记在
+`docs/architecture/animal-structure-ownership.md`。
+
+`Adapters.Object` 同样为 Pending：`ObjectManagerRegionSyncPatch`、
+`ObjectManagerWorldSyncDiagnosticPatch` 与 `Issue7ObjectBinaryStateDiagnosticPatch` 的
+区域同步、诊断和二进制观察职责尚未形成可证明的单一适配器边界，因此保持在
+`Core/Patches`，不创建并行 `Adapters/Object` 权威入口。

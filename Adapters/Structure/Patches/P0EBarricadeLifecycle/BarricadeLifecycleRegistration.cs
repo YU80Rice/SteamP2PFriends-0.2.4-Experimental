@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
 
-namespace SteamP2PFriends.Core.Patches.P0EBarricadeLifecycle
+namespace SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle
 {
     /// <summary>
     /// Barricade equip/checkClaims Transpiler 的原子登记中心。

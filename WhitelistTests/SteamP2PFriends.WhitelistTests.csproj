@@ -157,6 +157,7 @@
     <Compile Include="StaticIL\ModuleOwnershipStaticILContractTests.cs" />
     <Compile Include="StaticIL\ResourceCollisionOwnershipStaticILContractTests.cs" />
     <Compile Include="StaticIL\ItemZombieOwnershipStaticILContractTests.cs" />
+    <Compile Include="StaticIL\AnimalStructureOwnershipStaticILContractTests.cs" />
     <Compile Include="Core\RegistrationClosureTests.cs" />
     <Compile Include="Fakes\FakeApprovalRuntimeContext.cs" />
     <Compile Include="Fakes\FakeApprovalWhitelistProxy.cs" />

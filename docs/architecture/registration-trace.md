@@ -390,6 +390,23 @@ Zombie、Animal、Resource、Item、Object、Structure 和 Vehicle 的原生 `Up
 - Ticket 09 必须把该消费者纳入 Build Fingerprint/Metadata Source 收敛；
 - 在 Ticket 09 完成前，不得仅凭启动日志中的版本字段判断加载产物版本。
 
+## 6.2 Ticket 07 迁移后的注册入口映射
+
+Ticket 07 只改变已确认领域补丁的物理目录与编译命名空间；Registration Trace 的 U3-SDK
+原生顺序、目标、patch type、owner、priority 和阶段顺序保持不变。当前入口映射如下：
+
+| 原生领域 | 当前补丁入口 | 编排/验证入口 | 状态 |
+|---|---|---|---|
+| Animal | `SteamP2PFriends.Adapters.Animal.Patches.*` | `PatchRegistrationLegacyDiagnostics`、`PatchRegistrationCriticalVerification` | Confirmed |
+| Structure | `SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch` 与 `P0EBarricadeLifecycle.*` | `PatchRegistrationTransportModules`、`PatchRegistrationDomainModules`、关键验证 | Confirmed |
+| Barricade | `SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch` 与 `P0EBarricadeLifecycle.*` | `PatchRegistrationTransportModules`、`PatchRegistrationDomainModules`、关键验证 | Confirmed |
+| Vehicle | `SteamP2PFriends.Core.Patches.Vehicle*` | 既有 Registration Trace 入口 | Pending，未迁移 |
+| Object | `SteamP2PFriends.Core.Patches.Object*` | 既有 Registration Trace 入口 | Pending，未迁移 |
+| OtherPending | `SteamP2PFriends.Core.Patches.*` | 既有跨领域 Registration Trace 入口 | Pending，按受控跨领域规则保留 |
+
+结构 StaticIL 接缝验证上述 Confirmed 类型各只有一个编译入口，并验证 Vehicle 没有被错误
+创建 `Adapters.Vehicle` 并行入口。该接缝不能替代最终 Harmony Runtime 排序和四环境运行证据。
+
 ## 7. Ticket 01 交付判定
 
 - [x] 固定 U3-SDK commit 与关键原生生命周期锚点。

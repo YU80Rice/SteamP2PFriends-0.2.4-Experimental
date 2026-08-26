@@ -11,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 186 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 187 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -238,6 +238,8 @@ namespace SteamP2PFriends.WhitelistTests
                 RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation() &&
                 RegistrationClosureTests.Test_All(), ref total, ref passed, ref failed);
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("T07 AnimalStructureOwnershipStaticIL", AnimalStructureOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
             #endregion
 

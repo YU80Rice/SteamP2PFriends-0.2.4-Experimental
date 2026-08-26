@@ -7,7 +7,7 @@ using System.Reflection.Emit;
 
 using Patches = SteamP2PFriends.Core.Patches;
 
-namespace SteamP2PFriends.Core.Patches
+namespace SteamP2PFriends.Adapters.Animal.Patches
 {
     /// <summary>
     ///

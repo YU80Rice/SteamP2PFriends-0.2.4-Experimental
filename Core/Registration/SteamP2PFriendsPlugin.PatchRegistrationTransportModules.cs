@@ -86,7 +86,7 @@ namespace SteamP2PFriends
             //   仅对远程非 loopback 玩家开放 SendRegion 资格。
             try
             {
-                if (!Core.Patches.BarricadeManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -97,7 +97,7 @@ namespace SteamP2PFriends
             //   Transpiler 替换 onRegionUpdated step 1 中 Dedicator.IsDedicatedServer() 调用。
             try
             {
-                if (!Core.Patches.StructureManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {

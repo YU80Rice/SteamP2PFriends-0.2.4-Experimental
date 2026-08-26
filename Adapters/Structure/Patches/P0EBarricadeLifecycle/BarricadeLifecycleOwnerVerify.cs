@@ -4,7 +4,7 @@ using System.Reflection;
 
 using Patches = SteamP2PFriends.Core.Patches;
 
-namespace SteamP2PFriends.Core.Patches.P0EBarricadeLifecycle
+namespace SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle
 {
     /// <summary>
     /// Barricade equip/checkClaims Transpiler 的 owner + priority + exact count 自检。

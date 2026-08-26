@@ -1,7 +1,7 @@
 using SteamP2PFriends.Shared;
 using System.Threading;
 
-namespace SteamP2PFriends.Core.Patches.P0EBarricadeLifecycle
+namespace SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle
 {
     /// <summary>
     /// Barricade 生命周期诊断日志的受限配额工具。

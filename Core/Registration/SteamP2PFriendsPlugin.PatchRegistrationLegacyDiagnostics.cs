@@ -386,7 +386,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Core.Patches.AnimalManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -460,7 +460,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegisterManual(_harmony);
+                SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {

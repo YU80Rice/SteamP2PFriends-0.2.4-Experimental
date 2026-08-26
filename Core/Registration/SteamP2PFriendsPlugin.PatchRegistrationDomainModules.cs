@@ -18,8 +18,8 @@ namespace SteamP2PFriends
             try
             {
                 Core.Patches.WorldSyncDiagnosticCore.RegisterSessionResetCallback(
-                    Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleHelper.ResetHitLogs);
-                Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.MarkResetCallbackRegistered();
+                    SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleHelper.ResetHitLogs);
+                SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.MarkResetCallbackRegistered();
                 RoleLogger.Info("[Shared]",
                     "[5B-1B/Plugin] OK RegisterSessionResetCallback(BarricadeLifecycleHelper.ResetHitLogs) 已登记 + MarkResetCallbackRegistered");
             }
@@ -32,7 +32,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.RegisterAtomically(_harmony);
+                SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.RegisterAtomically(_harmony);
             }
             catch (Exception ex)
             {
