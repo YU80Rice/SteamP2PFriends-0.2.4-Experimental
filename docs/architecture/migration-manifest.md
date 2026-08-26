@@ -107,10 +107,14 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 
 | Evidence Class | 结果 | 证据 |
 |---|---|---|
-| PureMemory | PASS | Resource/Collision 既有测试 + 新结构接缝，共 185 项测试 |
+| PureMemory | PASS | 全量入口中的 182 项 PureMemory 测试通过；其中 Resource 22 项、Collision 8 项；总入口另含 3 项 StaticIL 测试，因此总结果为 `185/185 PASS` |
 | StaticIL | PASS | `ResourceCollisionOwnershipStaticILContractTests`；Resource/Collision 五个补丁均有且仅有一个期望 FullName，五个旧 `Core.Patches` 权威类型均不存在 |
-| BuildArtifact | PASS | 最终 Release 重建产物：插件 DLL SHA-256 `FE6A8D3EF30711A20285E86F5642F17FEC1CE29E8AAAFA693583C9025245FD15`、MVID `b8093107-d624-4aa8-8f44-bdfd265e8a08`；测试 EXE SHA-256 `1A0D5091CC0052A78FE6A046021FFFC38223E20126C93C88D61FE5DCC2402140`、MVID `25666cf0-679d-4366-bd5c-66df5594a775` |
+| BuildArtifact | PASS | 最终 Release 重建产物：插件 DLL SHA-256 `FE6A8D3EF30711A20285E86F5642F17FEC1CE29E8AAAFA693583C9025245FD15`、MVID `b8093107-d624-4aa8-8f44-bdfd265e8a08`；测试 EXE SHA-256 `EBAC52B78F2D3E2D9827D15C2638478E708560505BE52D958D3986348A539160`、MVID `26483703-8494-4de1-bd52-e8e791cb7727` |
 | Runtime | PENDING | 本票不执行运行时迁移验收 |
+
+勘误：此前 `Implementation-0.2.4.8-1742.md` 的测试 EXE 指纹和“185 项均为 PureMemory”的表述属于初版记录；本 Batch 5 当前权威值以上述独立复核结果为准。该初版报告保留，不覆盖。
+
+证据边界：本 Batch 5 的 BuildArtifact 证据是验收侧独立重算的 DLL/EXE SHA-256、MVID 和版本；运行时 Build Fingerprint、共享 Case-ID 及日志-DLL关联属于 Ticket 09 与 Runtime 门禁，本票保持 Runtime `PENDING`，不以静态产物证据替代运行时证据。
 
 ## Batch 3：Domain Ownership、Namespace 与 Identity
 
