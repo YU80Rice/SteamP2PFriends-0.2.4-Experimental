@@ -67,7 +67,7 @@ BepInEx Awake
   → P2P lobby 与 probe 初始化
   → Provider 断开回调订阅
   → 首次成功的游戏线程 Update：Route B 生命周期回调延迟安装
-  → Registration Closure 的目标状态仍待 Ticket 02 正式实现
+  → Registration Closure 关闭、快照和角色查询已由 Ticket 02 实现并在注册后关闭
 ```
 
 ### 2.1 PatchAll 注册层
@@ -379,8 +379,8 @@ Zombie、Animal、Resource、Item、Object、Structure 和 Vehicle 的原生 `Up
 5. Provider 接受连接期间，所有初始全局状态发送与 Route B Pending 建立的双端可见结果；
 6. 首次 Update 延迟安装 Route B lifecycle hooks 与首次连接/断线之间的竞态；
 7. Manager Update 在 listen-host、多观察者和远端区域增长后的实际负载；
-8. Registration Trace 完成后是否已形成真正不可变的 Registration Closure；该状态属于 Ticket 02。
-9. `SessionDisconnectDispatcher.Initialize` 是否由未来编排器接管并成为唯一断开订阅入口；当前源码只确认其实现存在，未确认其已被调用。
+8. Registration Closure 在真实游戏启动路径中的最终关闭时序、失败回滚与跨环境可见结果；源码结构与 PureMemory 接缝已确认，Runtime 仍 Pending。
+9. `SessionDisconnectDispatcher.Initialize` 在真实游戏实例中的调用时序与唯一订阅效果；当前源码已确认其由现行编排路径接入，Runtime 仍需验证。
 
 ## 6.1 版本元数据旁证
 
