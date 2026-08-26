@@ -340,18 +340,10 @@ namespace SteamP2PFriends.WhitelistTests
             if (!requiredMethods || createPlan == null || verifyClosure == null || executePlan == null)
                 return false;
 
-            IlEvidence createEvidence = ReadIlEvidence(createPlan);
             IlEvidence executeEvidence = ReadIlEvidence(executePlan);
-            bool planBuildsClosure = createEvidence.CalledMethods.Any(called =>
-                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.RegistrationClosure"
-                    && called.Name == ".ctor")
-                && createEvidence.CalledMethods.Any(called =>
-                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
-                    && called.Name == ".ctor")
-                && createEvidence.CalledMethods.Any(called => called.Name == "VerifyRegistrationClosure")
-                && createEvidence.CalledMethods.Any(called =>
-                    (called.DeclaringType?.FullName ?? string.Empty).StartsWith("System.Func`1",
-                        StringComparison.Ordinal) && called.Name == ".ctor");
+            bool planBuildsClosure = TryFindRegistrationPlanCall(
+                ReadInstructions(createPlan), out IlCallSite planSite)
+                && IsRegistrationClosurePlan(planSite);
             bool executeClosesThenVerifies = HasOrderedCalls(executeEvidence.CalledMethods,
                 called => called.DeclaringType?.FullName ==
                     "SteamP2PFriends.Core.Registration.RegistrationClosure" && called.Name == "TryClose",
@@ -359,6 +351,210 @@ namespace SteamP2PFriends.WhitelistTests
                     "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog" && called.Name == "TryClose",
                 called => called.Name == "Invoke");
             return planBuildsClosure && executeClosesThenVerifies;
+        }
+
+        private static bool TryFindRegistrationPlanCall(List<IlInstruction> instructions,
+            out IlCallSite site)
+        {
+            site = null;
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName !=
+                    "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
+                    || called.Name != ".ctor") continue;
+                if (TrySimulateRegistrationPlanCall(instructions, index, out site)) return true;
+            }
+            return false;
+        }
+
+        private static bool TrySimulateRegistrationPlanCall(List<IlInstruction> instructions,
+            int planIndex, out IlCallSite site)
+        {
+            site = null;
+            var stack = new List<IlValue>();
+            var locals = new Dictionary<int, IlValue>();
+            var fields = new Dictionary<string, IlValue>(StringComparer.Ordinal);
+
+            for (int index = 0; index <= planIndex; index++)
+            {
+                IlInstruction instruction = instructions[index];
+                string op = instruction.OpCode.Name;
+                if (op == "ldarg.0")
+                {
+                    stack.Add(new IlValue { Kind = "This" });
+                    continue;
+                }
+
+                int? loadedLocal = GetLoadedLocalIndex(instruction);
+                if (loadedLocal.HasValue)
+                {
+                    stack.Add(locals.TryGetValue(loadedLocal.Value, out IlValue value)
+                        ? value : new IlValue { Kind = "UnknownLocal", Value = loadedLocal.Value });
+                    continue;
+                }
+
+                int? storedLocal = GetStoredLocalIndex(instruction);
+                if (storedLocal.HasValue)
+                {
+                    if (stack.Count == 0) return false;
+                    IlValue value = stack[stack.Count - 1];
+                    stack.RemoveAt(stack.Count - 1);
+                    locals[storedLocal.Value] = value;
+                    continue;
+                }
+
+                if (instruction.Operand is string text && op == "ldstr")
+                {
+                    stack.Add(new IlValue { Kind = "String", Value = text });
+                    continue;
+                }
+
+                if (instruction.Operand is FieldInfo field)
+                {
+                    if (op.StartsWith("ldsfld", StringComparison.Ordinal))
+                    {
+                        stack.Add(new IlValue { Kind = "Field", Value = field.Name });
+                        continue;
+                    }
+                    if (op == "ldfld")
+                    {
+                        if (stack.Count == 0) return false;
+                        IlValue instance = stack[stack.Count - 1];
+                        stack.RemoveAt(stack.Count - 1);
+                        var fieldValue = new IlValue { Kind = "Field", Value = field.Name };
+                        if (instance.Kind == "This"
+                            && fields.TryGetValue(field.Name, out IlValue assigned))
+                            fieldValue.Children.Add(assigned);
+                        stack.Add(fieldValue);
+                        continue;
+                    }
+                    if (op == "stfld")
+                    {
+                        if (stack.Count < 2) return false;
+                        IlValue value = stack[stack.Count - 1];
+                        stack.RemoveAt(stack.Count - 1);
+                        IlValue instance = stack[stack.Count - 1];
+                        stack.RemoveAt(stack.Count - 1);
+                        if (instance.Kind == "This") fields[field.Name] = value;
+                        continue;
+                    }
+                }
+
+                if (op == "ldftn" && instruction.Operand is MethodBase methodPointer)
+                {
+                    stack.Add(new IlValue { Kind = "MethodPointer", Value = methodPointer });
+                    continue;
+                }
+
+                if (op == "ldnull")
+                {
+                    stack.Add(new IlValue { Kind = "Null" });
+                    continue;
+                }
+
+                if (op.StartsWith("ldc.i4", StringComparison.Ordinal))
+                {
+                    stack.Add(new IlValue { Kind = "Integer", Value = GetIntegerConstant(instruction) });
+                    continue;
+                }
+
+                if (op == "dup")
+                {
+                    if (stack.Count == 0) return false;
+                    stack.Add(stack[stack.Count - 1]);
+                    continue;
+                }
+
+                if (op == "newarr")
+                {
+                    if (stack.Count == 0) return false;
+                    stack.RemoveAt(stack.Count - 1);
+                    stack.Add(new IlValue { Kind = "Array" });
+                    continue;
+                }
+
+                if (op == "stelem.ref")
+                {
+                    if (stack.Count < 3) return false;
+                    stack.RemoveRange(stack.Count - 3, 3);
+                    continue;
+                }
+
+                MethodBase calledMethod = instruction.Operand as MethodBase;
+                if (calledMethod == null) continue;
+
+                if (op == "newobj")
+                {
+                    int count = calledMethod.GetParameters().Length;
+                    if (stack.Count < count) return false;
+                    List<IlValue> args = stack.Skip(stack.Count - count).Take(count).ToList();
+                    stack.RemoveRange(stack.Count - count, count);
+                    if (index == planIndex)
+                    {
+                        site = new IlCallSite { Method = calledMethod };
+                        site.Arguments.AddRange(args);
+                        return true;
+                    }
+
+                    string declaringType = calledMethod.DeclaringType?.FullName ?? string.Empty;
+                    if (declaringType == "SteamP2PFriends.Core.Registration.RegistrationClosure")
+                    {
+                        stack.Add(new IlValue { Kind = "RegistrationClosure" });
+                    }
+                    else if (declaringType.StartsWith("System.Func`1", StringComparison.Ordinal))
+                    {
+                        var delegateValue = new IlValue { Kind = "Delegate" };
+                        delegateValue.Children.AddRange(args);
+                        stack.Add(delegateValue);
+                    }
+                    else
+                    {
+                        stack.Add(new IlValue { Kind = "Object" });
+                    }
+                    continue;
+                }
+
+                if (op == "call" || op == "callvirt")
+                {
+                    int count = calledMethod.GetParameters().Length
+                        + (calledMethod.IsStatic ? 0 : 1);
+                    if (stack.Count < count) return false;
+                    stack.RemoveRange(stack.Count - count, count);
+                    if (calledMethod is MethodInfo returnedMethod
+                        && returnedMethod.ReturnType != typeof(void))
+                        stack.Add(new IlValue { Kind = "Unknown" });
+                }
+            }
+            return false;
+        }
+
+        private static bool IsRegistrationClosurePlan(IlCallSite site)
+        {
+            if (site?.Arguments.Count != 4) return false;
+            IlValue closureField = site.Arguments[0];
+            IlValue verifyDelegate = site.Arguments[3];
+            bool sameClosure = closureField?.Kind == "Field"
+                && string.Equals(closureField.Value as string, "_registrationClosure",
+                    StringComparison.Ordinal)
+                && closureField.Children.Count == 1
+                && closureField.Children[0].Kind == "RegistrationClosure";
+            bool correctDelegate = verifyDelegate?.Kind == "Delegate"
+                && verifyDelegate.Children.Count == 2
+                && verifyDelegate.Children[0].Kind == "This"
+                && verifyDelegate.Children[1].Kind == "MethodPointer"
+                && IsVerifyRegistrationClosureMethod(
+                    verifyDelegate.Children[1].Value as MethodBase);
+            return sameClosure && correctDelegate;
+        }
+
+        private static bool IsVerifyRegistrationClosureMethod(MethodBase method)
+        {
+            return method?.DeclaringType?.FullName == "SteamP2PFriends.SteamP2PFriendsPlugin"
+                && method.Name == "VerifyRegistrationClosure"
+                && method.GetParameters().Length == 0
+                && method is MethodInfo methodInfo
+                && methodInfo.ReturnType == typeof(bool);
         }
 
         private static bool HasOrderedCalls(IReadOnlyList<MethodBase> calls,
@@ -1016,8 +1212,6 @@ namespace SteamP2PFriends.WhitelistTests
                         try
                         {
                             MemberInfo member = method.Module.ResolveMember(token);
-                            Type resolvedType = member as Type ?? (member as MethodBase)?.DeclaringType
-                                ?? (member as FieldInfo)?.DeclaringType;
                             if (member is FieldInfo field) evidence.FieldNames.Add(field.Name);
                         }
                         catch { }
