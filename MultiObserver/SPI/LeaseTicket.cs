@@ -1,4 +1,5 @@
 using System;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.MultiObserver.SPI
 {
@@ -8,23 +9,38 @@ namespace SteamP2PFriends.MultiObserver.SPI
     /// </summary>
     public readonly struct LeaseTicket : IEquatable<LeaseTicket>
     {
-        public readonly string DomainName;
-        public readonly int RegionKey;
-        public readonly uint SessionEpoch;
-        public readonly uint RegionGeneration;
+        public readonly DomainId DomainId;
+        public readonly RegionKey RegionKey;
+        public readonly BoundKey BoundKey;
+        public readonly SessionEpoch SessionEpoch;
+        public readonly RegionGeneration RegionGeneration;
         public readonly int ActiveDemandCount;
         public readonly bool Valid;
 
         public LeaseTicket(
-            string domainName,
-            int regionKey,
-            uint sessionEpoch,
-            uint regionGeneration,
+            DomainId domainId,
+            RegionKey regionKey,
+            SessionEpoch sessionEpoch,
+            RegionGeneration regionGeneration,
+            int activeDemandCount,
+            bool valid)
+            : this(domainId, regionKey, BoundKey.None, sessionEpoch,
+                regionGeneration, activeDemandCount, valid)
+        {
+        }
+
+        public LeaseTicket(
+            DomainId domainId,
+            RegionKey regionKey,
+            BoundKey boundKey,
+            SessionEpoch sessionEpoch,
+            RegionGeneration regionGeneration,
             int activeDemandCount,
             bool valid)
         {
-            DomainName = domainName ?? string.Empty;
+            DomainId = domainId;
             RegionKey = regionKey;
+            BoundKey = boundKey;
             SessionEpoch = sessionEpoch;
             RegionGeneration = regionGeneration;
             ActiveDemandCount = activeDemandCount;
@@ -33,8 +49,9 @@ namespace SteamP2PFriends.MultiObserver.SPI
 
         public bool Equals(LeaseTicket other)
         {
-            return string.Equals(DomainName, other.DomainName, StringComparison.Ordinal)
+            return DomainId == other.DomainId
                 && RegionKey == other.RegionKey
+                && BoundKey == other.BoundKey
                 && SessionEpoch == other.SessionEpoch
                 && RegionGeneration == other.RegionGeneration
                 && ActiveDemandCount == other.ActiveDemandCount
@@ -47,10 +64,11 @@ namespace SteamP2PFriends.MultiObserver.SPI
         {
             unchecked
             {
-                int hash = DomainName != null ? DomainName.GetHashCode() : 0;
-                hash = (hash * 397) ^ RegionKey;
-                hash = (hash * 397) ^ (int)SessionEpoch;
-                hash = (hash * 397) ^ (int)RegionGeneration;
+                int hash = DomainId.GetHashCode();
+                hash = (hash * 397) ^ RegionKey.GetHashCode();
+                hash = (hash * 397) ^ BoundKey.GetHashCode();
+                hash = (hash * 397) ^ SessionEpoch.GetHashCode();
+                hash = (hash * 397) ^ RegionGeneration.GetHashCode();
                 hash = (hash * 397) ^ ActiveDemandCount;
                 hash = (hash * 397) ^ Valid.GetHashCode();
                 return hash;
@@ -59,7 +77,7 @@ namespace SteamP2PFriends.MultiObserver.SPI
 
         public override string ToString()
         {
-            return $"LeaseTicket[{DomainName} key={RegionKey} epoch={SessionEpoch} gen={RegionGeneration} demand={ActiveDemandCount}]";
+            return $"LeaseTicket[{DomainId} key={RegionKey} bound={BoundKey} epoch={SessionEpoch} gen={RegionGeneration} demand={ActiveDemandCount}]";
         }
     }
 }

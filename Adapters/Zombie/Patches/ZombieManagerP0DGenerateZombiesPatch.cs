@@ -2,6 +2,7 @@ using HarmonyLib;
 using SDG.Unturned;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Adapters.Zombie;
 using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;

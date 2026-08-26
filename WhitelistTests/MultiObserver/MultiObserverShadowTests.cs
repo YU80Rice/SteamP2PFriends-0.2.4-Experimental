@@ -1,4 +1,5 @@
 using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Core.Identity;
 using System;
 using System.Collections.Generic;
 
@@ -10,13 +11,13 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = NewSession();
             ledger.Reconcile(new[] { Sample(10, 100, 5, 5, 2, false) }, 64, 1);
-            if (ledger.ObserverCount != 1 || ledger.GetZombieDemand(2) != 1) return false;
+            if (ledger.ObserverCount != 1 || ledger.GetZombieDemand(BoundKey.FromNative(2)) != 1) return false;
 
             IReadOnlyList<ShadowTransition> transitions = ledger.Reconcile(
                 new[] { Sample(10, 100, 5, 5, 2, true) }, 64, 1);
 
             return ledger.ObserverCount == 1
-                && ledger.GetZombieDemand(2) == 1
+                && ledger.GetZombieDemand(BoundKey.FromNative(2)) == 1
                 && Contains(transitions, ShadowTransitionKind.AuthorizationChanged);
         }
 
@@ -29,12 +30,12 @@ namespace SteamP2PFriends.WhitelistTests
                 Sample(20, 200, 5, 5, 2)
             }, 64, 1);
 
-            if (ledger.GetItemDemand(new RegionKey(5, 5)) != 2 || ledger.GetZombieDemand(2) != 2)
+            if (ledger.GetItemDemand(new RegionKey(5, 5)) != 2 || ledger.GetZombieDemand(BoundKey.FromNative(2)) != 2)
                 return false;
 
             ledger.Reconcile(new[] { Sample(20, 200, 5, 5, 2) }, 64, 1);
             return ledger.GetItemDemand(new RegionKey(5, 5)) == 1
-                && ledger.GetZombieDemand(2) == 1
+                && ledger.GetZombieDemand(BoundKey.FromNative(2)) == 1
                 && ledger.ObserverCount == 1;
         }
 
@@ -101,8 +102,8 @@ namespace SteamP2PFriends.WhitelistTests
             }, 64, 1);
 
             return ledger.ObserverCount == 1
-                && ledger.GetZombieDemand(2) == 1
-                && ledger.GetZombieDemand(4) == 0
+                && ledger.GetZombieDemand(BoundKey.FromNative(2)) == 1
+                && ledger.GetZombieDemand(BoundKey.FromNative(4)) == 0
                 && Contains(transitions, ShadowTransitionKind.DuplicateObserverIgnored);
         }
 
@@ -114,8 +115,8 @@ namespace SteamP2PFriends.WhitelistTests
 
             return ledger.GetItemDemand(new RegionKey(5, 5)) == 0
                 && ledger.GetItemDemand(new RegionKey(10, 10)) == 1
-                && ledger.GetZombieDemand(2) == 0
-                && ledger.GetZombieDemand(4) == 1;
+                && ledger.GetZombieDemand(BoundKey.FromNative(2)) == 0
+                && ledger.GetZombieDemand(BoundKey.FromNative(4)) == 1;
         }
 
         internal static bool Test_M08_UniqueHostSessionReplacesSameMapWithoutIntermediateTick()
@@ -148,8 +149,8 @@ namespace SteamP2PFriends.WhitelistTests
                 allowAbsenceRemoval: false);
 
             return ledger.ObserverCount == 2
-                && ledger.GetZombieDemand(2) == 1
-                && ledger.GetZombieDemand(3) == 1;
+                && ledger.GetZombieDemand(BoundKey.FromNative(2)) == 1
+                && ledger.GetZombieDemand(BoundKey.FromNative(3)) == 1;
         }
 
         internal static bool Test_M10_LifecycleSequenceIsMonotonicAcrossRemoveAndReadd()
@@ -223,21 +224,21 @@ namespace SteamP2PFriends.WhitelistTests
                 || invalid.HasFunctionalZombieBound
                 || ledger.ObserverCount != 1
                 || ledger.GetItemDemand(new RegionKey(5, 5)) != 1
-                || ledger.GetZombieDemand(byte.MaxValue) != 0
+                || ledger.GetZombieDemand(BoundKey.None) != 0
                 || ledger.ZombieDemandBoundCount != 0)
             {
                 return false;
             }
 
             ledger.Reconcile(new[] { Sample(10, 100, 5, 5, 2, true, 0, true) }, 64, 1);
-            if (ledger.GetZombieDemand(2) != 1 || ledger.ZombieDemandBoundCount != 1) return false;
+            if (ledger.GetZombieDemand(BoundKey.FromNative(2)) != 1 || ledger.ZombieDemandBoundCount != 1) return false;
 
             ledger.Reconcile(new[] { Sample(10, 100, 5, 5, byte.MaxValue, true, 0, false) }, 64, 1);
             return ledger.TryGetObserver(10, out ObserverShadowSnapshot after)
                 && !after.HasFunctionalZombieBound
                 && ledger.ObserverCount == 1
                 && ledger.GetItemDemand(new RegionKey(5, 5)) == 1
-                && ledger.GetZombieDemand(2) == 0
+                && ledger.GetZombieDemand(BoundKey.FromNative(2)) == 0
                 && ledger.ZombieDemandBoundCount == 0;
         }
 
@@ -259,7 +260,8 @@ namespace SteamP2PFriends.WhitelistTests
             bool hasFunctionalZombieBound = true)
         {
             return new ObserverShadowSample(
-                id, connection, x, y, bound,
+                id, connection, x, y,
+                hasFunctionalZombieBound ? BoundKey.FromNative(bound) : BoundKey.None,
                 hasFunctionalZombieBound, false, authorized, 9, staleLoaded, 9);
         }
 

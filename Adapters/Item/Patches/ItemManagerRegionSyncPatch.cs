@@ -1,7 +1,7 @@
 using HarmonyLib;
 using SDG.NetTransport;
 using SDG.Unturned;
-using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Shared;
 using System.Collections.Generic;
 using System.Reflection;

@@ -1,4 +1,4 @@
-using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Patches;
 using HarmonyLib;
 using SDG.Unturned;

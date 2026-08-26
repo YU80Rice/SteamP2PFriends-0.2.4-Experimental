@@ -1,4 +1,5 @@
 using SteamP2PFriends.Adapters.Structure;
+using SteamP2PFriends.Core.Identity;
 using System;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -10,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = StructureRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = StructureRegionLifecycleLedger.EncodeKey(8, 16);
+            RegionKey key = new RegionKey(8, 16);
             uint gen = ledger.AcquireObserver(key);
 
             return gen == 1 && ledger.GetGeneration(key) == 1 && ledger.IsRegionActive(key);
@@ -21,7 +22,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = StructureRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = StructureRegionLifecycleLedger.EncodeKey(8, 16);
+            RegionKey key = new RegionKey(8, 16);
             ledger.AcquireObserver(key);
 
             uint genAfterPlace = ledger.RecordStructureChange(8, 16, 3);
@@ -33,7 +34,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = StructureRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = StructureRegionLifecycleLedger.EncodeKey(8, 16);
+            RegionKey key = new RegionKey(8, 16);
             ledger.AcquireObserver(key);
 
             uint gen1 = ledger.RecordStructureChange(8, 16, 1);
@@ -47,7 +48,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = StructureRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = StructureRegionLifecycleLedger.EncodeKey(8, 16);
+            RegionKey key = new RegionKey(8, 16);
             ledger.AcquireObserver(key);
 
             uint genAfterSalvage = ledger.RecordStructureChange(8, 16, 0);
@@ -59,7 +60,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = StructureRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = StructureRegionLifecycleLedger.EncodeKey(18, 22);
+            RegionKey key = new RegionKey(18, 22);
             uint gen = ledger.AcquireObserver(key);
 
             bool scheduled = ledger.ScheduleRelease(key, 100.0f);
@@ -74,7 +75,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = StructureRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = StructureRegionLifecycleLedger.EncodeKey(25, 25);
+            RegionKey key = new RegionKey(25, 25);
             uint gen = ledger.AcquireObserver(key);
             ledger.ScheduleRelease(key, 50.0f);
 
@@ -85,7 +86,7 @@ namespace SteamP2PFriends.WhitelistTests
         public static bool Test_M7S07_ReconnectInvalidationResync()
         {
             var ledger = StructureSnapshotAdapter.CreateLedgerForTests();
-            int key = StructureRegionLifecycleLedger.EncodeKey(30, 40);
+            RegionKey key = new RegionKey(30, 40);
 
             bool first = ledger.ShouldReplicateSnapshot(5001, 1, key, 1);
             bool duplicate = ledger.ShouldReplicateSnapshot(5001, 1, key, 1);
@@ -97,7 +98,7 @@ namespace SteamP2PFriends.WhitelistTests
         public static bool Test_M7S08_DisconnectCleansObserverState()
         {
             var ledger = StructureSnapshotAdapter.CreateLedgerForTests();
-            int key = StructureRegionLifecycleLedger.EncodeKey(30, 40);
+            RegionKey key = new RegionKey(30, 40);
 
             ledger.ShouldReplicateSnapshot(6001, 1, key, 1);
             ledger.RemoveObserver(6001);

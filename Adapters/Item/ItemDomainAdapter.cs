@@ -1,6 +1,8 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using System;
+using RegionKey = SteamP2PFriends.Core.Identity.RegionKey;
 
 namespace SteamP2PFriends.Adapters.Item
 {
@@ -10,7 +12,8 @@ namespace SteamP2PFriends.Adapters.Item
     /// </summary>
     public sealed class ItemDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter
     {
-        public string DomainName => "Item";
+        public DomainId DomainId => DomainIds.Item;
+        public string DisplayName => "Item";
         public string Capability => "ItemGenerationAuthority+ItemObserverReplication";
 
         public void OnSessionBegin(uint sessionEpoch)
@@ -43,12 +46,12 @@ namespace SteamP2PFriends.Adapters.Item
             // 观察者断线
         }
 
-        public void OnObserverEntered(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             // 空间观察者进入该 Region
         }
 
-        public void OnObserverExited(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             // 空间观察者离开该 Region
         }

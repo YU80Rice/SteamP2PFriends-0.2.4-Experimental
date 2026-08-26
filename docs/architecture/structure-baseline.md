@@ -1,6 +1,6 @@
 # 0.2.4-Experimental 结构基线
 
-状态：第一批实施中
+状态：Ticket 01-03 源码批次完成；Runtime 与完整 StaticIL 门禁仍待执行
 
 ## 目标
 
@@ -46,7 +46,7 @@ Tests/
   Runtime/
 ```
 
-这是目标形状，不代表本批次已经完成物理迁移。根目录 `Patches/` 只保留尚未按 Domain Ownership 归属的跨领域补丁；无法证明归属的文件暂不移动。
+当前已完成 `Core/Identity`、`Adapters/Animal`、`Adapters/Zombie` 的本批次归属整理，以及 `MultiObserver` 空间身份接缝整理。根目录 `Patches/` 仍只保留尚未按 Domain Ownership 归属的跨领域补丁；无法证明归属的文件暂不移动。
 
 ## 不变量
 

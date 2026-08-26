@@ -3,7 +3,7 @@ using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
 using System;
 
-namespace SteamP2PFriends.MultiObserver
+namespace SteamP2PFriends.Adapters.Item
 {
     /// <summary>
     /// M1 adapter for the native ItemManager.onRegionUpdated demand path.

@@ -2,6 +2,7 @@ using SteamP2PFriends.Adapters.Animal;
 using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Core.Registration;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.MultiObserver.SPI;
 using System;
 

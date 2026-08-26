@@ -1,5 +1,6 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ namespace SteamP2PFriends.Adapters.Collision
 {
     public readonly struct CollisionReleaseLease
     {
-        public CollisionReleaseLease(ulong sessionEpoch, int regionKey, uint regionGeneration, float deadline)
+        public CollisionReleaseLease(ulong sessionEpoch, RegionKey regionKey, uint regionGeneration, float deadline)
         {
             SessionEpoch = sessionEpoch;
             RegionKey = regionKey;
@@ -17,16 +18,16 @@ namespace SteamP2PFriends.Adapters.Collision
         }
 
         public ulong SessionEpoch { get; }
-        public int RegionKey { get; }
+        public RegionKey RegionKey { get; }
         public uint RegionGeneration { get; }
         public float Deadline { get; }
     }
 
     public sealed class LevelObjectCollisionLedger
     {
-        private readonly Dictionary<int, uint> _generations = new Dictionary<int, uint>();
-        private readonly Dictionary<int, CollisionReleaseLease> _releases = new Dictionary<int, CollisionReleaseLease>();
-        private readonly HashSet<int> _activeRegions = new HashSet<int>();
+        private readonly Dictionary<RegionKey, uint> _generations = new Dictionary<RegionKey, uint>();
+        private readonly Dictionary<RegionKey, CollisionReleaseLease> _releases = new Dictionary<RegionKey, CollisionReleaseLease>();
+        private readonly HashSet<RegionKey> _activeRegions = new HashSet<RegionKey>();
 
         public ulong SessionEpoch { get; private set; } = 1UL;
         public int ActiveRegionCount => _activeRegions.Count;
@@ -42,14 +43,14 @@ namespace SteamP2PFriends.Adapters.Collision
             _activeRegions.Clear();
         }
 
-        public uint GetGeneration(int regionKey) =>
+        public uint GetGeneration(RegionKey regionKey) =>
             _generations.TryGetValue(regionKey, out uint generation) ? generation : 0U;
 
-        public bool IsRegionActive(int regionKey) => _activeRegions.Contains(regionKey);
+        public bool IsRegionActive(RegionKey regionKey) => _activeRegions.Contains(regionKey);
 
-        public bool IsRegionActive(byte x, byte y) => IsRegionActive((x << 8) | y);
+        public bool IsRegionActive(byte x, byte y) => IsRegionActive(new RegionKey(x, y));
 
-        public uint CommitAcquire(int regionKey)
+        public uint CommitAcquire(RegionKey regionKey)
         {
             CancelRelease(regionKey);
             _activeRegions.Add(regionKey);
@@ -60,7 +61,7 @@ namespace SteamP2PFriends.Adapters.Collision
             return next;
         }
 
-        public CollisionReleaseLease ScheduleRelease(int regionKey, float now, float hysteresisSeconds)
+        public CollisionReleaseLease ScheduleRelease(RegionKey regionKey, float now, float hysteresisSeconds)
         {
             var lease = new CollisionReleaseLease(
                 SessionEpoch,
@@ -71,12 +72,12 @@ namespace SteamP2PFriends.Adapters.Collision
             return lease;
         }
 
-        public bool CancelRelease(int regionKey) => _releases.Remove(regionKey);
+        public bool CancelRelease(RegionKey regionKey) => _releases.Remove(regionKey);
 
-        public bool TryGetRelease(int regionKey, out CollisionReleaseLease lease) =>
+        public bool TryGetRelease(RegionKey regionKey, out CollisionReleaseLease lease) =>
             _releases.TryGetValue(regionKey, out lease);
 
-        public bool TryCommitRelease(int regionKey, ulong expectedEpoch, uint expectedGeneration, out uint committedGeneration)
+        public bool TryCommitRelease(RegionKey regionKey, ulong expectedEpoch, uint expectedGeneration, out uint committedGeneration)
         {
             committedGeneration = 0U;
             if (!_releases.TryGetValue(regionKey, out CollisionReleaseLease lease))
@@ -97,7 +98,7 @@ namespace SteamP2PFriends.Adapters.Collision
             return true;
         }
 
-        public void CleanObserverDisconnect(int regionKey)
+        public void CleanObserverDisconnect(RegionKey regionKey)
         {
             _releases.Remove(regionKey);
             _activeRegions.Remove(regionKey);
@@ -116,7 +117,8 @@ namespace SteamP2PFriends.Adapters.Collision
         private static ulong _currentSessionEpoch = 1UL;
         public const float DefaultHysteresisSeconds = 2.0f;
 
-        public string DomainName => "Collision";
+        public DomainId DomainId => DomainIds.Collision;
+        public string DisplayName => "Collision";
         public string Capability => "StaticRootReactivation+DynamicAnimationCulling+HysteresisRelease";
 
         public static bool RegistrationReady => _registrationReady;
@@ -130,7 +132,7 @@ namespace SteamP2PFriends.Adapters.Collision
             }
         }
 
-        public static uint GetGeneration(int regionKey)
+        public static uint GetGeneration(RegionKey regionKey)
         {
             lock (SyncLock)
             {

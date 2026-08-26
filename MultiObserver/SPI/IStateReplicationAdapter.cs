@@ -1,4 +1,4 @@
-using System;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.MultiObserver.SPI
 {
@@ -9,19 +9,24 @@ namespace SteamP2PFriends.MultiObserver.SPI
     public interface IStateReplicationAdapter
     {
         /// <summary>
-        /// 领域唯一名称
+        /// 领域不可变机器身份。
         /// </summary>
-        string DomainName { get; }
+        DomainId DomainId { get; }
+
+        /// <summary>
+        /// 面向日志和诊断的显示名称；不参与注册或协议判断。
+        /// </summary>
+        string DisplayName { get; }
 
         /// <summary>
         /// 观察者进入该领域空间区域
         /// </summary>
-        void OnObserverEntered(ulong observerId, ulong connectionToken, int regionKey);
+        void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey);
 
         /// <summary>
         /// 观察者离开该领域空间区域
         /// </summary>
-        void OnObserverExited(ulong observerId, ulong connectionToken, int regionKey);
+        void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey);
 
         /// <summary>
         /// 触发/调度周期性增量数据流广播

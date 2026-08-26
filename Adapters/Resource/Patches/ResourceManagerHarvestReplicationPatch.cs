@@ -1,6 +1,7 @@
 using HarmonyLib;
 using SDG.Unturned;
 using SteamP2PFriends.Adapters.Resource;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
 using System;
@@ -76,7 +77,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             try
             {
                 uint nextGen = ResourceRegionLifecycleAdapter.RecordResourceDead(x, y, index);
-                ResourceSnapshotAdapter.UpdateRegionGeneration((x << 8) | y, nextGen);
+                    ResourceSnapshotAdapter.UpdateRegionGeneration(new RegionKey(x, y), nextGen);
 
                 if (_deadLogCount < MaxLogCount)
                 {
@@ -100,7 +101,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             try
             {
                 uint nextGen = ResourceRegionLifecycleAdapter.RecordResourceAlive(x, y, index);
-                ResourceSnapshotAdapter.UpdateRegionGeneration((x << 8) | y, nextGen);
+                    ResourceSnapshotAdapter.UpdateRegionGeneration(new RegionKey(x, y), nextGen);
 
                 if (_aliveLogCount < MaxLogCount)
                 {

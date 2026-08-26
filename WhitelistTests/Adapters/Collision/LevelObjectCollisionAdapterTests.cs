@@ -1,4 +1,5 @@
 using SteamP2PFriends.Adapters.Collision;
+using SteamP2PFriends.Core.Identity;
 using System;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -10,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
 
-            int regionKey = (12 << 8) | 34;
+            RegionKey regionKey = new RegionKey(12, 34);
             uint gen = ledger.CommitAcquire(regionKey);
 
             return gen == 1U && ledger.IsRegionActive(12, 34) && ledger.ActiveRegionCount == 1;
@@ -20,7 +21,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
-            int regionKey = (10 << 8) | 20;
+            RegionKey regionKey = new RegionKey(10, 20);
             ledger.CommitAcquire(regionKey);
 
             CollisionReleaseLease lease = ledger.ScheduleRelease(regionKey, 50.0f, 2.0f);
@@ -36,7 +37,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
-            int regionKey = (5 << 8) | 5;
+            RegionKey regionKey = new RegionKey(5, 5);
             ledger.CommitAcquire(regionKey);
             ledger.ScheduleRelease(regionKey, 10.0f, 2.0f);
 
@@ -49,7 +50,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
-            int regionKey = (8 << 8) | 8;
+            RegionKey regionKey = new RegionKey(8, 8);
             ledger.CommitAcquire(regionKey);
             ledger.ScheduleRelease(regionKey, 10.0f, 2.0f);
 
@@ -62,7 +63,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(2UL);
-            int regionKey = (1 << 8) | 1;
+            RegionKey regionKey = new RegionKey(1, 1);
             ledger.CommitAcquire(regionKey);
             ledger.ScheduleRelease(regionKey, 10.0f, 2.0f);
 
@@ -75,7 +76,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
-            int regionKey = (2 << 8) | 2;
+            RegionKey regionKey = new RegionKey(2, 2);
             ledger.CommitAcquire(regionKey);
             ledger.ScheduleRelease(regionKey, 10.0f, 2.0f);
 
@@ -89,8 +90,8 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
 
-            int r1 = (10 << 8) | 10;
-            int r2 = (20 << 8) | 20;
+            RegionKey r1 = new RegionKey(10, 10);
+            RegionKey r2 = new RegionKey(20, 20);
 
             ledger.CommitAcquire(r1);
             ledger.CommitAcquire(r2);
@@ -105,7 +106,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new LevelObjectCollisionLedger();
             ledger.BeginSession(1UL);
-            int regionKey = (7 << 8) | 7;
+            RegionKey regionKey = new RegionKey(7, 7);
             ledger.CommitAcquire(regionKey);
             ledger.ScheduleRelease(regionKey, 10.0f, 2.0f);
 

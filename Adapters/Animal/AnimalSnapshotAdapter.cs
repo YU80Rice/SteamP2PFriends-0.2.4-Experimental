@@ -1,13 +1,14 @@
 using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
+using SteamP2PFriends.Core.Identity;
 using System;
 using System.Collections.Generic;
 
-namespace SteamP2PFriends.MultiObserver
+namespace SteamP2PFriends.Adapters.Animal
 {
     internal readonly struct AnimalSnapshotRecord
     {
-        internal AnimalSnapshotRecord(ulong sessionEpoch, ulong connectionToken, byte bound, uint regionGeneration, uint deltaSequence)
+        internal AnimalSnapshotRecord(ulong sessionEpoch, ulong connectionToken, BoundKey bound, uint regionGeneration, uint deltaSequence)
         {
             SessionEpoch = sessionEpoch;
             ConnectionToken = connectionToken;
@@ -18,17 +19,17 @@ namespace SteamP2PFriends.MultiObserver
 
         internal ulong SessionEpoch { get; }
         internal ulong ConnectionToken { get; }
-        internal byte Bound { get; }
+        internal BoundKey Bound { get; }
         internal uint RegionGeneration { get; }
         internal uint DeltaSequence { get; }
     }
 
     internal sealed class AnimalSnapshotReplicationLedger
     {
-        private readonly Dictionary<(ulong SteamId, byte Bound), AnimalSnapshotRecord> _snapshots =
-            new Dictionary<(ulong SteamId, byte Bound), AnimalSnapshotRecord>();
+        private readonly Dictionary<(ulong SteamId, BoundKey Bound), AnimalSnapshotRecord> _snapshots =
+            new Dictionary<(ulong SteamId, BoundKey Bound), AnimalSnapshotRecord>();
         private readonly Dictionary<ulong, ulong> _connectionTokens = new Dictionary<ulong, ulong>();
-        private readonly Dictionary<byte, uint> _regionGenerations = new Dictionary<byte, uint>();
+        private readonly Dictionary<BoundKey, uint> _regionGenerations = new Dictionary<BoundKey, uint>();
 
         internal ulong SessionEpoch { get; private set; } = 1UL;
         internal int TrackedSnapshotCount => _snapshots.Count;
@@ -41,18 +42,18 @@ namespace SteamP2PFriends.MultiObserver
             _regionGenerations.Clear();
         }
 
-        internal void UpdateRegionGeneration(byte bound, uint generation)
+        internal void UpdateRegionGeneration(BoundKey bound, uint generation)
         {
             _regionGenerations[bound] = generation;
         }
 
-        internal uint GetRegionGeneration(byte bound) =>
+        internal uint GetRegionGeneration(BoundKey bound) =>
             _regionGenerations.TryGetValue(bound, out uint gen) ? gen : 0U;
 
-        internal bool TryGetSnapshot(ulong steamId, byte bound, out AnimalSnapshotRecord snapshot) =>
+        internal bool TryGetSnapshot(ulong steamId, BoundKey bound, out AnimalSnapshotRecord snapshot) =>
             _snapshots.TryGetValue((steamId, bound), out snapshot);
 
-        internal bool EnqueueInitialSnapshot(ulong steamId, ulong connectionToken, byte bound, uint regionGeneration)
+        internal bool EnqueueInitialSnapshot(ulong steamId, ulong connectionToken, BoundKey bound, uint regionGeneration)
         {
             if (steamId == 0UL || connectionToken == 0UL) return false;
 
@@ -82,7 +83,7 @@ namespace SteamP2PFriends.MultiObserver
         internal void OnObserverDisconnect(ulong steamId)
         {
             _connectionTokens.Remove(steamId);
-            var keysToRemove = new List<(ulong SteamId, byte Bound)>();
+            var keysToRemove = new List<(ulong SteamId, BoundKey Bound)>();
             foreach (var key in _snapshots.Keys)
             {
                 if (key.SteamId == steamId)
@@ -113,7 +114,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static bool EnqueueInitialSnapshot(ulong steamId, ulong connectionToken, byte bound, uint regionGeneration)
+        public static bool EnqueueInitialSnapshot(ulong steamId, ulong connectionToken, BoundKey bound, uint regionGeneration)
         {
             lock (SyncLock)
             {
@@ -129,7 +130,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static void UpdateRegionGeneration(byte bound, uint generation)
+        public static void UpdateRegionGeneration(BoundKey bound, uint generation)
         {
             lock (SyncLock)
             {
@@ -137,7 +138,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static uint GetRegionGeneration(byte bound)
+        public static uint GetRegionGeneration(BoundKey bound)
         {
             lock (SyncLock)
             {

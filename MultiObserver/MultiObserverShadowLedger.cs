@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.MultiObserver
 {
@@ -58,23 +59,6 @@ namespace SteamP2PFriends.MultiObserver
         }
     }
 
-    internal readonly struct RegionKey : IEquatable<RegionKey>
-    {
-        internal RegionKey(byte x, byte y)
-        {
-            X = x;
-            Y = y;
-        }
-
-        internal byte X { get; }
-        internal byte Y { get; }
-
-        public bool Equals(RegionKey other) => X == other.X && Y == other.Y;
-        public override bool Equals(object obj) => obj is RegionKey other && Equals(other);
-        public override int GetHashCode() => (X << 8) | Y;
-        public override string ToString() => $"({X},{Y})";
-    }
-
     internal readonly struct ObserverShadowSample
     {
         internal ObserverShadowSample(
@@ -82,7 +66,7 @@ namespace SteamP2PFriends.MultiObserver
             ulong connectionToken,
             byte itemRegionX,
             byte itemRegionY,
-            byte zombieBound,
+            BoundKey zombieBound,
             bool hasFunctionalZombieBound,
             bool isLocalPlayer,
             bool gameplayAuthorized,
@@ -107,7 +91,7 @@ namespace SteamP2PFriends.MultiObserver
         internal ulong ConnectionToken { get; }
         internal byte ItemRegionX { get; }
         internal byte ItemRegionY { get; }
-        internal byte ZombieBound { get; }
+        internal BoundKey ZombieBound { get; }
         internal bool HasFunctionalZombieBound { get; }
         internal bool IsLocalPlayer { get; }
         internal bool GameplayAuthorized { get; }
@@ -164,7 +148,7 @@ namespace SteamP2PFriends.MultiObserver
         internal uint LifecycleSequence { get; }
         internal byte ItemRegionX { get; }
         internal byte ItemRegionY { get; }
-        internal byte ZombieBound { get; }
+        internal BoundKey ZombieBound { get; }
         internal bool HasFunctionalZombieBound { get; }
         internal bool IsLocalPlayer { get; }
         internal bool GameplayAuthorized { get; }
@@ -182,7 +166,7 @@ namespace SteamP2PFriends.MultiObserver
         internal uint LifecycleSequence;
         internal byte ItemRegionX;
         internal byte ItemRegionY;
-        internal byte ZombieBound;
+        internal BoundKey ZombieBound;
         internal bool HasFunctionalZombieBound;
         internal bool IsLocalPlayer;
         internal bool GameplayAuthorized;
@@ -202,8 +186,8 @@ namespace SteamP2PFriends.MultiObserver
             new Dictionary<ulong, ObserverShadowState>();
         private readonly Dictionary<RegionKey, int> _itemDemand =
             new Dictionary<RegionKey, int>();
-        private readonly Dictionary<byte, int> _zombieDemand =
-            new Dictionary<byte, int>();
+        private readonly Dictionary<BoundKey, int> _zombieDemand =
+            new Dictionary<BoundKey, int>();
 
         private ulong _sessionEpoch;
         private uint _nextConnectionGeneration;
@@ -315,7 +299,7 @@ namespace SteamP2PFriends.MultiObserver
         internal int GetItemDemand(RegionKey region) =>
             _itemDemand.TryGetValue(region, out int count) ? count : 0;
 
-        internal int GetZombieDemand(byte bound) =>
+        internal int GetZombieDemand(BoundKey bound) =>
             _zombieDemand.TryGetValue(bound, out int count) ? count : 0;
 
         internal IReadOnlyList<ObserverShadowSnapshot> SnapshotObservers()
@@ -326,8 +310,8 @@ namespace SteamP2PFriends.MultiObserver
             return snapshot;
         }
 
-        internal IReadOnlyDictionary<byte, int> SnapshotZombieDemand() =>
-            new Dictionary<byte, int>(_zombieDemand);
+        internal IReadOnlyDictionary<BoundKey, int> SnapshotZombieDemand() =>
+            new Dictionary<BoundKey, int>(_zombieDemand);
 
         private void Upsert(
             in ObserverShadowSample sample,
@@ -350,7 +334,7 @@ namespace SteamP2PFriends.MultiObserver
                     ItemRegionX = sample.ItemRegionX,
                     ItemRegionY = sample.ItemRegionY,
                     ZombieBound = sample.ZombieBound,
-                    HasFunctionalZombieBound = sample.HasFunctionalZombieBound,
+                    HasFunctionalZombieBound = sample.HasFunctionalZombieBound && !sample.ZombieBound.IsNone,
                     IsLocalPlayer = sample.IsLocalPlayer,
                     GameplayAuthorized = sample.GameplayAuthorized,
                     NativeLoadedItemRegions = sample.NativeLoadedItemRegions,
@@ -393,7 +377,7 @@ namespace SteamP2PFriends.MultiObserver
             state.ItemRegionX = sample.ItemRegionX;
             state.ItemRegionY = sample.ItemRegionY;
             state.ZombieBound = sample.ZombieBound;
-            state.HasFunctionalZombieBound = sample.HasFunctionalZombieBound;
+            state.HasFunctionalZombieBound = sample.HasFunctionalZombieBound && !sample.ZombieBound.IsNone;
             state.IsLocalPlayer = sample.IsLocalPlayer;
             state.GameplayAuthorized = sample.GameplayAuthorized;
             state.NativeLoadedItemRegions = sample.NativeLoadedItemRegions;

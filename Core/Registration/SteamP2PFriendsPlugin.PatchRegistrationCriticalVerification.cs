@@ -960,7 +960,7 @@ namespace SteamP2PFriends
             {
                 bool m3Ready = Patches.ZombieManagerP0DGenerateZombiesPatch.AllRegistrationsSucceeded
                     && Patches.P0EZombieLifecycle.ZombieLifecyclePatch.AllRegistrationsSucceeded;
-                MultiObserver.ZombieRegionLifecycleAdapter.SetRegistrationReady(m3Ready);
+                Adapters.Zombie.ZombieRegionLifecycleAdapter.SetRegistrationReady(m3Ready);
                 if (!m3Ready)
                 {
                     RoleLogger.Error("[Shared]", "[MultiObserver/M3-Zombie] DIAGNOSTIC BUILD INVALID: legacy adapter hooks unavailable");
@@ -972,11 +972,11 @@ namespace SteamP2PFriends
                 }
 
                 RoleLogger.Info("[Shared]",
-                    $"[MultiObserver/M4-ZombieSnapshot] registration verified capability={MultiObserver.ZombieSnapshotAdapter.Capability}");
+                    $"[Adapters/Zombie/M4-ZombieSnapshot] registration verified capability={Adapters.Zombie.ZombieSnapshotAdapter.Capability}");
             }
             catch (System.Exception ex)
             {
-                MultiObserver.ZombieRegionLifecycleAdapter.SetRegistrationReady(false);
+                Adapters.Zombie.ZombieRegionLifecycleAdapter.SetRegistrationReady(false);
                 RoleLogger.Error("[Shared]", $"[MultiObserver/M3-Zombie] VerifyRegistration exception: {ex.Message}");
                 allOk = false;
             }
@@ -1061,11 +1061,11 @@ namespace SteamP2PFriends
             // The legacy P0-B-3/P0-B-6 full-map listen-host writers are not compiled.
             try
             {
-                if (!MultiObserver.ItemGenerationAuthorityAdapter.IsReady
+                if (!Adapters.Item.ItemGenerationAuthorityAdapter.IsReady
                     || Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount != 1)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[MultiObserver/M1-Item] DIAGNOSTIC BUILD INVALID: ready={MultiObserver.ItemGenerationAuthorityAdapter.IsReady} " +
+                        $"[MultiObserver/M1-Item] DIAGNOSTIC BUILD INVALID: ready={Adapters.Item.ItemGenerationAuthorityAdapter.IsReady} " +
                         $"generationReplacement={Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1");
                     allOk = false;
                 }
@@ -1084,14 +1084,14 @@ namespace SteamP2PFriends
             // M2: native askItems is supervised by a per-observer reliable-enqueue ledger.
             try
             {
-                if (!MultiObserver.ItemObserverReplicationAdapter.IsReady
+                if (!Adapters.Item.ItemObserverReplicationAdapter.IsReady
                     || !Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered
                     || !Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered
                     || !Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered
                     || !Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[MultiObserver/M2-Item] DIAGNOSTIC BUILD INVALID: ready={MultiObserver.ItemObserverReplicationAdapter.IsReady} " +
+                        $"[MultiObserver/M2-Item] DIAGNOSTIC BUILD INVALID: ready={Adapters.Item.ItemObserverReplicationAdapter.IsReady} " +
                         $"regionPrefix={Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
                         $"askItems={Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
                         $"{Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
@@ -1101,7 +1101,7 @@ namespace SteamP2PFriends
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[MultiObserver/M2-Item] registration verified capability={MultiObserver.ItemObserverReplicationAdapter.Capability}");
+                        $"[MultiObserver/M2-Item] registration verified capability={Adapters.Item.ItemObserverReplicationAdapter.Capability}");
                 }
             }
             catch (System.Exception ex)

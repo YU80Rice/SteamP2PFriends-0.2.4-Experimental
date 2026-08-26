@@ -1,4 +1,5 @@
 using SteamP2PFriends.Adapters.Structure;
+using SteamP2PFriends.Core.Identity;
 using System;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -10,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = BarricadeRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(10, 20, 0);
+            BarricadeKey key = BarricadeKey.FromNative(10, 20, 0);
             uint gen = ledger.AcquireObserver(key);
 
             return gen == 1 && ledger.GetGeneration(key) == 1 && ledger.IsRegionActive(key);
@@ -21,7 +22,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = BarricadeRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(10, 20, 0);
+            BarricadeKey key = BarricadeKey.FromNative(10, 20, 0);
             ledger.AcquireObserver(key);
 
             uint genAfterPlace = ledger.RecordBarricadeChange(10, 20, 0, 5);
@@ -33,7 +34,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = BarricadeRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(10, 20, 0);
+            BarricadeKey key = BarricadeKey.FromNative(10, 20, 0);
             ledger.AcquireObserver(key);
 
             uint gen1 = ledger.RecordBarricadeChange(10, 20, 0, 1);
@@ -45,7 +46,7 @@ namespace SteamP2PFriends.WhitelistTests
         public static bool Test_M7B04_UpdateStateAdvancesDeltaSequence()
         {
             var ledger = BarricadeSnapshotAdapter.CreateLedgerForTests();
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(5, 5, 0);
+            BarricadeKey key = BarricadeKey.FromNative(5, 5, 0);
 
             ledger.AdvanceDeltaSequence(key);
             uint seq1 = ledger.GetDeltaSequence(key);
@@ -60,7 +61,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = BarricadeRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(12, 14, 0);
+            BarricadeKey key = BarricadeKey.FromNative(12, 14, 0);
             uint gen = ledger.AcquireObserver(key);
 
             bool scheduled = ledger.ScheduleRelease(key, 10.0f);
@@ -75,7 +76,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = BarricadeRegionLifecycleAdapter.CreateLedgerForTests(2.0f);
             ledger.BeginSession(1);
 
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(15, 15, 0);
+            BarricadeKey key = BarricadeKey.FromNative(15, 15, 0);
             uint gen = ledger.AcquireObserver(key);
             ledger.ScheduleRelease(key, 10.0f);
 
@@ -86,7 +87,7 @@ namespace SteamP2PFriends.WhitelistTests
         public static bool Test_M7B07_ReconnectInvalidationResync()
         {
             var ledger = BarricadeSnapshotAdapter.CreateLedgerForTests();
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(20, 20, 0);
+            BarricadeKey key = BarricadeKey.FromNative(20, 20, 0);
 
             bool first = ledger.ShouldReplicateSnapshot(1001, 1, key, 1);
             bool duplicate = ledger.ShouldReplicateSnapshot(1001, 1, key, 1);
@@ -98,7 +99,7 @@ namespace SteamP2PFriends.WhitelistTests
         public static bool Test_M7B08_DisconnectCleansObserverState()
         {
             var ledger = BarricadeSnapshotAdapter.CreateLedgerForTests();
-            int key = BarricadeRegionLifecycleLedger.EncodeKey(30, 30, 0);
+            BarricadeKey key = BarricadeKey.FromNative(30, 30, 0);
 
             ledger.ShouldReplicateSnapshot(2001, 1, key, 1);
             ledger.RemoveObserver(2001);

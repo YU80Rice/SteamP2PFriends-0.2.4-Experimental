@@ -1,6 +1,8 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using System;
+using RegionKey = SteamP2PFriends.Core.Identity.RegionKey;
 
 namespace SteamP2PFriends.Adapters.Resource
 {
@@ -10,7 +12,8 @@ namespace SteamP2PFriends.Adapters.Resource
     /// </summary>
     public sealed class ResourceDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter
     {
-        public string DomainName => "Resource";
+        public DomainId DomainId => DomainIds.Resource;
+        public string DisplayName => "Resource";
         public string Capability => "TreeOreCollision+HarvestReplication+HysteresisRelease";
 
         public void OnSessionBegin(uint sessionEpoch)
@@ -52,13 +55,13 @@ namespace SteamP2PFriends.Adapters.Resource
             ResourceSnapshotAdapter.OnObserverDisconnect(observerId);
         }
 
-        public void OnObserverEntered(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             uint gen = ResourceRegionLifecycleAdapter.GetGeneration(regionKey);
             ResourceSnapshotAdapter.EnqueueInitialSnapshot(observerId, connectionToken, regionKey, gen);
         }
 
-        public void OnObserverExited(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             // 退出该区域
         }

@@ -6,6 +6,7 @@ using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
 using UnityEngine;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.Adapters.Structure.Patches
 {
@@ -80,7 +81,7 @@ namespace SteamP2PFriends.Adapters.Structure.Patches
             {
                 if (Regions.tryGetCoordinate(point, out byte x, out byte y))
                 {
-                    int key = BarricadeRegionLifecycleLedger.EncodeKey(x, y, 0);
+                    BarricadeKey key = BarricadeKey.FromNative(x, y, 0);
                     uint nextGen = BarricadeRegionLifecycleAdapter.RecordBarricadePlaced(x, y, 0, 0);
                     BarricadeSnapshotAdapter.UpdateRegionGeneration(key, nextGen);
                     BarricadeSnapshotAdapter.AdvanceDeltaSequence(key);
@@ -114,7 +115,7 @@ namespace SteamP2PFriends.Adapters.Structure.Patches
             {
                 if (Regions.tryGetCoordinate(transform.position, out byte x, out byte y))
                 {
-                    int key = BarricadeRegionLifecycleLedger.EncodeKey(x, y, 0);
+                    BarricadeKey key = BarricadeKey.FromNative(x, y, 0);
                     uint nextGen = BarricadeRegionLifecycleAdapter.RecordBarricadeDamaged(x, y, 0, 0);
                     BarricadeSnapshotAdapter.UpdateRegionGeneration(key, nextGen);
                     BarricadeSnapshotAdapter.AdvanceDeltaSequence(key);

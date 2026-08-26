@@ -4,6 +4,7 @@ using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Adapters.Structure;
 using SteamP2PFriends.Adapters.Zombie;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Patches;
 using SteamP2PFriends.Shared;
 using System;
@@ -21,17 +22,17 @@ namespace SteamP2PFriends
             _registrationClosure = new Core.Registration.RegistrationClosure(new[]
             {
                 new Core.Registration.RegistrationRequirement(
-                    Core.Registration.RegistrationDomainIds.Item, true, true),
+                    DomainIds.Item, true, true),
                 new Core.Registration.RegistrationRequirement(
-                    Core.Registration.RegistrationDomainIds.Resource, true, true),
+                    DomainIds.Resource, true, true),
                 new Core.Registration.RegistrationRequirement(
-                    Core.Registration.RegistrationDomainIds.Building, true, true),
+                    DomainIds.Building, true, true),
                 new Core.Registration.RegistrationRequirement(
-                    Core.Registration.RegistrationDomainIds.Zombie, true, true),
+                    DomainIds.Zombie, true, true),
                 new Core.Registration.RegistrationRequirement(
-                    Core.Registration.RegistrationDomainIds.Animal, true, true),
+                    DomainIds.Animal, true, true),
                 new Core.Registration.RegistrationRequirement(
-                    Core.Registration.RegistrationDomainIds.Collision, true, false)
+                    DomainIds.Collision, true, false)
             });
 
             var stages = new List<Core.Registration.PatchRegistrationStage>

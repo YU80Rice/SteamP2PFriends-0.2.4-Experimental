@@ -6,7 +6,7 @@ using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
 
-namespace SteamP2PFriends.MultiObserver
+namespace SteamP2PFriends.Adapters.Item
 {
     internal enum ItemBaselineCapability : byte
     {

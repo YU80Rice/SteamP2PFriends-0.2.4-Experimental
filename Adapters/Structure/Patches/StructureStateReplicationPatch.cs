@@ -6,6 +6,7 @@ using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
 using UnityEngine;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.Adapters.Structure.Patches
 {
@@ -80,7 +81,7 @@ namespace SteamP2PFriends.Adapters.Structure.Patches
             {
                 if (Regions.tryGetCoordinate(point, out byte x, out byte y))
                 {
-                    int key = StructureRegionLifecycleLedger.EncodeKey(x, y);
+                    RegionKey key = new RegionKey(x, y);
                     uint nextGen = StructureRegionLifecycleAdapter.RecordStructurePlaced(x, y, 0);
                     StructureSnapshotAdapter.UpdateRegionGeneration(key, nextGen);
                     StructureSnapshotAdapter.AdvanceDeltaSequence(key);
@@ -114,7 +115,7 @@ namespace SteamP2PFriends.Adapters.Structure.Patches
             {
                 if (Regions.tryGetCoordinate(transform.position, out byte x, out byte y))
                 {
-                    int key = StructureRegionLifecycleLedger.EncodeKey(x, y);
+                    RegionKey key = new RegionKey(x, y);
                     uint nextGen = StructureRegionLifecycleAdapter.RecordStructureDamaged(x, y, 0);
                     StructureSnapshotAdapter.UpdateRegionGeneration(key, nextGen);
                     StructureSnapshotAdapter.AdvanceDeltaSequence(key);

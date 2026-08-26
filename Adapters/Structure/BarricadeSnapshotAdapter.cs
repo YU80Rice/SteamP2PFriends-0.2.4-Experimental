@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.Adapters.Structure
 {
@@ -15,17 +16,17 @@ namespace SteamP2PFriends.Adapters.Structure
             public ulong ConnectionToken;
         }
 
-        private readonly Dictionary<ulong, Dictionary<int, ObserverRegionState>> _observerStates =
-            new Dictionary<ulong, Dictionary<int, ObserverRegionState>>();
-        private readonly Dictionary<int, uint> _regionGenerations = new Dictionary<int, uint>();
-        private readonly Dictionary<int, uint> _regionDeltaSequences = new Dictionary<int, uint>();
+        private readonly Dictionary<ulong, Dictionary<BarricadeKey, ObserverRegionState>> _observerStates =
+            new Dictionary<ulong, Dictionary<BarricadeKey, ObserverRegionState>>();
+        private readonly Dictionary<BarricadeKey, uint> _regionGenerations = new Dictionary<BarricadeKey, uint>();
+        private readonly Dictionary<BarricadeKey, uint> _regionDeltaSequences = new Dictionary<BarricadeKey, uint>();
 
-        public void UpdateRegionGeneration(int regionKey, uint generation)
+        public void UpdateRegionGeneration(BarricadeKey regionKey, uint generation)
         {
             _regionGenerations[regionKey] = generation;
         }
 
-        public void AdvanceDeltaSequence(int regionKey)
+        public void AdvanceDeltaSequence(BarricadeKey regionKey)
         {
             if (!_regionDeltaSequences.TryGetValue(regionKey, out uint seq))
             {
@@ -34,16 +35,16 @@ namespace SteamP2PFriends.Adapters.Structure
             _regionDeltaSequences[regionKey] = seq + 1;
         }
 
-        public uint GetDeltaSequence(int regionKey)
+        public uint GetDeltaSequence(BarricadeKey regionKey)
         {
             return _regionDeltaSequences.TryGetValue(regionKey, out uint seq) ? seq : 0;
         }
 
-        public bool ShouldReplicateSnapshot(ulong observerId, ulong connectionToken, int regionKey, uint currentGeneration)
+        public bool ShouldReplicateSnapshot(ulong observerId, ulong connectionToken, BarricadeKey regionKey, uint currentGeneration)
         {
             if (!_observerStates.TryGetValue(observerId, out var regions))
             {
-                regions = new Dictionary<int, ObserverRegionState>();
+                regions = new Dictionary<BarricadeKey, ObserverRegionState>();
                 _observerStates[observerId] = regions;
             }
 
@@ -88,13 +89,13 @@ namespace SteamP2PFriends.Adapters.Structure
     {
         private static readonly BarricadeSnapshotReplicationLedger Ledger = new BarricadeSnapshotReplicationLedger();
 
-        public static void UpdateRegionGeneration(int regionKey, uint generation) =>
+        public static void UpdateRegionGeneration(BarricadeKey regionKey, uint generation) =>
             Ledger.UpdateRegionGeneration(regionKey, generation);
 
-        public static void AdvanceDeltaSequence(int regionKey) =>
+        public static void AdvanceDeltaSequence(BarricadeKey regionKey) =>
             Ledger.AdvanceDeltaSequence(regionKey);
 
-        public static bool ShouldReplicateSnapshot(ulong observerId, ulong connectionToken, int regionKey, uint currentGen) =>
+        public static bool ShouldReplicateSnapshot(ulong observerId, ulong connectionToken, BarricadeKey regionKey, uint currentGen) =>
             Ledger.ShouldReplicateSnapshot(observerId, connectionToken, regionKey, currentGen);
 
         public static void RemoveObserver(ulong observerId) =>

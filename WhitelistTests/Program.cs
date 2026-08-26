@@ -11,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 181 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 183 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -21,6 +21,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("LOG2 Defaults", LoggingPolicyTests.Test_VerboseToggleIsAtomicAndDefaultsOff, ref total, ref passed, ref failed);
             RunTest("LOG3 Labels", LoggingPolicyTests.Test_LegacyLabelsAreRemovedAtOutputBoundary, ref total, ref passed, ref failed);
             RunTest("LOG4 Tags", LoggingPolicyTests.Test_InternalDiagnosticTagsAreRemovedFromOperationalText, ref total, ref passed, ref failed);
+            RunTest("ID Contract", IdentityContractTests.Test_All, ref total, ref passed, ref failed);
+            RunTest("ID StaticIL", IdentityStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             #endregion
 
             #region 2. MultiObserver Control Plane & Spatial Index Tests (18 Tests)

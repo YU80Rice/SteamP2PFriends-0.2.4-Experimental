@@ -1,5 +1,6 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ namespace SteamP2PFriends.Adapters.Resource
 {
     public readonly struct ResourceReleaseLease
     {
-        public ResourceReleaseLease(ulong sessionEpoch, int regionKey, uint regionGeneration, float deadline)
+        public ResourceReleaseLease(ulong sessionEpoch, RegionKey regionKey, uint regionGeneration, float deadline)
         {
             SessionEpoch = sessionEpoch;
             RegionKey = regionKey;
@@ -17,17 +18,17 @@ namespace SteamP2PFriends.Adapters.Resource
         }
 
         public ulong SessionEpoch { get; }
-        public int RegionKey { get; }
+        public RegionKey RegionKey { get; }
         public uint RegionGeneration { get; }
         public float Deadline { get; }
     }
 
     public sealed class ResourceRegionLifecycleLedger
     {
-        private readonly Dictionary<int, uint> _generations = new Dictionary<int, uint>();
-        private readonly Dictionary<int, ResourceReleaseLease> _releases = new Dictionary<int, ResourceReleaseLease>();
-        private readonly HashSet<int> _activeRegions = new HashSet<int>();
-        private readonly Dictionary<int, HashSet<ushort>> _deadResources = new Dictionary<int, HashSet<ushort>>();
+        private readonly Dictionary<RegionKey, uint> _generations = new Dictionary<RegionKey, uint>();
+        private readonly Dictionary<RegionKey, ResourceReleaseLease> _releases = new Dictionary<RegionKey, ResourceReleaseLease>();
+        private readonly HashSet<RegionKey> _activeRegions = new HashSet<RegionKey>();
+        private readonly Dictionary<RegionKey, HashSet<ushort>> _deadResources = new Dictionary<RegionKey, HashSet<ushort>>();
 
         public ulong SessionEpoch { get; private set; } = 1UL;
         public int ActiveRegionCount => _activeRegions.Count;
@@ -44,14 +45,14 @@ namespace SteamP2PFriends.Adapters.Resource
             _deadResources.Clear();
         }
 
-        public uint GetGeneration(int regionKey) =>
+        public uint GetGeneration(RegionKey regionKey) =>
             _generations.TryGetValue(regionKey, out uint generation) ? generation : 0U;
 
-        public bool IsRegionActive(int regionKey) => _activeRegions.Contains(regionKey);
+        public bool IsRegionActive(RegionKey regionKey) => _activeRegions.Contains(regionKey);
 
-        public bool IsRegionActive(byte x, byte y) => IsRegionActive((x << 8) | y);
+        public bool IsRegionActive(byte x, byte y) => IsRegionActive(new RegionKey(x, y));
 
-        public uint CommitAcquire(int regionKey)
+        public uint CommitAcquire(RegionKey regionKey)
         {
             CancelRelease(regionKey);
             _activeRegions.Add(regionKey);
@@ -62,7 +63,7 @@ namespace SteamP2PFriends.Adapters.Resource
             return next;
         }
 
-        public ResourceReleaseLease ScheduleRelease(int regionKey, float now, float hysteresisSeconds)
+        public ResourceReleaseLease ScheduleRelease(RegionKey regionKey, float now, float hysteresisSeconds)
         {
             var lease = new ResourceReleaseLease(
                 SessionEpoch,
@@ -73,12 +74,12 @@ namespace SteamP2PFriends.Adapters.Resource
             return lease;
         }
 
-        public bool CancelRelease(int regionKey) => _releases.Remove(regionKey);
+        public bool CancelRelease(RegionKey regionKey) => _releases.Remove(regionKey);
 
-        public bool TryGetRelease(int regionKey, out ResourceReleaseLease lease) =>
+        public bool TryGetRelease(RegionKey regionKey, out ResourceReleaseLease lease) =>
             _releases.TryGetValue(regionKey, out lease);
 
-        public bool TryCommitRelease(int regionKey, ulong expectedEpoch, uint expectedGeneration, out uint committedGeneration)
+        public bool TryCommitRelease(RegionKey regionKey, ulong expectedEpoch, uint expectedGeneration, out uint committedGeneration)
         {
             committedGeneration = 0U;
             if (!_releases.TryGetValue(regionKey, out ResourceReleaseLease lease))
@@ -99,13 +100,13 @@ namespace SteamP2PFriends.Adapters.Resource
             return true;
         }
 
-        public void CleanObserverDisconnect(int regionKey)
+        public void CleanObserverDisconnect(RegionKey regionKey)
         {
             _releases.Remove(regionKey);
             _activeRegions.Remove(regionKey);
         }
 
-        public uint RecordResourceDead(int regionKey, ushort index)
+        public uint RecordResourceDead(RegionKey regionKey, ushort index)
         {
             if (!_deadResources.TryGetValue(regionKey, out var set))
             {
@@ -121,7 +122,7 @@ namespace SteamP2PFriends.Adapters.Resource
             return next;
         }
 
-        public uint RecordResourceAlive(int regionKey, ushort index)
+        public uint RecordResourceAlive(RegionKey regionKey, ushort index)
         {
             if (_deadResources.TryGetValue(regionKey, out var set))
             {
@@ -135,12 +136,12 @@ namespace SteamP2PFriends.Adapters.Resource
             return next;
         }
 
-        public bool IsResourceDead(int regionKey, ushort index)
+        public bool IsResourceDead(RegionKey regionKey, ushort index)
         {
             return _deadResources.TryGetValue(regionKey, out var set) && set.Contains(index);
         }
 
-        public HashSet<ushort> GetDeadResourceIndices(int regionKey)
+        public HashSet<ushort> GetDeadResourceIndices(RegionKey regionKey)
         {
             if (_deadResources.TryGetValue(regionKey, out var set))
             {
@@ -194,7 +195,7 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static uint OnObserverAcquire(int regionKey)
+        public static uint OnObserverAcquire(RegionKey regionKey)
         {
             lock (SyncLock)
             {
@@ -202,7 +203,7 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static ResourceReleaseLease OnObserverRelease(int regionKey, float now, float hysteresisSeconds = DefaultHysteresisSeconds)
+        public static ResourceReleaseLease OnObserverRelease(RegionKey regionKey, float now, float hysteresisSeconds = DefaultHysteresisSeconds)
         {
             lock (SyncLock)
             {
@@ -210,7 +211,7 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static bool CancelRelease(int regionKey)
+        public static bool CancelRelease(RegionKey regionKey)
         {
             lock (SyncLock)
             {
@@ -218,7 +219,7 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static bool TryCommitRelease(int regionKey, ulong sessionEpoch, uint generation, out uint committedGeneration)
+        public static bool TryCommitRelease(RegionKey regionKey, ulong sessionEpoch, uint generation, out uint committedGeneration)
         {
             lock (SyncLock)
             {
@@ -226,7 +227,7 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static uint GetGeneration(int regionKey)
+        public static uint GetGeneration(RegionKey regionKey)
         {
             lock (SyncLock)
             {
@@ -236,7 +237,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static uint RecordResourceDead(byte x, byte y, ushort index)
         {
-            int regionKey = (x << 8) | y;
+            RegionKey regionKey = new RegionKey(x, y);
             lock (SyncLock)
             {
                 return Ledger.RecordResourceDead(regionKey, index);
@@ -245,7 +246,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static uint RecordResourceAlive(byte x, byte y, ushort index)
         {
-            int regionKey = (x << 8) | y;
+            RegionKey regionKey = new RegionKey(x, y);
             lock (SyncLock)
             {
                 return Ledger.RecordResourceAlive(regionKey, index);
@@ -254,7 +255,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static bool IsResourceDead(byte x, byte y, ushort index)
         {
-            int regionKey = (x << 8) | y;
+            RegionKey regionKey = new RegionKey(x, y);
             lock (SyncLock)
             {
                 return Ledger.IsResourceDead(regionKey, index);
@@ -263,14 +264,14 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static HashSet<ushort> GetDeadResourceIndices(byte x, byte y)
         {
-            int regionKey = (x << 8) | y;
+            RegionKey regionKey = new RegionKey(x, y);
             lock (SyncLock)
             {
                 return Ledger.GetDeadResourceIndices(regionKey);
             }
         }
 
-        public static void OnObserverDisconnect(int regionKey)
+        public static void OnObserverDisconnect(RegionKey regionKey)
         {
             lock (SyncLock)
             {

@@ -1,12 +1,13 @@
 using SDG.Unturned;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SteamP2PFriends.MultiObserver
+namespace SteamP2PFriends.Adapters.Animal
 {
     public enum AnimalLifecycleAction : byte
     {
@@ -21,7 +22,7 @@ namespace SteamP2PFriends.MultiObserver
 
     public readonly struct AnimalReleaseLease
     {
-        public AnimalReleaseLease(ulong sessionEpoch, byte bound, uint regionGeneration, float deadline)
+        public AnimalReleaseLease(ulong sessionEpoch, BoundKey bound, uint regionGeneration, float deadline)
         {
             SessionEpoch = sessionEpoch;
             Bound = bound;
@@ -30,16 +31,16 @@ namespace SteamP2PFriends.MultiObserver
         }
 
         public ulong SessionEpoch { get; }
-        public byte Bound { get; }
+        public BoundKey Bound { get; }
         public uint RegionGeneration { get; }
         public float Deadline { get; }
     }
 
     public sealed class AnimalRegionLifecycleLedger
     {
-        private readonly Dictionary<byte, uint> _generations = new Dictionary<byte, uint>();
-        private readonly Dictionary<byte, AnimalReleaseLease> _releases = new Dictionary<byte, AnimalReleaseLease>();
-        private readonly HashSet<byte> _quarantined = new HashSet<byte>();
+        private readonly Dictionary<BoundKey, uint> _generations = new Dictionary<BoundKey, uint>();
+        private readonly Dictionary<BoundKey, AnimalReleaseLease> _releases = new Dictionary<BoundKey, AnimalReleaseLease>();
+        private readonly HashSet<BoundKey> _quarantined = new HashSet<BoundKey>();
 
         public ulong SessionEpoch { get; private set; }
         public int PendingReleaseCount => _releases.Count;
@@ -55,10 +56,10 @@ namespace SteamP2PFriends.MultiObserver
             _quarantined.Clear();
         }
 
-        public uint GetGeneration(byte bound) =>
+        public uint GetGeneration(BoundKey bound) =>
             _generations.TryGetValue(bound, out uint generation) ? generation : 0U;
 
-        public uint CommitAcquire(byte bound)
+        public uint CommitAcquire(BoundKey bound)
         {
             CancelRelease(bound);
             uint next = GetGeneration(bound);
@@ -68,7 +69,7 @@ namespace SteamP2PFriends.MultiObserver
             return next;
         }
 
-        public AnimalLifecycleAction CompareDemand(byte bound, int nativeDemand, int observerDemand)
+        public AnimalLifecycleAction CompareDemand(BoundKey bound, int nativeDemand, int observerDemand)
         {
             if (nativeDemand < 0 || observerDemand < 0)
                 throw new ArgumentOutOfRangeException("Demand cannot be negative.");
@@ -81,9 +82,9 @@ namespace SteamP2PFriends.MultiObserver
             return AnimalLifecycleAction.QuarantineMismatch;
         }
 
-        public bool IsQuarantined(byte bound) => _quarantined.Contains(bound);
+        public bool IsQuarantined(BoundKey bound) => _quarantined.Contains(bound);
 
-        public AnimalReleaseLease ScheduleRelease(byte bound, float now, float hysteresisSeconds)
+        public AnimalReleaseLease ScheduleRelease(BoundKey bound, float now, float hysteresisSeconds)
         {
             var lease = new AnimalReleaseLease(
                 SessionEpoch,
@@ -94,12 +95,12 @@ namespace SteamP2PFriends.MultiObserver
             return lease;
         }
 
-        public bool CancelRelease(byte bound) => _releases.Remove(bound);
+        public bool CancelRelease(BoundKey bound) => _releases.Remove(bound);
 
-        public bool TryGetRelease(byte bound, out AnimalReleaseLease lease) =>
+        public bool TryGetRelease(BoundKey bound, out AnimalReleaseLease lease) =>
             _releases.TryGetValue(bound, out lease);
 
-        public bool TryCommitRelease(byte bound, ulong expectedEpoch, uint expectedGeneration, out uint committedGeneration)
+        public bool TryCommitRelease(BoundKey bound, ulong expectedEpoch, uint expectedGeneration, out uint committedGeneration)
         {
             committedGeneration = 0U;
             if (!_releases.TryGetValue(bound, out AnimalReleaseLease lease))
@@ -119,7 +120,7 @@ namespace SteamP2PFriends.MultiObserver
             return true;
         }
 
-        public void CleanObserverDisconnect(byte bound)
+        public void CleanObserverDisconnect(BoundKey bound)
         {
             _releases.Remove(bound);
             _quarantined.Remove(bound);
@@ -162,7 +163,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static uint OnObserverAcquire(byte bound)
+        public static uint OnObserverAcquire(BoundKey bound)
         {
             lock (SyncLock)
             {
@@ -170,7 +171,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static AnimalReleaseLease OnObserverRelease(byte bound, float now, float hysteresisSeconds = DefaultHysteresisSeconds)
+        public static AnimalReleaseLease OnObserverRelease(BoundKey bound, float now, float hysteresisSeconds = DefaultHysteresisSeconds)
         {
             lock (SyncLock)
             {
@@ -178,7 +179,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static bool CancelRelease(byte bound)
+        public static bool CancelRelease(BoundKey bound)
         {
             lock (SyncLock)
             {
@@ -186,7 +187,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static bool TryCommitRelease(byte bound, ulong sessionEpoch, uint generation, out uint committedGeneration)
+        public static bool TryCommitRelease(BoundKey bound, ulong sessionEpoch, uint generation, out uint committedGeneration)
         {
             lock (SyncLock)
             {
@@ -194,7 +195,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static uint GetGeneration(byte bound)
+        public static uint GetGeneration(BoundKey bound)
         {
             lock (SyncLock)
             {
@@ -202,7 +203,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public static void OnObserverDisconnect(byte bound)
+        public static void OnObserverDisconnect(BoundKey bound)
         {
             lock (SyncLock)
             {

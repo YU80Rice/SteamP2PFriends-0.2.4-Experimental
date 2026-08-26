@@ -78,3 +78,47 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | StaticIL | PENDING | 需后续静态 target/IL 快照门禁确认 |
 | BuildArtifact | PASS | 主项目、WhitelistTests Release 构建 0 errors / 0 warnings |
 | Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
+
+## Batch 3：Domain Ownership、Namespace 与 Identity
+
+状态：源码、构建、PureMemory 与身份 StaticIL 验证完成；Runtime 未执行
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Core/Identity/DomainId.cs` | 新增 | 不可变 Domain Id 与 `DomainIds` 单一来源；显示名称分离 |
+| `Core/Identity/RegionKey.cs` | 新增 | 二维坐标、Packed 编码/解码和边界校验集中管理 |
+| `Core/Identity/BoundKey.cs` | 新增 | 一维导航 Bound 与无效 sentinel 的独立身份类型 |
+| `Core/Identity/LifecycleAxes.cs` | 新增 | Session、Connection、Region、Entity generation 的正交值对象 |
+| `Core/Identity/BarricadeKey.cs` | 新增 | Region 与 plant 的复合身份，避免结构状态键碰撞 |
+| `MultiObserver/SPI/*` | 已整理 | SPI 与 `LeaseTicket` 使用 DomainId/RegionKey；Lifecycle/Replication 角色仍独立 |
+| `MultiObserver/SPI/IBoundStateReplicationAdapter.cs` | 新增 | Bound 状态复制与二维 Region 状态复制分离 |
+| `MultiObserver/Spatial/SpatialObserverIndex.cs` | 已整理 | Region 与 Bound 差异集合分离，连接 token 失效语义保持 |
+| `MultiObserver/MultiObserverShadowLedger.cs` | 已整理 | RegionKey 与 BoundKey 分别承载二维需求和一维 Zombie demand |
+| `Adapters/Animal/*` | namespace 已整理 | 生命周期/快照由旧 MultiObserver 命名空间归入 Animal 领域 |
+| `Adapters/Zombie/*` | namespace 已整理 | 生命周期/快照由旧 MultiObserver 命名空间归入 Zombie 领域 |
+| `Adapters/Zombie/ZombieSnapshotAdapter.cs` | 已整理 | Zombie snapshot ledger 全部使用 BoundKey |
+| `WhitelistTests/Core/IdentityContractTests.cs` | 新增 | PureMemory 身份编码、边界、sentinel 与显示名称分离测试 |
+| `WhitelistTests/StaticIL/IdentityStaticILContractTests.cs` | 新增 | 编译后接口/字段形状与隐式转换禁用契约 |
+| `docs/architecture/domain-identity.md` | 新增 | 类型、边界转换、领域所有权和未决迁移说明 |
+
+### 保持不变
+
+- Harmony target、owner、priority、注册顺序和注册后验证未重排；Ticket 02 的 Registration Closure 仍是顶层登记接缝。
+- P2P 频道、SteamID、存档、配置键、插件 GUID、状态机语义、当前标签和归档版本未修改。
+- Resource Production Control Seam、旧 Authority Writer 和功能行为未迁移。
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | `IdentityContractTests` 与现有 Spatial/Registration 测试入口 |
+| StaticIL | PASS（Ticket 03 身份契约） | `IdentityStaticILContractTests`；完整注册单元/Harmony target 快照仍由后续门禁负责 |
+| BuildArtifact | PASS | 主项目与 WhitelistTests Release 构建 0 errors / 0 warnings |
+| Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
+
+### 未决项
+
+- U3-SDK 原生 `int`/`byte` 仍在 patch 边界出现，但进入 Core、MultiObserver 和领域 ledger 前均显式转换为值对象。
+- 完整注册单元/Harmony target 静态快照与 Runtime 仍 Pending，不由本票据的身份 StaticIL 测试替代。

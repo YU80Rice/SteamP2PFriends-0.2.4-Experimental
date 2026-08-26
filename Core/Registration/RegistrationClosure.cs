@@ -1,4 +1,5 @@
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -20,9 +21,9 @@ namespace SteamP2PFriends.Core.Registration
     /// </summary>
     public sealed class RegistrationRequirement
     {
-        public RegistrationRequirement(string domainId, bool requiresLifecycle, bool requiresReplication)
+        public RegistrationRequirement(DomainId domainId, bool requiresLifecycle, bool requiresReplication)
         {
-            if (string.IsNullOrWhiteSpace(domainId))
+            if (!domainId.IsDefined)
                 throw new ArgumentException("Domain Id 不能为空", nameof(domainId));
             if (!requiresLifecycle && !requiresReplication)
                 throw new ArgumentException("领域至少需要一个注册角色", nameof(requiresLifecycle));
@@ -32,7 +33,7 @@ namespace SteamP2PFriends.Core.Registration
             RequiresReplication = requiresReplication;
         }
 
-        public string DomainId { get; }
+        public DomainId DomainId { get; }
         public bool RequiresLifecycle { get; }
         public bool RequiresReplication { get; }
     }
@@ -42,7 +43,7 @@ namespace SteamP2PFriends.Core.Registration
     /// </summary>
     public sealed class RegistrationRecord
     {
-        internal RegistrationRecord(string domainId, RegistrationRole role, string capability,
+        internal RegistrationRecord(DomainId domainId, RegistrationRole role, string capability,
             int order, string adapterTypeName)
         {
             DomainId = domainId;
@@ -52,7 +53,7 @@ namespace SteamP2PFriends.Core.Registration
             AdapterTypeName = adapterTypeName ?? string.Empty;
         }
 
-        public string DomainId { get; }
+        public DomainId DomainId { get; }
         public RegistrationRole Role { get; }
         public string Capability { get; }
         public int Order { get; }
@@ -73,9 +74,9 @@ namespace SteamP2PFriends.Core.Registration
             public IStateReplicationAdapter Replication;
         }
 
-        private readonly Dictionary<string, RegistrationRequirement> _requirements;
-        private readonly Dictionary<string, RegistrationSlot> _slots =
-            new Dictionary<string, RegistrationSlot>(StringComparer.Ordinal);
+        private readonly Dictionary<DomainId, RegistrationRequirement> _requirements;
+        private readonly Dictionary<DomainId, RegistrationSlot> _slots =
+            new Dictionary<DomainId, RegistrationSlot>();
         private readonly List<RegistrationRecord> _records = new List<RegistrationRecord>();
         private bool _closed;
 
@@ -83,7 +84,7 @@ namespace SteamP2PFriends.Core.Registration
         {
             if (requirements == null) throw new ArgumentNullException(nameof(requirements));
 
-            _requirements = new Dictionary<string, RegistrationRequirement>(StringComparer.Ordinal);
+            _requirements = new Dictionary<DomainId, RegistrationRequirement>();
             foreach (RegistrationRequirement requirement in requirements)
             {
                 if (requirement == null) throw new ArgumentException("注册要求不能为 null", nameof(requirements));
@@ -106,13 +107,13 @@ namespace SteamP2PFriends.Core.Registration
 
         public bool TryRegisterLifecycle(ILifecycleDomainAdapter adapter, out string failure)
         {
-            return TryRegister(adapter?.DomainName, RegistrationRole.Lifecycle,
+            return TryRegister(adapter?.DomainId ?? default(DomainId), RegistrationRole.Lifecycle,
                 adapter?.Capability, adapter, null, out failure);
         }
 
         public bool TryRegisterReplication(IStateReplicationAdapter adapter, out string failure)
         {
-            return TryRegister(adapter?.DomainName, RegistrationRole.Replication,
+            return TryRegister(adapter?.DomainId ?? default(DomainId), RegistrationRole.Replication,
                 string.Empty, null, adapter, out failure);
         }
 
@@ -148,23 +149,23 @@ namespace SteamP2PFriends.Core.Registration
             return true;
         }
 
-        public bool TryGetLifecycle(string domainId, out ILifecycleDomainAdapter adapter)
+        public bool TryGetLifecycle(DomainId domainId, out ILifecycleDomainAdapter adapter)
         {
             adapter = null;
-            if (domainId == null || !_closed) return false;
+            if (!domainId.IsDefined || !_closed) return false;
             return _slots.TryGetValue(domainId, out RegistrationSlot slot) &&
                 (adapter = slot.Lifecycle) != null;
         }
 
-        public bool TryGetReplication(string domainId, out IStateReplicationAdapter adapter)
+        public bool TryGetReplication(DomainId domainId, out IStateReplicationAdapter adapter)
         {
             adapter = null;
-            if (domainId == null || !_closed) return false;
+            if (!domainId.IsDefined || !_closed) return false;
             return _slots.TryGetValue(domainId, out RegistrationSlot slot) &&
                 (adapter = slot.Replication) != null;
         }
 
-        private bool TryRegister(string domainId, RegistrationRole role, string capability,
+        private bool TryRegister(DomainId domainId, RegistrationRole role, string capability,
             ILifecycleDomainAdapter lifecycle, IStateReplicationAdapter replication, out string failure)
         {
             if (_closed)
@@ -172,9 +173,9 @@ namespace SteamP2PFriends.Core.Registration
                 failure = "Registration Closure 已关闭，不允许继续登记";
                 return false;
             }
-            if (string.IsNullOrWhiteSpace(domainId) || !_requirements.ContainsKey(domainId))
+            if (!domainId.IsDefined || !_requirements.ContainsKey(domainId))
             {
-                failure = "未知 Domain Id: " + (domainId ?? "<null>");
+                failure = "未知 Domain Id: " + (domainId.IsDefined ? domainId.Value : "<none>");
                 return false;
             }
             if (role == RegistrationRole.Replication && lifecycle == null &&
@@ -214,15 +215,15 @@ namespace SteamP2PFriends.Core.Registration
     }
 
     /// <summary>
-    /// 当前结构基线中的稳定领域身份。显示名称和能力文本不承担身份职责。
+    /// 兼容旧注册调用点的稳定领域身份入口。显示名称和能力文本不承担身份职责。
     /// </summary>
     public static class RegistrationDomainIds
     {
-        public const string Item = "Item";
-        public const string Resource = "Resource";
-        public const string Building = "Building";
-        public const string Zombie = "Zombie";
-        public const string Animal = "Animal";
-        public const string Collision = "Collision";
+        public static readonly DomainId Item = DomainIds.Item;
+        public static readonly DomainId Resource = DomainIds.Resource;
+        public static readonly DomainId Building = DomainIds.Building;
+        public static readonly DomainId Zombie = DomainIds.Zombie;
+        public static readonly DomainId Animal = DomainIds.Animal;
+        public static readonly DomainId Collision = DomainIds.Collision;
     }
 }

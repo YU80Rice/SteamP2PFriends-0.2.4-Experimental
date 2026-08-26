@@ -1,4 +1,5 @@
-using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Adapters.Animal;
+using SteamP2PFriends.Core.Identity;
 using System;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -10,8 +11,9 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
 
-            uint gen = ledger.CommitAcquire(3);
-            return gen == 1U && ledger.GetGeneration(3) == 1U;
+            BoundKey bound = BoundKey.FromNative(3);
+            uint gen = ledger.CommitAcquire(bound);
+            return gen == 1U && ledger.GetGeneration(bound) == 1U;
         }
 
         public static bool Test_M5A02_GenerationCommitAdvancesMonotonically()
@@ -19,24 +21,26 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
 
-            uint gen1 = ledger.CommitAcquire(2);
-            uint gen2 = ledger.CommitAcquire(2);
+            BoundKey bound = BoundKey.FromNative(2);
+            uint gen1 = ledger.CommitAcquire(bound);
+            uint gen2 = ledger.CommitAcquire(bound);
 
-            return gen1 == 1U && gen2 == 2U && ledger.GetGeneration(2) == 2U;
+            return gen1 == 1U && gen2 == 2U && ledger.GetGeneration(bound) == 2U;
         }
 
         public static bool Test_M5A03_ReleaseUsesHysteresisDeadline()
         {
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
-            ledger.CommitAcquire(5);
+            BoundKey bound = BoundKey.FromNative(5);
+            ledger.CommitAcquire(bound);
 
             float now = 100.0f;
             float hysteresis = 2.0f;
-            AnimalReleaseLease lease = ledger.ScheduleRelease(5, now, hysteresis);
+            AnimalReleaseLease lease = ledger.ScheduleRelease(bound, now, hysteresis);
 
             return lease.SessionEpoch == 10UL &&
-                   lease.Bound == 5 &&
+                   lease.Bound == bound &&
                    lease.RegionGeneration == 1U &&
                    Math.Abs(lease.Deadline - 102.0f) < 0.001f &&
                    ledger.PendingReleaseCount == 1;
@@ -46,10 +50,11 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
-            ledger.CommitAcquire(5);
-            ledger.ScheduleRelease(5, 100.0f, 2.0f);
+            BoundKey bound = BoundKey.FromNative(5);
+            ledger.CommitAcquire(bound);
+            ledger.ScheduleRelease(bound, 100.0f, 2.0f);
 
-            bool cancelled = ledger.CancelRelease(5);
+            bool cancelled = ledger.CancelRelease(bound);
             return cancelled && ledger.PendingReleaseCount == 0;
         }
 
@@ -57,22 +62,24 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
-            ledger.CommitAcquire(1);
-            ledger.ScheduleRelease(1, 100.0f, 2.0f);
+            BoundKey bound = BoundKey.FromNative(1);
+            ledger.CommitAcquire(bound);
+            ledger.ScheduleRelease(bound, 100.0f, 2.0f);
 
-            bool committed = ledger.TryCommitRelease(1, 9UL, 1U, out uint nextGen);
-            return !committed && nextGen == 0U && ledger.GetGeneration(1) == 1U;
+            bool committed = ledger.TryCommitRelease(bound, 9UL, 1U, out uint nextGen);
+            return !committed && nextGen == 0U && ledger.GetGeneration(bound) == 1U;
         }
 
         public static bool Test_M5A06_StaleGenerationCannotRelease()
         {
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
-            ledger.CommitAcquire(1);
-            ledger.ScheduleRelease(1, 100.0f, 2.0f);
+            BoundKey bound = BoundKey.FromNative(1);
+            ledger.CommitAcquire(bound);
+            ledger.ScheduleRelease(bound, 100.0f, 2.0f);
 
-            bool committed = ledger.TryCommitRelease(1, 10UL, 99U, out uint nextGen);
-            return !committed && nextGen == 0U && ledger.GetGeneration(1) == 1U;
+            bool committed = ledger.TryCommitRelease(bound, 10UL, 99U, out uint nextGen);
+            return !committed && nextGen == 0U && ledger.GetGeneration(bound) == 1U;
         }
 
         public static bool Test_M5A07_BoundsAreIndependent()
@@ -80,37 +87,41 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
 
-            ledger.CommitAcquire(1);
-            ledger.CommitAcquire(2);
-            ledger.CommitAcquire(2);
+            BoundKey bound1 = BoundKey.FromNative(1);
+            BoundKey bound2 = BoundKey.FromNative(2);
+            ledger.CommitAcquire(bound1);
+            ledger.CommitAcquire(bound2);
+            ledger.CommitAcquire(bound2);
 
-            return ledger.GetGeneration(1) == 1U && ledger.GetGeneration(2) == 2U;
+            return ledger.GetGeneration(bound1) == 1U && ledger.GetGeneration(bound2) == 2U;
         }
 
         public static bool Test_M5A08_CommitReleaseIsIdempotentAndAdvancesGeneration()
         {
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
-            ledger.CommitAcquire(4);
-            ledger.ScheduleRelease(4, 100.0f, 2.0f);
+            BoundKey bound = BoundKey.FromNative(4);
+            ledger.CommitAcquire(bound);
+            ledger.ScheduleRelease(bound, 100.0f, 2.0f);
 
-            bool committed1 = ledger.TryCommitRelease(4, 10UL, 1U, out uint nextGen1);
-            bool committed2 = ledger.TryCommitRelease(4, 10UL, 1U, out uint nextGen2);
+            bool committed1 = ledger.TryCommitRelease(bound, 10UL, 1U, out uint nextGen1);
+            bool committed2 = ledger.TryCommitRelease(bound, 10UL, 1U, out uint nextGen2);
 
-            return committed1 && nextGen1 == 2U && !committed2 && nextGen2 == 0U && ledger.GetGeneration(4) == 2U;
+            return committed1 && nextGen1 == 2U && !committed2 && nextGen2 == 0U && ledger.GetGeneration(bound) == 2U;
         }
 
         public static bool Test_M5A09_DisconnectCleansObserverState()
         {
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
-            ledger.CommitAcquire(7);
-            ledger.ScheduleRelease(7, 100.0f, 2.0f);
-            ledger.CompareDemand(7, 1, 2);
+            BoundKey bound = BoundKey.FromNative(7);
+            ledger.CommitAcquire(bound);
+            ledger.ScheduleRelease(bound, 100.0f, 2.0f);
+            ledger.CompareDemand(bound, 1, 2);
 
-            ledger.CleanObserverDisconnect(7);
+            ledger.CleanObserverDisconnect(bound);
 
-            return ledger.PendingReleaseCount == 0 && !ledger.IsQuarantined(7);
+            return ledger.PendingReleaseCount == 0 && !ledger.IsQuarantined(bound);
         }
 
         public static bool Test_M5A10_DemandMismatchTriggersQuarantine()
@@ -118,11 +129,12 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new AnimalRegionLifecycleLedger();
             ledger.BeginSession(10UL);
 
-            AnimalLifecycleAction action1 = ledger.CompareDemand(3, 1, 2);
-            bool isQ1 = ledger.IsQuarantined(3);
+            BoundKey bound = BoundKey.FromNative(3);
+            AnimalLifecycleAction action1 = ledger.CompareDemand(bound, 1, 2);
+            bool isQ1 = ledger.IsQuarantined(bound);
 
-            AnimalLifecycleAction action2 = ledger.CompareDemand(3, 2, 2);
-            bool isQ2 = ledger.IsQuarantined(3);
+            AnimalLifecycleAction action2 = ledger.CompareDemand(bound, 2, 2);
+            bool isQ2 = ledger.IsQuarantined(bound);
 
             return action1 == AnimalLifecycleAction.QuarantineMismatch &&
                    isQ1 &&

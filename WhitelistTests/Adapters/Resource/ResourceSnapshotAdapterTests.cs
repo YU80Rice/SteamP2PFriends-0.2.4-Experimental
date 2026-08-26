@@ -1,4 +1,5 @@
 using SteamP2PFriends.Adapters.Resource;
+using SteamP2PFriends.Core.Identity;
 using System;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -10,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new ResourceSnapshotReplicationLedger();
             ledger.ResetSession(1UL);
 
-            int regionKey = (12 << 8) | 34;
+            RegionKey regionKey = new RegionKey(12, 34);
             bool enqueued = ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 1U);
             bool found = ledger.TryGetSnapshot(76561198000000001UL, regionKey, out ResourceSnapshotRecord record);
 
@@ -28,7 +29,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new ResourceSnapshotReplicationLedger();
             ledger.ResetSession(1UL);
 
-            int regionKey = (10 << 8) | 20;
+            RegionKey regionKey = new RegionKey(10, 20);
             bool first = ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 1U);
             bool second = ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 1U);
 
@@ -40,7 +41,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new ResourceSnapshotReplicationLedger();
             ledger.ResetSession(1UL);
 
-            int regionKey = (5 << 8) | 5;
+            RegionKey regionKey = new RegionKey(5, 5);
             ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 1U);
             bool resynced = ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 2U);
 
@@ -54,7 +55,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new ResourceSnapshotReplicationLedger();
             ledger.ResetSession(1UL);
 
-            int regionKey = (8 << 8) | 8;
+            RegionKey regionKey = new RegionKey(8, 8);
             ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 1U);
             bool reconnected = ledger.EnqueueInitialSnapshot(76561198000000001UL, 202UL, regionKey, 1U);
 
@@ -68,7 +69,7 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new ResourceSnapshotReplicationLedger();
             ledger.ResetSession(1UL);
 
-            int regionKey = (1 << 8) | 1;
+            RegionKey regionKey = new RegionKey(1, 1);
             ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, regionKey, 1U);
             ledger.EnqueueInitialSnapshot(76561198000000002UL, 102UL, regionKey, 1U);
 
@@ -83,8 +84,8 @@ namespace SteamP2PFriends.WhitelistTests
             var ledger = new ResourceSnapshotReplicationLedger();
             ledger.ResetSession(1UL);
 
-            int r1 = (1 << 8) | 1;
-            int r2 = (2 << 8) | 2;
+            RegionKey r1 = new RegionKey(1, 1);
+            RegionKey r2 = new RegionKey(2, 2);
 
             ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, r1, 1U);
             ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, r2, 1U);

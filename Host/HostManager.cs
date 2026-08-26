@@ -2,6 +2,7 @@ using HarmonyLib;
 using SDG.Provider.Services.Multiplayer.Server;
 using SDG.Unturned;
 using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.Shared.Enums;

@@ -5,6 +5,7 @@ using SteamP2PFriends.Shared;
 using Steamworks;
 using System;
 using System.Collections.Generic;
+using SteamP2PFriends.Core.Identity;
 using UnityEngine;
 
 namespace SteamP2PFriends.MultiObserver
@@ -63,7 +64,7 @@ namespace SteamP2PFriends.MultiObserver
         internal static ulong SessionEpoch => Ledger.SessionEpoch;
         internal static int ObserverCount => Ledger.ObserverCount;
 
-        internal static int GetZombieDemandCount(byte bound) => Ledger.GetZombieDemand(bound);
+        internal static int GetZombieDemandCount(byte bound) => Ledger.GetZombieDemand(BoundKey.FromNative(bound));
 
         internal static void Initialize()
         {
@@ -321,7 +322,7 @@ namespace SteamP2PFriends.MultiObserver
                         connectionToken,
                         observer.Movement.region_x,
                         observer.Movement.region_y,
-                        observer.Movement.bound,
+                        BoundKey.FromNative(observer.Movement.bound),
                         hasFunctionalZombieBound,
                         local,
                         authorized,
@@ -392,13 +393,13 @@ namespace SteamP2PFriends.MultiObserver
                 }
             }
 
-            IReadOnlyDictionary<byte, int> demand = Ledger.SnapshotZombieDemand();
+            IReadOnlyDictionary<BoundKey, int> demand = Ledger.SnapshotZombieDemand();
             var activeZombieMismatchKeys = new HashSet<string>(StringComparer.Ordinal);
-            foreach (KeyValuePair<byte, int> pair in demand)
+            foreach (KeyValuePair<BoundKey, int> pair in demand)
             {
                 string mismatchKey = $"zombie-demand:{pair.Key}";
                 activeZombieMismatchKeys.Add(mismatchKey);
-                int nativeCount = ReadNativeZombiePlayerCount(pair.Key);
+                int nativeCount = ReadNativeZombiePlayerCount(pair.Key.Value);
                 if (nativeCount != pair.Value)
                 {
                     SafeMismatch(

@@ -1,10 +1,11 @@
 using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Shared;
+using SteamP2PFriends.Core.Identity;
 using System;
 using System.Collections.Generic;
 
-namespace SteamP2PFriends.MultiObserver
+namespace SteamP2PFriends.Adapters.Zombie
 {
     public enum ZombieSnapshotCapability
     {
@@ -23,7 +24,7 @@ namespace SteamP2PFriends.MultiObserver
         public readonly ulong ObserverId;
         public readonly ulong ConnectionToken;
         public readonly uint SessionEpoch;
-        public readonly byte Bound;
+        public readonly BoundKey Bound;
         public readonly uint RegionGeneration;
         public readonly uint SnapshotSequence;
         public readonly bool Valid;
@@ -32,7 +33,7 @@ namespace SteamP2PFriends.MultiObserver
             ulong observerId,
             ulong connectionToken,
             uint sessionEpoch,
-            byte bound,
+            BoundKey bound,
             uint regionGeneration,
             uint snapshotSequence,
             bool valid)
@@ -79,13 +80,13 @@ namespace SteamP2PFriends.MultiObserver
         private sealed class ObserverZombieReplicationState
         {
             public ulong ConnectionToken;
-            public byte ActiveBound = 255;
+            public BoundKey ActiveBound = BoundKey.None;
             public uint SessionEpoch;
             public uint LastSnapshotSequence;
             public uint LastDeltaSequence;
-            public readonly Dictionary<byte, uint> CommittedGenerations = new Dictionary<byte, uint>();
-            public readonly HashSet<byte> ClothesCommitted = new HashSet<byte>();
-            public readonly HashSet<byte> PreparingBounds = new HashSet<byte>();
+            public readonly Dictionary<BoundKey, uint> CommittedGenerations = new Dictionary<BoundKey, uint>();
+            public readonly HashSet<BoundKey> ClothesCommitted = new HashSet<BoundKey>();
+            public readonly HashSet<BoundKey> PreparingBounds = new HashSet<BoundKey>();
         }
 
         private readonly object _sync = new object();
@@ -107,7 +108,7 @@ namespace SteamP2PFriends.MultiObserver
         public bool UpdateRelevance(
             ulong observerId,
             ulong connectionToken,
-            byte bound,
+            BoundKey bound,
             uint sessionEpoch,
             out bool changed)
         {
@@ -167,7 +168,7 @@ namespace SteamP2PFriends.MultiObserver
         public ZombieSnapshotBeginResult TryBegin(
             ulong observerId,
             ulong connectionToken,
-            byte bound,
+            BoundKey bound,
             uint sessionEpoch,
             uint regionGeneration,
             out ZombieSnapshotToken token)
@@ -187,7 +188,7 @@ namespace SteamP2PFriends.MultiObserver
                     return ZombieSnapshotBeginResult.Rejected;
                 }
 
-                if (state.ActiveBound != bound && bound != 255)
+                if (state.ActiveBound != bound && !bound.IsNone)
                 {
                     return ZombieSnapshotBeginResult.Rejected;
                 }
@@ -266,7 +267,7 @@ namespace SteamP2PFriends.MultiObserver
         public bool IsCommitted(
             ulong observerId,
             ulong connectionToken,
-            byte bound,
+            BoundKey bound,
             uint sessionEpoch,
             uint regionGeneration)
         {
@@ -286,7 +287,7 @@ namespace SteamP2PFriends.MultiObserver
             }
         }
 
-        public uint NextDeltaSequence(ulong observerId, byte bound, uint sessionEpoch)
+        public uint NextDeltaSequence(ulong observerId, BoundKey bound, uint sessionEpoch)
         {
             lock (_sync)
             {
@@ -333,7 +334,7 @@ namespace SteamP2PFriends.MultiObserver
             return new ZombieSnapshotReplicationLedger();
         }
 
-        public static bool ShouldReplicateForObserver(Player player, byte bound)
+        public static bool ShouldReplicateForObserver(Player player, BoundKey bound)
         {
             if (player == null || player.channel == null) return false;
             if (Dedicator.IsDedicatedServer) return true;
@@ -344,7 +345,7 @@ namespace SteamP2PFriends.MultiObserver
 
         public static ZombieSnapshotBeginResult TryBeginSnapshot(
             Player player,
-            byte bound,
+            BoundKey bound,
             uint regionGeneration,
             out ZombieSnapshotToken token)
         {
@@ -373,7 +374,7 @@ namespace SteamP2PFriends.MultiObserver
             return Ledger.Abort(token);
         }
 
-        public static bool IsSnapshotCommitted(Player player, byte bound, uint regionGeneration)
+        public static bool IsSnapshotCommitted(Player player, BoundKey bound, uint regionGeneration)
         {
             if (!TryResolve(player, out ulong observerId, out ulong connectionToken))
                 return false;

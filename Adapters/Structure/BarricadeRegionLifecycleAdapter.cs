@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.Adapters.Structure
 {
@@ -20,8 +21,8 @@ namespace SteamP2PFriends.Adapters.Structure
             public readonly HashSet<ushort> ModifiedIndices = new HashSet<ushort>();
         }
 
-        private readonly Dictionary<int, RegionEntry> _regions = new Dictionary<int, RegionEntry>();
-        private readonly HashSet<int> _activeKeys = new HashSet<int>();
+        private readonly Dictionary<BarricadeKey, RegionEntry> _regions = new Dictionary<BarricadeKey, RegionEntry>();
+        private readonly HashSet<BarricadeKey> _activeKeys = new HashSet<BarricadeKey>();
         private readonly float _hysteresisSeconds;
         private uint _sessionEpoch;
         private bool _isSessionActive;
@@ -34,11 +35,6 @@ namespace SteamP2PFriends.Adapters.Structure
         public uint SessionEpoch => _sessionEpoch;
         public bool IsSessionActive => _isSessionActive;
         public int ActiveRegionCount => _activeKeys.Count;
-
-        public static int EncodeKey(byte x, byte y, ushort plant = 0)
-        {
-            return (plant << 16) | (x << 8) | y;
-        }
 
         public void BeginSession(uint sessionEpoch)
         {
@@ -55,7 +51,7 @@ namespace SteamP2PFriends.Adapters.Structure
             _activeKeys.Clear();
         }
 
-        public uint AcquireObserver(int regionKey)
+        public uint AcquireObserver(BarricadeKey regionKey)
         {
             if (!_isSessionActive) return 0;
 
@@ -73,7 +69,7 @@ namespace SteamP2PFriends.Adapters.Structure
             return entry.Generation;
         }
 
-        public bool ScheduleRelease(int regionKey, float currentTime)
+        public bool ScheduleRelease(BarricadeKey regionKey, float currentTime)
         {
             if (!_isSessionActive) return false;
             if (!_regions.TryGetValue(regionKey, out RegionEntry entry)) return false;
@@ -92,7 +88,7 @@ namespace SteamP2PFriends.Adapters.Structure
             return false;
         }
 
-        public bool CommitRelease(int regionKey, float currentTime, uint expectedSessionEpoch, uint expectedGeneration)
+        public bool CommitRelease(BarricadeKey regionKey, float currentTime, uint expectedSessionEpoch, uint expectedGeneration)
         {
             if (!_isSessionActive || expectedSessionEpoch != _sessionEpoch) return false;
             if (!_regions.TryGetValue(regionKey, out RegionEntry entry)) return false;
@@ -113,7 +109,7 @@ namespace SteamP2PFriends.Adapters.Structure
         public uint RecordBarricadeChange(byte x, byte y, ushort plant, ushort index)
         {
             if (!_isSessionActive) return 0;
-            int key = EncodeKey(x, y, plant);
+            BarricadeKey key = BarricadeKey.FromNative(x, y, plant);
 
             if (!_regions.TryGetValue(key, out RegionEntry entry))
             {
@@ -127,22 +123,22 @@ namespace SteamP2PFriends.Adapters.Structure
             return entry.Generation;
         }
 
-        public uint GetGeneration(int regionKey)
+        public uint GetGeneration(BarricadeKey regionKey)
         {
             return _regions.TryGetValue(regionKey, out RegionEntry entry) ? entry.Generation : 0;
         }
 
-        public uint GetDeltaSequence(int regionKey)
+        public uint GetDeltaSequence(BarricadeKey regionKey)
         {
             return _regions.TryGetValue(regionKey, out RegionEntry entry) ? entry.DeltaSequence : 0;
         }
 
-        public bool IsRegionActive(int regionKey)
+        public bool IsRegionActive(BarricadeKey regionKey)
         {
             return _activeKeys.Contains(regionKey);
         }
 
-        public IReadOnlyCollection<ushort> GetModifiedIndices(int regionKey)
+        public IReadOnlyCollection<ushort> GetModifiedIndices(BarricadeKey regionKey)
         {
             if (_regions.TryGetValue(regionKey, out RegionEntry entry))
             {
@@ -151,7 +147,7 @@ namespace SteamP2PFriends.Adapters.Structure
             return new List<ushort>();
         }
 
-        public void ClearModifiedIndices(int regionKey)
+        public void ClearModifiedIndices(BarricadeKey regionKey)
         {
             if (_regions.TryGetValue(regionKey, out RegionEntry entry))
             {
@@ -175,9 +171,9 @@ namespace SteamP2PFriends.Adapters.Structure
         public static void BeginSession(uint epoch) => Ledger.BeginSession(epoch);
         public static void EndSession() => Ledger.EndSession();
 
-        public static uint OnObserverAcquire(int regionKey) => Ledger.AcquireObserver(regionKey);
-        public static bool OnObserverRelease(int regionKey, float currentTime) => Ledger.ScheduleRelease(regionKey, currentTime);
-        public static bool CommitRelease(int regionKey, float currentTime, uint expectedEpoch, uint expectedGen) =>
+        public static uint OnObserverAcquire(BarricadeKey regionKey) => Ledger.AcquireObserver(regionKey);
+        public static bool OnObserverRelease(BarricadeKey regionKey, float currentTime) => Ledger.ScheduleRelease(regionKey, currentTime);
+        public static bool CommitRelease(BarricadeKey regionKey, float currentTime, uint expectedEpoch, uint expectedGen) =>
             Ledger.CommitRelease(regionKey, currentTime, expectedEpoch, expectedGen);
 
         public static uint RecordBarricadePlaced(byte x, byte y, ushort plant, ushort index) =>
@@ -192,10 +188,10 @@ namespace SteamP2PFriends.Adapters.Structure
         public static uint RecordBarricadeSalvaged(byte x, byte y, ushort plant, ushort index) =>
             Ledger.RecordBarricadeChange(x, y, plant, index);
 
-        public static uint GetGeneration(int regionKey) => Ledger.GetGeneration(regionKey);
-        public static uint GetDeltaSequence(int regionKey) => Ledger.GetDeltaSequence(regionKey);
+        public static uint GetGeneration(BarricadeKey regionKey) => Ledger.GetGeneration(regionKey);
+        public static uint GetDeltaSequence(BarricadeKey regionKey) => Ledger.GetDeltaSequence(regionKey);
         public static bool IsRegionActive(byte x, byte y, ushort plant = 0) =>
-            Ledger.IsRegionActive(BarricadeRegionLifecycleLedger.EncodeKey(x, y, plant));
+            Ledger.IsRegionActive(BarricadeKey.FromNative(x, y, plant));
 
         public static BarricadeRegionLifecycleLedger CreateLedgerForTests(float hysteresis = 2.0f) =>
             new BarricadeRegionLifecycleLedger(hysteresis);

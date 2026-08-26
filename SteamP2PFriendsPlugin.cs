@@ -233,7 +233,7 @@ namespace SteamP2PFriends
             try
             {
                 MultiObserverShadowCoordinator.Tick(EnableMultiObserverShadow?.Value == true);
-                MultiObserver.ZombieRegionLifecycleAdapter.Tick();
+                Adapters.Zombie.ZombieRegionLifecycleAdapter.Tick();
             }
             catch (System.Exception ex)
             {

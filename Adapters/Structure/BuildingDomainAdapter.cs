@@ -1,6 +1,8 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using System;
+using RegionKey = SteamP2PFriends.Core.Identity.RegionKey;
 
 namespace SteamP2PFriends.Adapters.Structure
 {
@@ -10,7 +12,8 @@ namespace SteamP2PFriends.Adapters.Structure
     /// </summary>
     public sealed class BuildingDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter
     {
-        public string DomainName => "Building";
+        public DomainId DomainId => DomainIds.Building;
+        public string DisplayName => "Building";
         public string Capability => "BarricadeStructureLifecycle+StateReplication+HysteresisRelease";
 
         public void OnSessionBegin(uint sessionEpoch)
@@ -39,7 +42,7 @@ namespace SteamP2PFriends.Adapters.Structure
         {
             if (ticket.Valid)
             {
-                BarricadeRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+                BarricadeRegionLifecycleAdapter.OnObserverAcquire(BarricadeKey.FromRegion(ticket.RegionKey, 0));
                 StructureRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
             }
         }
@@ -48,7 +51,7 @@ namespace SteamP2PFriends.Adapters.Structure
         {
             if (ticket.Valid)
             {
-                BarricadeRegionLifecycleAdapter.OnObserverRelease(ticket.RegionKey, 0f);
+                BarricadeRegionLifecycleAdapter.OnObserverRelease(BarricadeKey.FromRegion(ticket.RegionKey, 0), 0f);
                 StructureRegionLifecycleAdapter.OnObserverRelease(ticket.RegionKey, 0f);
             }
         }
@@ -63,16 +66,17 @@ namespace SteamP2PFriends.Adapters.Structure
             StructureSnapshotAdapter.RemoveObserver(observerId);
         }
 
-        public void OnObserverEntered(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
-            uint bGen = BarricadeRegionLifecycleAdapter.GetGeneration(regionKey);
-            BarricadeSnapshotAdapter.ShouldReplicateSnapshot(observerId, connectionToken, regionKey, bGen);
+            BarricadeKey barricadeKey = BarricadeKey.FromRegion(regionKey, 0);
+            uint bGen = BarricadeRegionLifecycleAdapter.GetGeneration(barricadeKey);
+            BarricadeSnapshotAdapter.ShouldReplicateSnapshot(observerId, connectionToken, barricadeKey, bGen);
 
             uint sGen = StructureRegionLifecycleAdapter.GetGeneration(regionKey);
             StructureSnapshotAdapter.ShouldReplicateSnapshot(observerId, connectionToken, regionKey, sGen);
         }
 
-        public void OnObserverExited(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
         }
 

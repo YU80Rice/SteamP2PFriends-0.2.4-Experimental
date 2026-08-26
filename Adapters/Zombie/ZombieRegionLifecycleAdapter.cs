@@ -1,12 +1,14 @@
 using SDG.Unturned;
 using SteamP2PFriends.Host;
+using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.Patches.P0EZombieLifecycle;
 using SteamP2PFriends.Shared;
+using SteamP2PFriends.Core.Identity;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SteamP2PFriends.MultiObserver
+namespace SteamP2PFriends.Adapters.Zombie
 {
     internal enum ZombieLifecycleAction : byte
     {
@@ -21,7 +23,7 @@ namespace SteamP2PFriends.MultiObserver
 
     internal readonly struct ZombieReleaseLease
     {
-        internal ZombieReleaseLease(ulong sessionEpoch, byte bound, uint regionGeneration, float deadline)
+        internal ZombieReleaseLease(ulong sessionEpoch, BoundKey bound, uint regionGeneration, float deadline)
         {
             SessionEpoch = sessionEpoch;
             Bound = bound;
@@ -30,16 +32,16 @@ namespace SteamP2PFriends.MultiObserver
         }
 
         internal ulong SessionEpoch { get; }
-        internal byte Bound { get; }
+        internal BoundKey Bound { get; }
         internal uint RegionGeneration { get; }
         internal float Deadline { get; }
     }
 
     internal sealed class ZombieRegionLifecycleLedger
     {
-        private readonly Dictionary<byte, uint> _generations = new Dictionary<byte, uint>();
-        private readonly Dictionary<byte, ZombieReleaseLease> _releases = new Dictionary<byte, ZombieReleaseLease>();
-        private readonly HashSet<byte> _quarantined = new HashSet<byte>();
+        private readonly Dictionary<BoundKey, uint> _generations = new Dictionary<BoundKey, uint>();
+        private readonly Dictionary<BoundKey, ZombieReleaseLease> _releases = new Dictionary<BoundKey, ZombieReleaseLease>();
+        private readonly HashSet<BoundKey> _quarantined = new HashSet<BoundKey>();
 
         internal ulong SessionEpoch { get; private set; }
         internal int PendingReleaseCount => _releases.Count;
@@ -55,10 +57,10 @@ namespace SteamP2PFriends.MultiObserver
             _quarantined.Clear();
         }
 
-        internal uint GetGeneration(byte bound) =>
+        internal uint GetGeneration(BoundKey bound) =>
             _generations.TryGetValue(bound, out uint generation) ? generation : 0U;
 
-        internal uint CommitAcquire(byte bound)
+        internal uint CommitAcquire(BoundKey bound)
         {
             CancelRelease(bound);
             uint next = GetGeneration(bound);
@@ -68,7 +70,7 @@ namespace SteamP2PFriends.MultiObserver
             return next;
         }
 
-        internal ZombieLifecycleAction CompareDemand(byte bound, int nativeDemand, int observerDemand)
+        internal ZombieLifecycleAction CompareDemand(BoundKey bound, int nativeDemand, int observerDemand)
         {
             if (nativeDemand < 0 || observerDemand < 0)
                 throw new ArgumentOutOfRangeException("Demand cannot be negative.");
@@ -81,9 +83,9 @@ namespace SteamP2PFriends.MultiObserver
             return ZombieLifecycleAction.QuarantineMismatch;
         }
 
-        internal bool IsQuarantined(byte bound) => _quarantined.Contains(bound);
+        internal bool IsQuarantined(BoundKey bound) => _quarantined.Contains(bound);
 
-        internal ZombieReleaseLease ScheduleRelease(byte bound, float now, float hysteresisSeconds)
+        internal ZombieReleaseLease ScheduleRelease(BoundKey bound, float now, float hysteresisSeconds)
         {
             var lease = new ZombieReleaseLease(
                 SessionEpoch,
@@ -94,9 +96,9 @@ namespace SteamP2PFriends.MultiObserver
             return lease;
         }
 
-        internal bool CancelRelease(byte bound) => _releases.Remove(bound);
+        internal bool CancelRelease(BoundKey bound) => _releases.Remove(bound);
 
-        internal bool TryGetRelease(byte bound, out ZombieReleaseLease lease) =>
+        internal bool TryGetRelease(BoundKey bound, out ZombieReleaseLease lease) =>
             _releases.TryGetValue(bound, out lease);
 
         internal bool CanCommitRelease(in ZombieReleaseLease lease, float now, int nativeDemand)
@@ -131,7 +133,7 @@ namespace SteamP2PFriends.MultiObserver
         private const float ReleaseHysteresisSeconds = 2f;
         private const int LogLimit = 48;
         private static readonly ZombieRegionLifecycleLedger Ledger = new ZombieRegionLifecycleLedger();
-        private static readonly Dictionary<byte, ZombieRegion> RegionIdentity = new Dictionary<byte, ZombieRegion>();
+        private static readonly Dictionary<BoundKey, ZombieRegion> RegionIdentity = new Dictionary<BoundKey, ZombieRegion>();
         private static bool _registrationReady;
         private static int _logCount;
         private static float _nextReconcileAt;
@@ -172,7 +174,7 @@ namespace SteamP2PFriends.MultiObserver
                     SafeWarn($"release-cancel bound={lease.Bound} reason=demand-quarantined");
                     continue;
                 }
-                if (!TryGetRegion(lease.Bound, out ZombieRegion region)
+                if (!TryGetRegion(lease.Bound.ToNative(), out ZombieRegion region)
                     || !RegionIdentity.TryGetValue(lease.Bound, out ZombieRegion expected)
                     || !ReferenceEquals(region, expected))
                 {
@@ -204,8 +206,9 @@ namespace SteamP2PFriends.MultiObserver
             EnsureSession();
             if (!TryGetRegion(newBound, out ZombieRegion region)) return false;
 
+            BoundKey newBoundKey = BoundKey.FromNative(newBound);
             ObserveDemand(newBound, region.PlayerCountInRegion);
-            Ledger.CancelRelease(newBound);
+            Ledger.CancelRelease(newBoundKey);
             if (region.isNetworked) return false;
             if (player?.movement?.loadedBounds == null
                 || newBound >= player.movement.loadedBounds.Length
@@ -218,8 +221,8 @@ namespace SteamP2PFriends.MultiObserver
             if (!TryGetRegion(newBound, out ZombieRegion verified) || !ReferenceEquals(region, verified))
                 throw new InvalidOperationException("Zombie region changed during acquire.");
             region.isNetworked = true;
-            uint generation = Ledger.CommitAcquire(newBound);
-            RegionIdentity[newBound] = region;
+            uint generation = Ledger.CommitAcquire(newBoundKey);
+            RegionIdentity[newBoundKey] = region;
             SafeInfo($"acquire-commit bound={newBound} generation={generation} source=remote-0to1 zombies={before}->{region.zombies?.Count ?? -1} oldBound={oldBound}");
             return true;
         }
@@ -238,7 +241,7 @@ namespace SteamP2PFriends.MultiObserver
                 ObserveDemand(oldBound, nativeDemand);
                 state.oldBound = oldBound;
                 state.oldOriginalIsNetworked = true;
-                state.oldRegionGeneration = Ledger.GetGeneration(oldBound);
+                state.oldRegionGeneration = Ledger.GetGeneration(BoundKey.FromNative(oldBound));
                 state.oldRegionIdentity = oldRegion;
                 state.oldWasTracked = true;
                 if (player.channel.IsLocalPlayer)
@@ -250,14 +253,14 @@ namespace SteamP2PFriends.MultiObserver
 
             if (player.channel.IsLocalPlayer && TryGetRegion(newBound, out ZombieRegion newRegion))
             {
-                Ledger.CancelRelease(newBound);
+                Ledger.CancelRelease(BoundKey.FromNative(newBound));
                 LoadedBound[] loaded = player.movement?.loadedBounds;
                 if (newRegion.isNetworked && loaded != null && newBound < loaded.Length
                     && loaded[newBound] != null && !loaded[newBound].isZombiesLoaded)
                 {
                     state.newBound = newBound;
                     state.newOriginalIsZombiesLoaded = false;
-                    state.newRegionGeneration = Ledger.GetGeneration(newBound);
+                    state.newRegionGeneration = Ledger.GetGeneration(BoundKey.FromNative(newBound));
                     state.newRegionIdentity = newRegion;
                     loaded[newBound].isZombiesLoaded = true;
                     state.newWasModified = true;
@@ -273,10 +276,11 @@ namespace SteamP2PFriends.MultiObserver
 
             if (exception == null && TryGetRegion(newBound, out ZombieRegion newRegion) && newRegion.isNetworked)
             {
-                if (!RegionIdentity.TryGetValue(newBound, out ZombieRegion known) || !ReferenceEquals(known, newRegion))
+                BoundKey newBoundKey = BoundKey.FromNative(newBound);
+                if (!RegionIdentity.TryGetValue(newBoundKey, out ZombieRegion known) || !ReferenceEquals(known, newRegion))
                 {
-                    uint generation = Ledger.CommitAcquire(newBound);
-                    RegionIdentity[newBound] = newRegion;
+                    uint generation = Ledger.CommitAcquire(newBoundKey);
+                    RegionIdentity[newBoundKey] = newRegion;
                     SafeInfo($"acquire-observed bound={newBound} generation={generation} source=local-vanilla");
                 }
                 ObserveDemand(newBound, newRegion.PlayerCountInRegion);
@@ -288,7 +292,7 @@ namespace SteamP2PFriends.MultiObserver
             if (state.sessionEpoch != Ledger.SessionEpoch) return;
             if (!TryGetRegion(state.oldBound, out ZombieRegion region)
                 || !ReferenceEquals(region, state.oldRegionIdentity)
-                || Ledger.GetGeneration(state.oldBound) != state.oldRegionGeneration) return;
+                || Ledger.GetGeneration(BoundKey.FromNative(state.oldBound)) != state.oldRegionGeneration) return;
 
             if (state.oldWasModified)
                 region.isNetworked = state.oldOriginalIsNetworked;
@@ -296,8 +300,9 @@ namespace SteamP2PFriends.MultiObserver
             ObserveDemand(state.oldBound, nativeDemand);
             if (nativeDemand == 0)
             {
-                RegionIdentity[state.oldBound] = region;
-                ZombieReleaseLease lease = Ledger.ScheduleRelease(state.oldBound, Time.realtimeSinceStartup, ReleaseHysteresisSeconds);
+                BoundKey oldBoundKey = BoundKey.FromNative(state.oldBound);
+                RegionIdentity[oldBoundKey] = region;
+                ZombieReleaseLease lease = Ledger.ScheduleRelease(oldBoundKey, Time.realtimeSinceStartup, ReleaseHysteresisSeconds);
                 SafeInfo($"release-scheduled bound={state.oldBound} generation={lease.RegionGeneration} deadline={lease.Deadline:0.000}");
             }
         }
@@ -309,14 +314,15 @@ namespace SteamP2PFriends.MultiObserver
             if (state.sessionEpoch != Ledger.SessionEpoch) return;
             if (!TryGetRegion(state.newBound, out ZombieRegion region)
                 || !ReferenceEquals(region, state.newRegionIdentity)
-                || Ledger.GetGeneration(state.newBound) != state.newRegionGeneration) return;
+                || Ledger.GetGeneration(BoundKey.FromNative(state.newBound)) != state.newRegionGeneration) return;
             loaded[state.newBound].isZombiesLoaded = state.newOriginalIsZombiesLoaded;
         }
 
         private static void ObserveDemand(byte bound, int nativeDemand)
         {
+            BoundKey key = BoundKey.FromNative(bound);
             int observerDemand = MultiObserverShadowCoordinator.GetZombieDemandCount(bound);
-            if (Ledger.CompareDemand(bound, Math.Max(0, nativeDemand), Math.Max(0, observerDemand))
+            if (Ledger.CompareDemand(key, Math.Max(0, nativeDemand), Math.Max(0, observerDemand))
                 == ZombieLifecycleAction.QuarantineMismatch)
             {
                 SafeWarn($"demand-mismatch bound={bound} native={nativeDemand} observer={observerDemand} action=quarantine-no-counter-rewrite");
@@ -346,45 +352,46 @@ namespace SteamP2PFriends.MultiObserver
                 byte bound = (byte)index;
                 int nativeDemand = Math.Max(0, region.PlayerCountInRegion);
                 ObserveDemand(bound, nativeDemand);
-                if (Ledger.IsQuarantined(bound))
+                BoundKey key = BoundKey.FromNative(bound);
+                if (Ledger.IsQuarantined(key))
                 {
-                    Ledger.CancelRelease(bound);
+                    Ledger.CancelRelease(key);
                     continue;
                 }
                 if (nativeDemand > 0)
                 {
-                    Ledger.CancelRelease(bound);
+                    Ledger.CancelRelease(key);
                     if (!region.isNetworked)
                     {
                         if (ZombieManager.instance == null
                             || !RecoverNativeAcquire(bound, region, nativeDemand))
                         {
-                            Ledger.CompareDemand(bound, nativeDemand, 0);
+                            Ledger.CompareDemand(key, nativeDemand, 0);
                             continue;
                         }
                     }
-                    if (!RegionIdentity.TryGetValue(bound, out ZombieRegion known) || !ReferenceEquals(known, region))
+                    if (!RegionIdentity.TryGetValue(key, out ZombieRegion known) || !ReferenceEquals(known, region))
                     {
-                        Ledger.CommitAcquire(bound);
-                        RegionIdentity[bound] = region;
+                        Ledger.CommitAcquire(key);
+                        RegionIdentity[key] = region;
                     }
                     continue;
                 }
 
                 if (!region.isNetworked)
                 {
-                    Ledger.CancelRelease(bound);
-                    RegionIdentity.Remove(bound);
+                    Ledger.CancelRelease(key);
+                    RegionIdentity.Remove(key);
                     continue;
                 }
-                if (!RegionIdentity.TryGetValue(bound, out ZombieRegion expected) || !ReferenceEquals(expected, region))
+                if (!RegionIdentity.TryGetValue(key, out ZombieRegion expected) || !ReferenceEquals(expected, region))
                 {
-                    Ledger.CommitAcquire(bound);
-                    RegionIdentity[bound] = region;
+                    Ledger.CommitAcquire(key);
+                    RegionIdentity[key] = region;
                 }
-                if (!Ledger.TryGetRelease(bound, out _))
+                if (!Ledger.TryGetRelease(key, out _))
                 {
-                    ZombieReleaseLease lease = Ledger.ScheduleRelease(bound, now, ReleaseHysteresisSeconds);
+                    ZombieReleaseLease lease = Ledger.ScheduleRelease(key, now, ReleaseHysteresisSeconds);
                     SafeInfo($"release-scheduled bound={bound} generation={lease.RegionGeneration} source=native-reconcile");
                 }
             }
@@ -400,8 +407,9 @@ namespace SteamP2PFriends.MultiObserver
                 if (regions == null || bound >= regions.Length || !ReferenceEquals(region, regions[bound]))
                     throw new InvalidOperationException("Native-demand acquire changed region identity.");
                 region.isNetworked = true;
-                uint generation = Ledger.CommitAcquire(bound);
-                RegionIdentity[bound] = region;
+                BoundKey key = BoundKey.FromNative(bound);
+                uint generation = Ledger.CommitAcquire(key);
+                RegionIdentity[key] = region;
                 SafeInfo($"acquire-commit bound={bound} generation={generation} source=native-demand demand={nativeDemand} zombies={before}->{region.zombies?.Count ?? -1}");
                 return true;
             }

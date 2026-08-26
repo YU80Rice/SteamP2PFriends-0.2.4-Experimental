@@ -1,4 +1,4 @@
-using System;
+using SteamP2PFriends.Core.Identity;
 
 namespace SteamP2PFriends.MultiObserver.SPI
 {
@@ -9,9 +9,14 @@ namespace SteamP2PFriends.MultiObserver.SPI
     public interface ILifecycleDomainAdapter
     {
         /// <summary>
-        /// 领域唯一名称（如 "Item"、"Zombie"、"Animal"、"Resource"、"Vehicle"）
+        /// 领域不可变机器身份。
         /// </summary>
-        string DomainName { get; }
+        DomainId DomainId { get; }
+
+        /// <summary>
+        /// 面向日志和诊断的显示名称；不参与注册或协议判断。
+        /// </summary>
+        string DisplayName { get; }
 
         /// <summary>
         /// 领域声明的标准化能力特性

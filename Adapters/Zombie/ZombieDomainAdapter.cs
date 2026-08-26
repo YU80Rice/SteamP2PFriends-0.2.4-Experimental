@@ -1,6 +1,8 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
+using SteamP2PFriends.Core.Identity;
 using System;
+using RegionKey = SteamP2PFriends.Core.Identity.RegionKey;
 
 namespace SteamP2PFriends.Adapters.Zombie
 {
@@ -8,9 +10,10 @@ namespace SteamP2PFriends.Adapters.Zombie
     /// 僵尸领域适配器统一 SPI 实现 (ZombieDomainAdapter)
     /// 封装 M3 区域生命周期按需激活/滞回释放与 M4 全量快照/增量同步。
     /// </summary>
-    public sealed class ZombieDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter
+    public sealed class ZombieDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter, IBoundStateReplicationAdapter
     {
-        public string DomainName => "Zombie";
+        public DomainId DomainId => DomainIds.Zombie;
+        public string DisplayName => "Zombie";
         public string Capability => "NativeDemand+HysteresisRelease+GenerationGuard+ReliableEnqueueBaseline";
 
         public void OnSessionBegin(uint sessionEpoch)
@@ -45,14 +48,24 @@ namespace SteamP2PFriends.Adapters.Zombie
             // 观察者断线由全局统一处理
         }
 
-        public void OnObserverEntered(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             // 空间观察者进入该 Bound
         }
 
-        public void OnObserverExited(ulong observerId, ulong connectionToken, int regionKey)
+        public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             // 空间观察者离开该 Bound
+        }
+
+        public void OnBoundObserverEntered(ulong observerId, ulong connectionToken, BoundKey boundKey)
+        {
+            // Zombie 导航状态只消费独立 BoundKey。
+        }
+
+        public void OnBoundObserverExited(ulong observerId, ulong connectionToken, BoundKey boundKey)
+        {
+            // Zombie 导航状态只消费独立 BoundKey。
         }
 
         public void OnReplicationTick(float deltaTime)

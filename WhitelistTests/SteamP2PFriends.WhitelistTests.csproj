@@ -152,6 +152,8 @@
     <Compile Include="Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs" />
     <Compile Include="Adapters\Zombie\ZombieSnapshotAdapterTests.cs" />
     <Compile Include="Core\LoggingPolicyTests.cs" />
+    <Compile Include="Core\IdentityContractTests.cs" />
+    <Compile Include="StaticIL\IdentityStaticILContractTests.cs" />
     <Compile Include="Core\RegistrationClosureTests.cs" />
     <Compile Include="Fakes\FakeApprovalRuntimeContext.cs" />
     <Compile Include="Fakes\FakeApprovalWhitelistProxy.cs" />
