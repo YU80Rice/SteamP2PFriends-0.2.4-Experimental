@@ -727,17 +727,6 @@ namespace SteamP2PFriends.WhitelistTests
             return false;
         }
 
-        private static int FindStringAfter(List<IlInstruction> instructions, string expected, int start)
-        {
-            if (start < 0) return -1;
-            for (int index = start; index < instructions.Count; index++)
-            {
-                if (string.Equals(instructions[index].Operand as string, expected, StringComparison.Ordinal))
-                    return index;
-            }
-            return -1;
-        }
-
         private static Dictionary<int, string> BuildTypeLocalValues(List<IlInstruction> instructions)
         {
             var values = new Dictionary<int, string>();
@@ -753,12 +742,6 @@ namespace SteamP2PFriends.WhitelistTests
                 }
             }
             return values;
-        }
-
-        private static bool HasHarmonyArgument(IEnumerable<IlInstruction> instructions)
-        {
-            return instructions.Any(instruction => instruction.OpCode.Name == "ldarg.0"
-                || (instruction.OpCode.Name == "ldarg" && (instruction.Operand as int?) == 0));
         }
 
         private static int? GetLoadedLocalIndex(IlInstruction instruction)
