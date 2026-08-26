@@ -14,4 +14,4 @@
 
 交付证据：`docs/architecture/animal-structure-ownership.md`、
 `WhitelistTests/StaticIL/AnimalStructureOwnershipStaticILContractTests.cs`、
-`audit/2026-08-26/Implementation-0.2.4.8-1933.md`。
+`audit/2026-08-26/Implementation-0.2.4.8-2334.md`。
