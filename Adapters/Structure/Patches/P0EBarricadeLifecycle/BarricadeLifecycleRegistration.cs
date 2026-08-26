@@ -64,8 +64,6 @@ namespace SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle
     /// </summary>
     public static class BarricadeLifecycleRegistration
     {
-        // Registration Trace 的静态证据源；实际 Harmony owner 仍由插件 Harmony 实例提供。
-        internal const string RegistrationOwner = SteamP2PFriendsPlugin.HARMONY_ID;
         internal static readonly int RegisteredTranspilerPriority = Priority.Normal;
 
         private static MethodInfo _equipMethod;

@@ -380,7 +380,7 @@ Zombie、Animal、Resource、Item、Object、Structure 和 Vehicle 的原生 `Up
 6. 首次 Update 延迟安装 Route B lifecycle hooks 与首次连接/断线之间的竞态；
 7. Manager Update 在 listen-host、多观察者和远端区域增长后的实际负载；
 8. Registration Closure 在真实游戏启动路径中的最终关闭时序、失败回滚与跨环境可见结果；源码结构与 PureMemory 接缝已确认，Runtime 仍 Pending。
-9. `SessionDisconnectDispatcher.Initialize` 在真实游戏实例中的调用时序与唯一订阅效果；当前源码已确认其由现行编排路径接入，Runtime 仍需验证。
+9. `SessionDisconnectDispatcher.Initialize` 在真实游戏实例中的调用时序与唯一订阅效果；当前源码扫描未发现现行插件入口调用，Runtime 仍需验证。
 
 ## 6.1 版本元数据旁证
 

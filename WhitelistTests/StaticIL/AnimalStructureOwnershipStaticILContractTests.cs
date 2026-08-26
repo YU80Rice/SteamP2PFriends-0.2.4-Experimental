@@ -61,63 +61,51 @@ namespace SteamP2PFriends.WhitelistTests
                 new RegistrationEvidence(2, "U3-REG-05-WorldSyncAndAdapters", "Barricade",
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
                     "OnRegionUpdated_Transpiler", "SDG.Unturned.BarricadeManager", "onRegionUpdated",
-                    "Transpiler", "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
-                    "HarmonyId", "default"),
+                    "Transpiler", "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(2, "U3-REG-05-WorldSyncAndAdapters", "Barricade",
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
                     "SendRegion_Prefix", "SDG.Unturned.BarricadeManager", "SendRegion",
-                    "Prefix", "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
-                    "HarmonyId", "default"),
+                    "Prefix", "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(3, "U3-REG-05-WorldSyncAndAdapters", "Structure",
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
                     "OnRegionUpdated_Transpiler", "SDG.Unturned.StructureManager", "onRegionUpdated",
-                    "Transpiler", "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
-                    "HarmonyId", "default"),
+                    "Transpiler", "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(3, "U3-REG-05-WorldSyncAndAdapters", "Structure",
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
                     "AskStructures_Prefix", "SDG.Unturned.StructureManager", "askStructures",
-                    "Prefix", "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
-                    "HarmonyId", "default"),
+                    "Prefix", "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(45, "U3-REG-02-InternalDiagnostics", "Animal",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     "Update_Prefix", "SDG.Unturned.AnimalManager", "Update", "Prefix",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "HarmonyId", "default"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(45, "U3-REG-02-InternalDiagnostics", "Animal",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     "SendAnimalStates_Prefix", "SDG.Unturned.AnimalManager", "sendAnimalStates", "Prefix",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "HarmonyId", "default"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(45, "U3-REG-02-InternalDiagnostics", "Animal",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     "SpawnAnimal_Prefix", "SDG.Unturned.AnimalManager", "spawnAnimal", "Prefix",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "HarmonyId", "default"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(45, "U3-REG-02-InternalDiagnostics", "Animal",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     "ReceiveMultipleAnimals_Prefix", "SDG.Unturned.AnimalManager", "ReceiveMultipleAnimals", "Prefix",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "HarmonyId", "default"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(45, "U3-REG-02-InternalDiagnostics", "Animal",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
                     "ReceiveAnimalStates_Prefix", "SDG.Unturned.AnimalManager", "ReceiveAnimalStates", "Prefix",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "HarmonyId", "default"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(51, "U3-REG-05-WorldSyncAndAdapters", "Animal",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch",
                     "Update_Transpiler", "SDG.Unturned.AnimalManager", "Update", "Transpiler",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch",
-                    "HarmonyId", "default"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "default"),
                 new RegistrationEvidence(65, "U3-REG-05-WorldSyncAndAdapters", "Barricade",
                     "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleTranspiler",
                     "Equip_Transpiler", "SDG.Unturned.UseableBarricade", "equip", "Transpiler",
-                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration",
-                    "RegistrationOwner", "Priority.Normal"),
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "Priority.Normal"),
                 new RegistrationEvidence(65, "U3-REG-05-WorldSyncAndAdapters", "Barricade",
                     "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleTranspiler",
                     "CheckClaims_Transpiler", "SDG.Unturned.UseableBarricade", "checkClaims", "Transpiler",
-                    "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration",
-                    "RegistrationOwner", "Priority.Normal")
+                    "SteamP2PFriends.SteamP2PFriendsPlugin", "HARMONY_ID", "Priority.Normal")
             };
 
         internal static bool Test_All()
@@ -232,6 +220,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static bool Test_RegistrationEvidence(Assembly assembly)
         {
             if (Evidence.Count != 12 || Evidence.Any(item => string.IsNullOrEmpty(item.TraceId))) return false;
+            if (!HasActualHarmonyOwnerConstruction(assembly)) return false;
             if (Evidence.Any(item => item.Domain != "Animal" && item.Domain != "Structure" && item.Domain != "Barricade")) return false;
             if (!Evidence.Select(item => item.Order).Distinct().OrderBy(order => order)
                 .SequenceEqual(new[] { 2, 3, 45, 51, 65 })) return false;
@@ -275,6 +264,17 @@ namespace SteamP2PFriends.WhitelistTests
 
             bool callEvidence = Test_RegistrationCallIL(assembly);
             return callEvidence;
+        }
+
+        private static bool HasActualHarmonyOwnerConstruction(Assembly assembly)
+        {
+            Type plugin = assembly.GetType("SteamP2PFriends.SteamP2PFriendsPlugin", false);
+            MethodInfo awake = plugin?.GetMethod("Awake", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (awake == null) return false;
+            IlEvidence evidence = ReadIlEvidence(awake);
+            return evidence.Strings.Contains(ExpectedOwner)
+                && evidence.CalledMethods.Any(called =>
+                    called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == ".ctor");
         }
 
         private static int ExpectedOrder(RegistrationEvidence evidence)
@@ -398,13 +398,15 @@ namespace SteamP2PFriends.WhitelistTests
             if (method == null) return false;
 
             List<IlInstruction> instructions = ReadInstructions(method);
+            int previousRegistrationCall = -1;
             for (int index = 0; index < instructions.Count; index++)
             {
                 MethodBase called = instructions[index].Operand as MethodBase;
                 if (called?.DeclaringType?.FullName != "SteamP2PFriends.Core.Patches.WorldSyncDiagnosticCore"
                     || called.Name != "RegisterIdentityPatch") continue;
 
-                int start = Math.Max(0, index - 24);
+                int start = previousRegistrationCall + 1;
+                previousRegistrationCall = index;
                 IEnumerable<object> operands = instructions.Skip(start).Take(index - start + 1)
                     .Select(instruction => instruction.Operand);
                 bool hasTarget = operands.OfType<string>().Contains(targetMethodName);
@@ -412,7 +414,9 @@ namespace SteamP2PFriends.WhitelistTests
                 bool hasLabel = operands.OfType<string>().Contains(registrationLabel);
                 bool hasTargetType = operands.OfType<Type>().Any(target =>
                     target.FullName == "SDG.Unturned.AnimalManager");
-                if (hasTarget && hasPatch && hasLabel && hasTargetType) return true;
+                bool hasPatchResolver = instructions.Skip(start).Take(index - start + 1)
+                    .Any(instruction => (instruction.Operand as MethodBase)?.Name == "Method");
+                if (hasTarget && hasPatch && hasLabel && hasTargetType && hasPatchResolver) return true;
             }
             return false;
         }

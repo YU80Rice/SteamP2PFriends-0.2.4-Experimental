@@ -33,8 +33,6 @@ namespace SteamP2PFriends.Adapters.Animal.Patches
     /// </summary>
     public static class AnimalManagerWorldSyncDiagnosticPatch
     {
-        // StaticIL 证据字段：登记仍经由 WorldSyncDiagnosticCore，但 owner 必须属于本插件。
-        private const string HarmonyId = SteamP2PFriendsPlugin.HARMONY_ID;
         private const string PointPrefix = "[WorldSyncDiag/Animal]";
         private const float UpdateLogInterval = 5.0f;
         private static float _lastUpdateLogTime = -100f;
