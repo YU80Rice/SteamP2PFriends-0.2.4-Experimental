@@ -24,6 +24,86 @@ _Avoid_: Per-adapter distance check, polling grid
 A declarative, pluggable registry of `ILifecycleDomainAdapter` and `IStateReplicationAdapter` implementations driven by the Control Plane.
 _Avoid_: Hardcoded switch-case, patch dispatcher
 
+**Production Control Seam**:
+The single production seam through which World Presence Observer changes reach the Control Plane and then the Domain Adapter Pipeline.
+_Avoid_: Shadow path, direct adapter call
+
+**Structure Baseline**:
+The agreed repository shape, naming, metadata, evidence, and collaboration rules that must be established before functional repairs are migrated.
+_Avoid_: Feature freeze, temporary cleanup
+
+**Migration Slice**:
+A bounded domain move from the legacy production path to the Production Control Seam, with behavior preserved and evidence proving the old writer is no longer authoritative.
+_Avoid_: Big-bang rewrite, parallel writer
+
+**Resource Migration Sample**:
+The first Migration Slice, using Resource as the reference domain for Region Lease, spatial demand, collision, harvest, and replication integration.
+_Avoid_: Resource feature, M6 implementation
+
+**Authority Writer**:
+The one production path allowed to mutate a given domain state during a Migration Slice.
+_Avoid_: primary service, active implementation
+
+**Patch Registration Orchestrator**:
+The top-level registration module that orders domain, transport, security, diagnostic, and verification registration without owning their details.
+_Avoid_: patch pool, mega registry
+
+**Evidence Class**:
+The type of proof attached to a claim: PureMemory, StaticIL, BuildArtifact, or Runtime.
+_Avoid_: test level, confidence score
+
+**Behavior-Preserving Structural Change**:
+A repository or plugin organization change that preserves patch targets, order, protocols, configuration, state-machine semantics, and release identity.
+_Avoid_: safe refactor, cleanup refactor
+
+**Domain Ownership**:
+The rule that assigns a patch, adapter, test, or document to the one domain or responsibility whose behavior it serves.
+_Avoid_: file grouping, folder preference
+
+**Metadata Source**:
+The single build-owned source from which version identity is propagated to assembly metadata, logs, documentation checks, and audit output.
+_Avoid_: version string, release label
+
+**Domain Id**:
+The immutable machine identity of a domain, distinct from its display name and stable across localization or presentation changes.
+_Avoid_: DomainName, DomainKey, display name
+
+**Region Key**:
+The canonical typed identity of a two-dimensional world region, including its coordinates and encoding rules.
+_Avoid_: raw region int, packed coordinate
+
+**Bound Key**:
+The canonical identity of a navigation bound used by the Zombie domain, kept distinct from a two-dimensional Region Key.
+_Avoid_: zombie region key, byte region
+
+**Evidence Gate**:
+The acceptance rule that requires the relevant Evidence Class before a Migration Slice can advance.
+_Avoid_: green build, PASS flag
+
+**Registration Closure**:
+The point after bootstrap at which the Domain Adapter Pipeline becomes immutable for the current plugin session.
+_Avoid_: late registration, dynamic patch load
+
+**SDK Registration Order**:
+The ordering of plugin registration and lifecycle hooks derived from the traced U3-SDK runtime call chain, not from an abstract plugin-only sequence.
+_Avoid_: startup guess, arbitrary initialization order
+
+**Build Fingerprint**:
+The runtime-visible identity evidence for the loaded plugin build, combining version metadata with independently reproducible assembly identity data.
+_Avoid_: log version, build label
+
+**Independent Artifact Verification**:
+The acceptance-side recomputation of a supplied plugin artifact's identity, used to corroborate rather than merely trust a runtime self-report.
+_Avoid_: user hash, log confirmation
+
+**Registration Trace**:
+The documented mapping from a plugin registration module to the U3-SDK event, callback, or native call-chain position it depends on.
+_Avoid_: startup order list, patch order guess
+
+**Migration Manifest**:
+The per-batch record of moved files, namespace ownership, preserved patch metadata, retired writers, evidence classes, and unresolved items.
+_Avoid_: change summary, file list
+
 **Adapter Fault Supervisor**:
 The universal circuit breaker that detects demand mismatches or runtime exceptions in specific adapters/regions, quarantining destructive actions without affecting other domains.
 _Avoid_: Global try-catch, crash handler
