@@ -326,7 +326,7 @@ namespace SteamP2PFriends.WhitelistTests
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch",
                     "RegisterTranspiler", "SDG.Unturned.AnimalManager", "Update",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch",
-                    "Update_Transpiler", true),
+                    "Update_Transpiler"),
                 ContainsIdentityRegistrationEvidence(assembly, "Update", "Update_Prefix", "Animal.Update.Pre"),
                 ContainsIdentityRegistrationEvidence(assembly, "sendAnimalStates", "SendAnimalStates_Prefix", "Animal.sendAnimalStates.Pre"),
                 ContainsIdentityRegistrationEvidence(assembly, "spawnAnimal", "SpawnAnimal_Prefix", "Animal.spawnAnimal.Pre"),
@@ -336,22 +336,22 @@ namespace SteamP2PFriends.WhitelistTests
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
                     "RegisterTranspiler", "SDG.Unturned.BarricadeManager", "onRegionUpdated",
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
-                    "OnRegionUpdated_Transpiler", true),
+                    "OnRegionUpdated_Transpiler"),
                 ContainsRegistrationEvidence(assembly,
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
                     "RegisterSendRegionPrefix", "SDG.Unturned.BarricadeManager", "SendRegion",
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
-                    "SendRegion_Prefix", true),
+                    "SendRegion_Prefix"),
                 ContainsRegistrationEvidence(assembly,
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
                     "RegisterTranspiler", "SDG.Unturned.StructureManager", "onRegionUpdated",
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
-                    "OnRegionUpdated_Transpiler", true),
+                    "OnRegionUpdated_Transpiler"),
                 ContainsRegistrationEvidence(assembly,
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
                     "RegisterAskStructuresPrefix", "SDG.Unturned.StructureManager", "askStructures",
                     "SteamP2PFriends.Adapters.Structure.Patches.StructureManagerRegionSyncPatch",
-                    "AskStructures_Prefix", true),
+                    "AskStructures_Prefix"),
                 ContainsCachedTargetEvidence(assembly, "equip", "Equip_Transpiler"),
                 ContainsCachedTargetEvidence(assembly, "checkClaims", "CheckClaims_Transpiler"),
                 ContainsHarmonyPatchCall(assembly,
@@ -363,7 +363,7 @@ namespace SteamP2PFriends.WhitelistTests
 
         private static bool ContainsRegistrationEvidence(Assembly assembly, string typeName,
             string methodName, string targetTypeName, string targetMethodName,
-            string patchTypeName, string patchMethodName, bool requireHarmonyPatchCall)
+            string patchTypeName, string patchMethodName)
         {
             Type type = assembly.GetType(typeName, false);
             MethodInfo method = type?.GetMethod(methodName,
@@ -559,6 +559,117 @@ namespace SteamP2PFriends.WhitelistTests
             return false;
         }
 
+        private static bool TrySimulateIdentityRegistrationCall(List<IlInstruction> instructions,
+            int registrationIndex, out IlCallSite site)
+        {
+            site = null;
+            int start = -1;
+            for (int index = registrationIndex - 1; index >= 0; index--)
+            {
+                if (instructions[index].OpCode.Name == "ldarg.0") { start = index; break; }
+            }
+            if (start < 0 || registrationIndex - start > 40) return false;
+
+            Dictionary<int, string> typeLocals = BuildTypeLocalValues(instructions);
+            var stack = new List<IlValue>();
+            for (int index = start; index <= registrationIndex; index++)
+            {
+                IlInstruction instruction = instructions[index];
+                string op = instruction.OpCode.Name;
+                if (op == "ldarg.0")
+                {
+                    stack.Add(new IlValue { Kind = "Argument", Value = 0 });
+                    continue;
+                }
+                int? loadedLocal = GetLoadedLocalIndex(instruction);
+                if (loadedLocal.HasValue)
+                {
+                    if (typeLocals.TryGetValue(loadedLocal.Value, out string typeName))
+                        stack.Add(new IlValue { Kind = "Type", Value = typeName });
+                    else
+                        stack.Add(new IlValue { Kind = "UnknownLocal", Value = loadedLocal.Value });
+                    continue;
+                }
+                if (instruction.Operand is Type type && op == "ldtoken")
+                {
+                    stack.Add(new IlValue { Kind = "Type", Value = type.FullName });
+                    continue;
+                }
+                if (instruction.Operand is string text && op == "ldstr")
+                {
+                    stack.Add(new IlValue { Kind = "String", Value = text });
+                    continue;
+                }
+                if (instruction.Operand is FieldInfo field && op.StartsWith("ldsfld", StringComparison.Ordinal))
+                {
+                    stack.Add(new IlValue { Kind = "Field", Value = field.Name });
+                    continue;
+                }
+                if (op == "ldnull") { stack.Add(new IlValue { Kind = "Null" }); continue; }
+                if (op.StartsWith("ldc.i4", StringComparison.Ordinal))
+                {
+                    stack.Add(new IlValue { Kind = "Integer", Value = GetIntegerConstant(instruction) });
+                    continue;
+                }
+
+                MethodBase called = instruction.Operand as MethodBase;
+                if (called == null) continue;
+                int count = called.GetParameters().Length;
+                if (called.DeclaringType?.FullName == "System.Type" && called.Name == "GetTypeFromHandle")
+                {
+                    if (stack.Count < count) return false;
+                    IlValue resolvedType = stack[stack.Count - count];
+                    stack.RemoveRange(stack.Count - count, count);
+                    stack.Add(resolvedType);
+                    continue;
+                }
+                if (called.DeclaringType?.FullName == "HarmonyLib.AccessTools" && called.Name == "Method")
+                {
+                    if (stack.Count < count) return false;
+                    List<IlValue> args = stack.Skip(stack.Count - count).Take(count).ToList();
+                    stack.RemoveRange(stack.Count - count, count);
+                    if (args.Count < 2 || args[0].Kind != "Type" || args[1].Kind != "String") return false;
+                    stack.Add(new IlValue
+                    {
+                        Kind = "Method",
+                        Value = "method:" + args[0].Value + "|" + args[1].Value
+                    });
+                    continue;
+                }
+                if (called.DeclaringType?.FullName == "SteamP2PFriends.Core.Patches.WorldSyncDiagnosticCore"
+                    && called.Name == "RegisterIdentityPatch")
+                {
+                    if (stack.Count < count) return false;
+                    List<IlValue> args = stack.Skip(stack.Count - count).Take(count).ToList();
+                    stack.RemoveRange(stack.Count - count, count);
+                    site = new IlCallSite { Index = index, Method = called };
+                    site.Arguments.AddRange(args);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool IsTypeValue(IlValue value, string expected)
+            => value?.Kind == "Type" && string.Equals(value.Value as string, expected, StringComparison.Ordinal);
+
+        private static bool IsStringValue(IlValue value, string expected)
+            => value?.Kind == "String" && string.Equals(value.Value as string, expected, StringComparison.Ordinal);
+
+        private static bool IsMethodValue(IlValue value, string typeName, string methodName)
+            => value?.Kind == "Method"
+                && string.Equals(value.Value as string, "method:" + typeName + "|" + methodName,
+                    StringComparison.Ordinal);
+
+        private static int GetIntegerConstant(IlInstruction instruction)
+        {
+            string op = instruction.OpCode.Name;
+            if (op == "ldc.i4.m1") return -1;
+            if (op.StartsWith("ldc.i4.", StringComparison.Ordinal)
+                && int.TryParse(op.Substring("ldc.i4.".Length), out int compact)) return compact;
+            return instruction.Operand is int value ? value : 0;
+        }
+
         private static bool ContainsIdentityRegistrationEvidence(Assembly assembly,
             string targetMethodName, string patchMethodName, string registrationLabel)
         {
@@ -569,33 +680,21 @@ namespace SteamP2PFriends.WhitelistTests
             if (method == null) return false;
 
             List<IlInstruction> instructions = ReadInstructions(method);
-            Dictionary<int, string> typeLocals = BuildTypeLocalValues(instructions);
-            int previousRegistrationCall = -1;
             for (int index = 0; index < instructions.Count; index++)
             {
                 MethodBase called = instructions[index].Operand as MethodBase;
                 if (called?.DeclaringType?.FullName != "SteamP2PFriends.Core.Patches.WorldSyncDiagnosticCore"
                     || called.Name != "RegisterIdentityPatch") continue;
-
-                int start = previousRegistrationCall + 1;
-                previousRegistrationCall = index;
-                List<IlInstruction> block = instructions.Skip(start).Take(index - start + 1).ToList();
-                int targetTypeIndex = block.FindIndex(instruction =>
-                    (instruction.Operand as Type)?.FullName == "SDG.Unturned.AnimalManager");
-                int targetNameIndex = FindStringAfter(block, targetMethodName, targetTypeIndex + 1);
-                int patchNameIndex = FindStringAfter(block, patchMethodName, targetNameIndex + 1);
-                int resolverIndex = block.FindIndex(patchNameIndex + 1, instruction =>
-                    (instruction.Operand as MethodBase)?.DeclaringType?.FullName == "HarmonyLib.AccessTools"
-                    && (instruction.Operand as MethodBase)?.Name == "Method");
-                int labelIndex = FindStringAfter(block, registrationLabel, resolverIndex + 1);
-                bool hasPatchTypeLocal = block.Select((instruction, offset) => new { instruction, offset })
-                    .Where(item => item.offset < patchNameIndex)
-                    .Any(item => GetLoadedLocalIndex(item.instruction) is int local
-                        && typeLocals.TryGetValue(local, out string typeName)
-                        && typeName == "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch");
-                bool ordered = targetTypeIndex >= 0 && targetNameIndex >= 0 && patchNameIndex >= 0
-                    && resolverIndex >= 0 && labelIndex >= 0;
-                if (ordered && hasPatchTypeLocal && HasHarmonyArgument(block.Take(targetTypeIndex))) return true;
+                if (!TrySimulateIdentityRegistrationCall(instructions, index, out IlCallSite site)) continue;
+                if (site.Arguments.Count < 7) continue;
+                bool target = IsTypeValue(site.Arguments[1], "SDG.Unturned.AnimalManager")
+                    && IsStringValue(site.Arguments[2], targetMethodName);
+                bool patch = IsMethodValue(site.Arguments[4],
+                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
+                    patchMethodName);
+                bool label = IsStringValue(site.Arguments[6], registrationLabel);
+                if (site.Arguments[0].Kind == "Argument"
+                    && Convert.ToInt32(site.Arguments[0].Value) == 0 && target && patch && label) return true;
             }
             return false;
         }
