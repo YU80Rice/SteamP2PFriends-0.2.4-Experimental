@@ -215,7 +215,12 @@ namespace SteamP2PFriends.WhitelistTests
                 && objectDomain.PhysicalRoot == "Core/Patches"
                 && objectDomain.CrossDomainReason.IndexOf("Pending", StringComparison.Ordinal) >= 0
                 && pending != null
-                && pending.IsControlledCrossDomain;
+                && pending.IsControlledCrossDomain
+                && pending.PhysicalRoot == "Core/Patches"
+                && pending.AuthorityType == "PendingOtherDomainPatchSet"
+                && pending.RegistrationTrace == "U3-REG-02-InternalDiagnostics;U3-REG-04-AssetAndAudit;U3-REG-06-Probes"
+                && pending.CrossDomainReason.IndexOf("Pending", StringComparison.Ordinal) >= 0
+                && pending.CrossDomainReason.IndexOf("Core/Patches", StringComparison.Ordinal) >= 0;
         }
 
         private static bool Test_RegistrationEvidence(Assembly assembly)
