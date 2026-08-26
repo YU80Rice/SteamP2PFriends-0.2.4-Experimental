@@ -327,11 +327,11 @@ namespace SteamP2PFriends.WhitelistTests
                     "RegisterTranspiler", "SDG.Unturned.AnimalManager", "Update",
                     "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerP0C2SendAnimalStatesPatch",
                     "Update_Transpiler", true),
-                ContainsRegistrationEvidence(assembly,
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "RegisterManual", "SDG.Unturned.AnimalManager", "Update",
-                    "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch",
-                    "Update_Prefix", false),
+                ContainsIdentityRegistrationEvidence(assembly, "Update", "Update_Prefix", "Animal.Update.Pre"),
+                ContainsIdentityRegistrationEvidence(assembly, "sendAnimalStates", "SendAnimalStates_Prefix", "Animal.sendAnimalStates.Pre"),
+                ContainsIdentityRegistrationEvidence(assembly, "spawnAnimal", "SpawnAnimal_Prefix", "Animal.spawnAnimal.Pre"),
+                ContainsIdentityRegistrationEvidence(assembly, "ReceiveMultipleAnimals", "ReceiveMultipleAnimals_Prefix", "Animal.ReceiveMultipleAnimals.Pre"),
+                ContainsIdentityRegistrationEvidence(assembly, "ReceiveAnimalStates", "ReceiveAnimalStates_Prefix", "Animal.ReceiveAnimalStates.Pre"),
                 ContainsRegistrationEvidence(assembly,
                     "SteamP2PFriends.Adapters.Structure.Patches.BarricadeManagerRegionSyncPatch",
                     "RegisterTranspiler", "SDG.Unturned.BarricadeManager", "onRegionUpdated",
@@ -388,6 +388,35 @@ namespace SteamP2PFriends.WhitelistTests
                 called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == "Patch");
         }
 
+        private static bool ContainsIdentityRegistrationEvidence(Assembly assembly,
+            string targetMethodName, string patchMethodName, string registrationLabel)
+        {
+            Type type = assembly.GetType(
+                "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch", false);
+            MethodInfo method = type?.GetMethod("RegisterManual",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (method == null) return false;
+
+            List<IlInstruction> instructions = ReadInstructions(method);
+            for (int index = 0; index < instructions.Count; index++)
+            {
+                MethodBase called = instructions[index].Operand as MethodBase;
+                if (called?.DeclaringType?.FullName != "SteamP2PFriends.Core.Patches.WorldSyncDiagnosticCore"
+                    || called.Name != "RegisterIdentityPatch") continue;
+
+                int start = Math.Max(0, index - 24);
+                IEnumerable<object> operands = instructions.Skip(start).Take(index - start + 1)
+                    .Select(instruction => instruction.Operand);
+                bool hasTarget = operands.OfType<string>().Contains(targetMethodName);
+                bool hasPatch = operands.OfType<string>().Contains(patchMethodName);
+                bool hasLabel = operands.OfType<string>().Contains(registrationLabel);
+                bool hasTargetType = operands.OfType<Type>().Any(target =>
+                    target.FullName == "SDG.Unturned.AnimalManager");
+                if (hasTarget && hasPatch && hasLabel && hasTargetType) return true;
+            }
+            return false;
+        }
+
         private static bool ContainsHarmonyPatchCall(Assembly assembly, string typeName,
             string methodName, string requiredFieldName)
         {
@@ -409,6 +438,12 @@ namespace SteamP2PFriends.WhitelistTests
             internal readonly HashSet<string> Strings = new HashSet<string>(StringComparer.Ordinal);
             internal readonly HashSet<string> FieldNames = new HashSet<string>(StringComparer.Ordinal);
             internal readonly List<MethodBase> CalledMethods = new List<MethodBase>();
+        }
+
+        private sealed class IlInstruction
+        {
+            internal OpCode OpCode { get; set; }
+            internal object Operand { get; set; }
         }
 
         private static readonly Dictionary<ushort, OpCode> OpCodeMap = CreateOpCodeMap();
@@ -493,6 +528,68 @@ namespace SteamP2PFriends.WhitelistTests
                 if (offset < operandOffset || offset > il.Length) break;
             }
             return evidence;
+        }
+
+        private static List<IlInstruction> ReadInstructions(MethodInfo method)
+        {
+            var instructions = new List<IlInstruction>();
+            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il == null) return instructions;
+
+            int offset = 0;
+            while (offset < il.Length)
+            {
+                ushort value = il[offset++];
+                if (value == 0xfe && offset < il.Length) value = (ushort)(0xfe00 | il[offset++]);
+                if (!OpCodeMap.TryGetValue(value, out OpCode code)) break;
+
+                var instruction = new IlInstruction { OpCode = code };
+                switch (code.OperandType)
+                {
+                    case OperandType.InlineString:
+                        try { instruction.Operand = method.Module.ResolveString(BitConverter.ToInt32(il, offset)); } catch { }
+                        offset += 4;
+                        break;
+                    case OperandType.InlineMethod:
+                        try { instruction.Operand = method.Module.ResolveMethod(BitConverter.ToInt32(il, offset)); } catch { }
+                        offset += 4;
+                        break;
+                    case OperandType.InlineType:
+                        try { instruction.Operand = method.Module.ResolveType(BitConverter.ToInt32(il, offset)); } catch { }
+                        offset += 4;
+                        break;
+                    case OperandType.InlineField:
+                        try { instruction.Operand = method.Module.ResolveField(BitConverter.ToInt32(il, offset)); } catch { }
+                        offset += 4;
+                        break;
+                    case OperandType.InlineTok:
+                        try { instruction.Operand = method.Module.ResolveMember(BitConverter.ToInt32(il, offset)); } catch { }
+                        offset += 4;
+                        break;
+                    case OperandType.ShortInlineBrTarget:
+                    case OperandType.ShortInlineI:
+                    case OperandType.ShortInlineVar:
+                        offset += 1;
+                        break;
+                    case OperandType.InlineBrTarget:
+                    case OperandType.InlineI:
+                        offset += 4;
+                        break;
+                    case OperandType.InlineI8:
+                    case OperandType.InlineR:
+                        offset += 8;
+                        break;
+                    case OperandType.InlineVar:
+                        offset += 2;
+                        break;
+                    case OperandType.InlineSwitch:
+                        int count = BitConverter.ToInt32(il, offset);
+                        offset += 4 + (count * 4);
+                        break;
+                }
+                instructions.Add(instruction);
+            }
+            return instructions;
         }
 
         private static bool HasPatchKind(MethodInfo method, string patchKind)
