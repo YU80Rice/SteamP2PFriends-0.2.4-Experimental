@@ -312,10 +312,38 @@ namespace SteamP2PFriends.WhitelistTests
                 "SteamP2PFriends.Adapters.Animal.Patches.AnimalManagerWorldSyncDiagnosticPatch", false);
             Type lifecycle = assembly.GetType(
                 "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration", false);
-            return animalDiagnostic?.GetMethod("VerifyRegistration", BindingFlags.Public | BindingFlags.Static) != null
+            bool requiredMethods = animalDiagnostic?.GetMethod("VerifyRegistration", BindingFlags.Public | BindingFlags.Static) != null
                 && lifecycle?.GetMethod("RegisterAtomically", BindingFlags.Public | BindingFlags.Static) != null
                 && lifecycle.GetMethod("VerifyAll", BindingFlags.NonPublic | BindingFlags.Static) != null
                 && lifecycle.GetMethod("RollbackBoth", BindingFlags.NonPublic | BindingFlags.Static) != null;
+            Type plugin = assembly.GetType("SteamP2PFriends.SteamP2PFriendsPlugin", false);
+            MethodInfo createPlan = plugin?.GetMethod("CreatePatchRegistrationPlan",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            MethodInfo verifyClosure = plugin?.GetMethod("VerifyRegistrationClosure",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Type orchestrator = assembly.GetType("SteamP2PFriends.Core.Registration.PatchRegistrationOrchestrator", false);
+            MethodInfo executePlan = orchestrator?.GetMethod("Execute",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (!requiredMethods || createPlan == null || verifyClosure == null || executePlan == null)
+                return false;
+
+            IlEvidence createEvidence = ReadIlEvidence(createPlan);
+            IlEvidence executeEvidence = ReadIlEvidence(executePlan);
+            bool planBuildsClosure = createEvidence.CalledMethods.Any(called =>
+                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.RegistrationClosure"
+                    && called.Name == ".ctor")
+                && createEvidence.CalledMethods.Any(called =>
+                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.PatchRegistrationPlan"
+                    && called.Name == ".ctor")
+                && createEvidence.CalledMethods.Any(called => called.Name == "VerifyRegistrationClosure");
+            bool executeClosesThenVerifies = executeEvidence.CalledMethods.Any(called =>
+                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.RegistrationClosure"
+                    && called.Name == "TryClose")
+                && executeEvidence.CalledMethods.Any(called =>
+                    called.DeclaringType?.FullName == "SteamP2PFriends.Core.Registration.PatchRegistrationStageCatalog"
+                    && called.Name == "TryClose")
+                && executeEvidence.CalledMethods.Any(called => called.Name == "Invoke");
+            return planBuildsClosure && executeClosesThenVerifies;
         }
 
         private static bool Test_RegistrationCallIL(Assembly assembly)
@@ -538,7 +566,7 @@ namespace SteamP2PFriends.WhitelistTests
                     var args = stack.Skip(stack.Count - count).Take(count).ToList();
                     stack.RemoveRange(stack.Count - count, count);
                     var harmonyMethod = new IlValue { Kind = "HarmonyMethod" };
-                    if (args.Count > 0) harmonyMethod.Children.Add(args[0]);
+                    harmonyMethod.Children.AddRange(args);
                     stack.Add(harmonyMethod);
                     continue;
                 }
@@ -768,10 +796,10 @@ namespace SteamP2PFriends.WhitelistTests
             IlEvidence evidence = ReadIlEvidence(method);
             return equipBound && claimsBound
                 && evidence.FieldNames.Contains(requiredFieldName)
-                && HasRegistrationFailurePath(instructions);
+                && HasRegistrationFailurePath(method, instructions);
         }
 
-        private static bool HasRegistrationFailurePath(List<IlInstruction> instructions)
+        private static bool HasRegistrationFailurePath(MethodInfo method, List<IlInstruction> instructions)
         {
             List<int> patchCalls = FindCallIndices(instructions,
                 called => called.DeclaringType?.FullName == "HarmonyLib.Harmony" && called.Name == "Patch");
@@ -785,6 +813,22 @@ namespace SteamP2PFriends.WhitelistTests
                     && called.Name == "VerifyAll");
             if (patchCalls.Count != 2 || rollbackCalls.Count < 3 || verifyCalls.Count != 1) return false;
             if (patchCalls.Any(patch => !rollbackCalls.Any(rollback => rollback > patch))) return false;
+
+            foreach (int patch in patchCalls)
+            {
+                int patchOffset = instructions[patch].Offset;
+                bool caughtRollback = method.GetMethodBody().ExceptionHandlingClauses.Cast<ExceptionHandlingClause>()
+                    .Where(clause => patchOffset >= clause.TryOffset
+                        && patchOffset < clause.TryOffset + clause.TryLength)
+                    .Any(clause => instructions.Any(instruction =>
+                        instruction.Offset >= clause.HandlerOffset
+                        && instruction.Offset < clause.HandlerOffset + clause.HandlerLength
+                        && instruction.Operand is MethodBase called
+                        && called.DeclaringType?.FullName ==
+                            "SteamP2PFriends.Adapters.Structure.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration"
+                        && called.Name == "RollbackBoth"));
+                if (!caughtRollback) return false;
+            }
 
             int verify = verifyCalls[0];
             bool verifyBranches = instructions.Skip(verify + 1).Take(6)
@@ -825,7 +869,11 @@ namespace SteamP2PFriends.WhitelistTests
                     && transpiler.Children.Count > 0
                     && transpiler.Children[0].Kind == "Field"
                     && string.Equals(transpiler.Children[0].Value as string,
-                        patchFieldName, StringComparison.Ordinal)) return true;
+                        patchFieldName, StringComparison.Ordinal)
+                    && transpiler.Children.Count > 1
+                    && transpiler.Children[1].Kind == "Field"
+                    && string.Equals(transpiler.Children[1].Value as string,
+                        "RegisteredTranspilerPriority", StringComparison.Ordinal)) return true;
             }
             return false;
         }
@@ -840,6 +888,7 @@ namespace SteamP2PFriends.WhitelistTests
 
         private sealed class IlInstruction
         {
+            internal int Offset { get; set; }
             internal OpCode OpCode { get; set; }
             internal object Operand { get; set; }
         }
@@ -962,7 +1011,7 @@ namespace SteamP2PFriends.WhitelistTests
                 if (value == 0xfe && offset < il.Length) value = (ushort)(0xfe00 | il[offset++]);
                 if (!OpCodeMap.TryGetValue(value, out OpCode code)) break;
 
-                var instruction = new IlInstruction { OpCode = code };
+                var instruction = new IlInstruction { Offset = offset - (value >= 0xfe00 ? 2 : 1), OpCode = code };
                 switch (code.OperandType)
                 {
                     case OperandType.InlineString:
