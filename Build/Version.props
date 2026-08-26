@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Structure Baseline batch 1.
+    This file is the build-owned metadata source for the 0.2.4 experimental line.
+    Assembly attributes and runtime fingerprint wiring are migrated in later batches.
+  -->
+  <PropertyGroup>
+    <SteamP2PFriendsVersion>0.2.4.8</SteamP2PFriendsVersion>
+    <SteamP2PFriendsReleaseChannel>Experimental</SteamP2PFriendsReleaseChannel>
+    <SteamP2PFriendsVersionIdentity>$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)</SteamP2PFriendsVersionIdentity>
+    <SteamP2PFriendsU3SdkCommit>ea7b4973af5ba10f62baad2bfde36ab2e5b060eb</SteamP2PFriendsU3SdkCommit>
+  </PropertyGroup>
+</Project>
