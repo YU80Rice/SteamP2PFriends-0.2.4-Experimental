@@ -1,5 +1,7 @@
 using Steamworks;
 
+using SteamP2PFriends.Security;
+
 namespace SteamP2PFriends.WhitelistTests.Fakes
 {
     /// <summary>
@@ -7,7 +9,7 @@ namespace SteamP2PFriends.WhitelistTests.Fakes
     /// 蓝图 v2 §3.2 + §6.7：可控制 Contains 返回值、TryAdd 成功/失败、记录调用次数。
     /// 蓝图 v2 §6.8：Contains 可抛异常模拟 capture patch 故障路径。
     /// </summary>
-    internal sealed class FakeApprovalWhitelistProxy : SteamP2PFriends.Host.IApprovalWhitelistProxy
+    internal sealed class FakeApprovalWhitelistProxy : SteamP2PFriends.Security.IApprovalWhitelistProxy
     {
         public bool ContainsResult = false;
         public bool TryAddResult = true;

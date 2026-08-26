@@ -9,7 +9,7 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -71,7 +71,7 @@ namespace SteamP2PFriends
             //   RegisterManual 返回 AllRegistrationsSucceeded，VerifyCriticalPatches 阻断门读取此值。
             try
             {
-                if (!Patches.ClientMethodLoopbackPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.ClientMethodLoopbackPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -84,7 +84,7 @@ namespace SteamP2PFriends
             //   仅对远程非 loopback 玩家开放 SendRegion 资格。
             try
             {
-                if (!Patches.BarricadeManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.BarricadeManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -95,7 +95,7 @@ namespace SteamP2PFriends
             //   Transpiler 替换 onRegionUpdated step 1 中 Dedicator.IsDedicatedServer() 调用。
             try
             {
-                if (!Patches.StructureManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.StructureManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -108,7 +108,7 @@ namespace SteamP2PFriends
             //   仅对远程非 loopback 玩家开放 askItems 资格。
             try
             {
-                if (!Patches.ItemManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.ItemManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -121,7 +121,7 @@ namespace SteamP2PFriends
             //   SendResources 为 ClientStaticMethod 字段无独立 ask 方法，Prefix 挂在 SendResources_Write。
             try
             {
-                if (!Patches.ResourceManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.ResourceManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -133,7 +133,7 @@ namespace SteamP2PFriends
             //   Transpiler 替换 onRegionUpdated step 4 中 Dedicator.IsDedicatedServer() 调用。
             try
             {
-                if (!Patches.ObjectManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.ObjectManagerRegionSyncPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {
@@ -145,7 +145,7 @@ namespace SteamP2PFriends
             //   Add remote guests' regional collision coverage while leaving renderer visibility host-local.
             try
             {
-                if (!Patches.LevelObjectRemoteCollisionPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
+                if (!Core.Patches.LevelObjectRemoteCollisionPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
             }
             catch (System.Exception ex)
             {

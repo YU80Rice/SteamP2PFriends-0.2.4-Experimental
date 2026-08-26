@@ -1,6 +1,8 @@
 using SteamP2PFriends.Host;
 using Steamworks;
 
+using SteamP2PFriends.Security;
+
 namespace SteamP2PFriends.WhitelistTests.Fakes
 {
     /// <summary>

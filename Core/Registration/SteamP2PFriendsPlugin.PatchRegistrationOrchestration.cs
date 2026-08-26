@@ -5,10 +5,12 @@ using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Adapters.Structure;
 using SteamP2PFriends.Adapters.Zombie;
 using SteamP2PFriends.Core.Identity;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
+
+using SteamP2PFriends.Security.Patches;
 
 namespace SteamP2PFriends
 {

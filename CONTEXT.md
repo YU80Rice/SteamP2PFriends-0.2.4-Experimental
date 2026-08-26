@@ -60,6 +60,21 @@ _Avoid_: safe refactor, cleanup refactor
 The rule that assigns a patch, adapter, test, or document to the one domain or responsibility whose behavior it serves.
 _Avoid_: file grouping, folder preference
 
+**Module Ownership Catalog**:
+The structure-only catalog that records each module's physical authority root, authority type,
+and Registration Trace coverage; it does not register patches or own runtime state.
+_Avoid_: runtime registry, duplicate module index
+
+**Platform Boundary**:
+The physical boundary for client, host, transport, UI, and diagnostics integrations with
+Unturned, Steamworks, Unity, or other external runtime services.
+_Avoid_: Core business logic, second transport entry
+
+**Controlled Cross-Domain Patch Set**:
+The single `Core/Patches` location for patches whose call chain cannot prove one domain owner;
+each retained patch requires a documented reason and is registered only by the Patch Registration Orchestrator.
+_Avoid_: catch-all folder, copied compatibility patch
+
 **Metadata Source**:
 The single build-owned source from which version identity is propagated to assembly metadata, logs, documentation checks, and audit output.
 _Avoid_: version string, release label

@@ -9,7 +9,7 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -18,6 +18,8 @@ using System.Reflection;
 using UnityEngine;
 
 
+
+using Patches = SteamP2PFriends.Core.Patches;
 
 namespace SteamP2PFriends
 {
@@ -332,7 +334,7 @@ namespace SteamP2PFriends
                         if (p.owner != HARMONY_ID) continue;
                         System.Reflection.MethodInfo pm = p.PatchMethod;
                         if (ReferenceEquals(pm, null)) continue;
-                        if (pm.DeclaringType == typeof(Patches.ClientMethodLoopbackPatch)
+                        if (pm.DeclaringType == typeof(Core.Patches.ClientMethodLoopbackPatch)
                             && pm.Name == expectedPrefixName)
                         {
                             exactMatchCount++;
@@ -354,7 +356,7 @@ namespace SteamP2PFriends
                 if (exactMatchCount != 1)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[Diag] !!! {description}: exactMatchCount={exactMatchCount} 期望=1 (期望 {typeof(Patches.ClientMethodLoopbackPatch).FullName}.{expectedPrefixName})");
+                        $"[Diag] !!! {description}: exactMatchCount={exactMatchCount} 期望=1 (期望 {typeof(Core.Patches.ClientMethodLoopbackPatch).FullName}.{expectedPrefixName})");
                     ok = false;
                 }
 
@@ -369,7 +371,7 @@ namespace SteamP2PFriends
                 if (ok)
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[Diag] OK {description}: ownTotal=1 exact=1 ({typeof(Patches.ClientMethodLoopbackPatch).Name}.{expectedPrefixName})");
+                        $"[Diag] OK {description}: ownTotal=1 exact=1 ({typeof(Core.Patches.ClientMethodLoopbackPatch).Name}.{expectedPrefixName})");
                 }
                 return ok;
             }
@@ -409,7 +411,7 @@ namespace SteamP2PFriends
                 }
 
                 // 精确方法验证：BitmaskPostfixCache<T>.Postfix（泛型类型定义比较）
-                System.Type expectedGenericType = typeof(SteamP2PFriends.Patches.BitmaskPostfixCache<T>);
+                System.Type expectedGenericType = typeof(SteamP2PFriends.Core.Patches.BitmaskPostfixCache<T>);
                 bool found = false;
                 foreach (HarmonyLib.Patch p in patches.Postfixes)
                 {

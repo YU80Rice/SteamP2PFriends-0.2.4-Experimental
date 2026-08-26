@@ -7,7 +7,7 @@ using Steamworks;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

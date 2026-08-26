@@ -8,7 +8,7 @@ using SDG.Unturned;
 using SteamP2PFriends.Client;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -47,7 +47,7 @@ namespace SteamP2PFriends
         public static bool DiagnosticBuildValid { get; private set; } = true;
 
         internal static bool IsP2PEntryReady => EntryReadiness.IsReady(
-            DiagnosticBuildValid, Patches.AuthHandshakeJournalPatch.RegistrationValid);
+            DiagnosticBuildValid, Core.Patches.AuthHandshakeJournalPatch.RegistrationValid);
 
         /// <summary>
         /// 由 Awake 中 RunRedactionSelfTest 设置，VerifyCriticalPatches 聚合到 DiagnosticBuildValid 阻断门。

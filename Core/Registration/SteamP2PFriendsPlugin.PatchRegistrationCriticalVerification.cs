@@ -9,7 +9,7 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -27,11 +27,11 @@ namespace SteamP2PFriends
         {
             bool allOk = true;
             // 若 Awake 中 UnityLogBridgePatch.Initialize 漏调或顺序错误，此处兜底
-            if (!Patches.UnityLogBridgePatch.IsSubscribed && !Patches.UnityLogBridgePatch.IsFailed)
+            if (!Core.Patches.UnityLogBridgePatch.IsSubscribed && !Core.Patches.UnityLogBridgePatch.IsFailed)
             {
                 try
                 {
-                    Patches.UnityLogBridgePatch.Initialize();
+                    Core.Patches.UnityLogBridgePatch.Initialize();
                     RoleLogger.Warn("[Shared]", "[Diag] VerifyCriticalPatches 防御性 Initialize D-11（Awake 未订阅）");
                 }
                 catch (System.Exception ex)
@@ -43,7 +43,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.PlayerManagerBroadcastPatch.ReverifyOwnersAfterAllRegistrations(_harmony);
+                Core.Patches.PlayerManagerBroadcastPatch.ReverifyOwnersAfterAllRegistrations(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -52,7 +52,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.RemotePlayerClothingVisibleBridgePatch.ReverifyOwnersAfterAllRegistrations(_harmony);
+                Core.Patches.RemotePlayerClothingVisibleBridgePatch.ReverifyOwnersAfterAllRegistrations(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -62,7 +62,7 @@ namespace SteamP2PFriends
 
             RoleLogger.Diagnostic("[Shared]", "[PatchValidation] validating required P2P hooks and ownership.");
 
-            if (!Patches.AuthHandshakeJournalPatch.RegistrationValid)
+            if (!Core.Patches.AuthHandshakeJournalPatch.RegistrationValid)
             {
                 RoleLogger.Error("[Shared]",
                     "[P2P-Connection] !!! DIAGNOSTIC BUILD INVALID: auth handshake/economy compatibility registration failed");
@@ -163,24 +163,24 @@ namespace SteamP2PFriends
                 if (initPatches != null)
                 {
                     if (!VerifyPatchMethod(initPatches.Prefixes,
-                            typeof(SteamP2PFriends.Patches.InitializePlayerStatePatch),
+                            typeof(SteamP2PFriends.Core.Patches.InitializePlayerStatePatch),
                             "Prefix", "Player.InitializePlayer (P0-E E-3 Prefix)", "Prefix")) allOk = false;
                     if (!VerifyPatchMethod(initPatches.Postfixes,
-                            typeof(SteamP2PFriends.Patches.InitializePlayerStatePatch),
+                            typeof(SteamP2PFriends.Core.Patches.InitializePlayerStatePatch),
                             "Postfix", "Player.InitializePlayer (P0-E E-3 Postfix)", "Postfix")) allOk = false;
                     if (!VerifyPatchMethod(initPatches.Finalizers,
-                            typeof(SteamP2PFriends.Patches.InitializePlayerStatePatch),
+                            typeof(SteamP2PFriends.Core.Patches.InitializePlayerStatePatch),
                             "Finalizer", "Player.InitializePlayer (P0-E E-3 Finalizer)", "Finalizer")) allOk = false;
 
                     // 精确方法验证：PlayerInitializeDiagnosticPatch.Prefix/Postfix/Finalizer（纯观察）
                     if (!VerifyPatchMethod(initPatches.Prefixes,
-                            typeof(SteamP2PFriends.Patches.PlayerInitializeDiagnosticPatch),
+                            typeof(SteamP2PFriends.Core.Patches.PlayerInitializeDiagnosticPatch),
                             "Prefix", "Player.InitializePlayer (Diag Prefix)", "Prefix")) allOk = false;
                     if (!VerifyPatchMethod(initPatches.Postfixes,
-                            typeof(SteamP2PFriends.Patches.PlayerInitializeDiagnosticPatch),
+                            typeof(SteamP2PFriends.Core.Patches.PlayerInitializeDiagnosticPatch),
                             "Postfix", "Player.InitializePlayer (Diag Postfix)", "Postfix")) allOk = false;
                     if (!VerifyPatchMethod(initPatches.Finalizers,
-                            typeof(SteamP2PFriends.Patches.PlayerInitializeDiagnosticPatch),
+                            typeof(SteamP2PFriends.Core.Patches.PlayerInitializeDiagnosticPatch),
                             "Finalizer", "Player.InitializePlayer (Diag Finalizer)", "Finalizer")) allOk = false;
                 }
 
@@ -230,7 +230,7 @@ namespace SteamP2PFriends
                         bool compatible = HarmonyCompatibilityAudit.Inspect(ctor, "SteamPlayer.ctor");
                         allOk &= compatible;
                         bool methodOk = VerifyPatchMethod(patches?.Postfixes,
-                            typeof(SteamP2PFriends.Patches.SteamPlayerIsLocalServerHostPatch),
+                            typeof(SteamP2PFriends.Core.Patches.SteamPlayerIsLocalServerHostPatch),
                             "Postfix", "SteamPlayer.ctor (P0-C Postfix)", "Postfix");
                         allOk &= methodOk;
                         if (compatible && methodOk)
@@ -370,17 +370,17 @@ namespace SteamP2PFriends
                 "D-10/AcceptConnection", requirePrefix: true, requirePostfix: true);
             allOk &= VerifyPatchMethodPair(
                 typeof(Steamworks.SteamGameServerNetworkingSockets), "AcceptConnection", null,
-                typeof(Patches.SteamUserP2PRedirectPatch),
-                nameof(Patches.SteamUserP2PRedirectPatch.AcceptConnection_Prefix),
-                nameof(Patches.SteamUserP2PRedirectPatch.AcceptConnection_Postfix),
+                typeof(Core.Patches.SteamUserP2PRedirectPatch),
+                nameof(Core.Patches.SteamUserP2PRedirectPatch.AcceptConnection_Prefix),
+                nameof(Core.Patches.SteamUserP2PRedirectPatch.AcceptConnection_Postfix),
                 "D-10/AcceptConnection precise method");
             allOk &= VerifyPatch(typeof(Steamworks.SteamGameServerNetworkingSockets), "SetConnectionPollGroup",
                 "D-10/SetConnectionPollGroup", requirePrefix: true, requirePostfix: true);
             allOk &= VerifyPatchMethodPair(
                 typeof(Steamworks.SteamGameServerNetworkingSockets), "SetConnectionPollGroup", null,
-                typeof(Patches.SteamUserP2PRedirectPatch),
-                nameof(Patches.SteamUserP2PRedirectPatch.SetConnectionPollGroup_Prefix),
-                nameof(Patches.SteamUserP2PRedirectPatch.SetConnectionPollGroup_Postfix),
+                typeof(Core.Patches.SteamUserP2PRedirectPatch),
+                nameof(Core.Patches.SteamUserP2PRedirectPatch.SetConnectionPollGroup_Prefix),
+                nameof(Core.Patches.SteamUserP2PRedirectPatch.SetConnectionPollGroup_Postfix),
                 "D-10/SetConnectionPollGroup precise method");
             allOk &= VerifyPatch(typeof(Steamworks.SteamGameServerNetworkingSockets), "CreatePollGroup",
                 "D-10/CreatePollGroup", requirePrefix: true);
@@ -416,7 +416,7 @@ namespace SteamP2PFriends
             allOk &= VerifyPatchMethodPair(
                 typeof(SDG.NetTransport.SteamNetworkingSockets.ClientTransport_SteamNetworkingSockets),
                 "OnSteamNetConnectionStatusChanged", null,
-                typeof(Patches.ClientSnsStatusDiagnosticPatch),
+                typeof(Core.Patches.ClientSnsStatusDiagnosticPatch),
                 "Prefix", "Postfix",
                 "D-10 ClientTransport.OnSteamNetConnectionStatusChanged precise method");
             // ServerTransport_SteamNetworkingSockets.OnSteamNetConnectionStatusChanged - ServerSnsStatusDiagnosticPatch
@@ -427,7 +427,7 @@ namespace SteamP2PFriends
             allOk &= VerifyPatchMethodPair(
                 typeof(SDG.NetTransport.SteamNetworkingSockets.ServerTransport_SteamNetworkingSockets),
                 "OnSteamNetConnectionStatusChanged", null,
-                typeof(Patches.ServerSnsStatusDiagnosticPatch),
+                typeof(Core.Patches.ServerSnsStatusDiagnosticPatch),
                 "Prefix", "Postfix",
                 "D-10 ServerTransport.OnSteamNetConnectionStatusChanged precise method");
 
@@ -509,7 +509,7 @@ namespace SteamP2PFriends
             //   DisconnectTracerPatch.Prefix / .Postfix（private static，反射可访问 metadata）
             allOk &= VerifyPatchMethodPair(
                 typeof(Provider), "RequestDisconnect", new System.Type[] { typeof(string) },
-                typeof(Patches.DisconnectTracerPatch),
+                typeof(Core.Patches.DisconnectTracerPatch),
                 "Prefix", "Postfix",
                 "P1-C Provider.RequestDisconnect(string) precise method");
 
@@ -522,7 +522,7 @@ namespace SteamP2PFriends
             allOk &= VerifyAuthCallbackSafetyPatchMethod(
                 typeof(SDG.NetTransport.SteamNetworkingSockets.ServerTransport_SteamNetworkingSockets),
                 "OnSteamNetAuthenticationStatusChanged",
-                typeof(Patches.ServerAuthStatusCallbackSafetyPatch),
+                typeof(Core.Patches.ServerAuthStatusCallbackSafetyPatch),
                 "Prefix",
                 "P0-B ServerTransport.OnSteamNetAuthenticationStatusChanged precise method");
             allOk &= VerifyPatch(typeof(SDG.NetTransport.SteamNetworkingSockets.ClientTransport_SteamNetworkingSockets),
@@ -531,7 +531,7 @@ namespace SteamP2PFriends
             allOk &= VerifyAuthCallbackSafetyPatchMethod(
                 typeof(SDG.NetTransport.SteamNetworkingSockets.ClientTransport_SteamNetworkingSockets),
                 "OnSteamNetAuthenticationStatusChanged",
-                typeof(Patches.ClientAuthStatusCallbackSafetyPatch),
+                typeof(Core.Patches.ClientAuthStatusCallbackSafetyPatch),
                 "Prefix",
                 "P0-B ClientTransport.OnSteamNetAuthenticationStatusChanged precise method");
 
@@ -540,17 +540,17 @@ namespace SteamP2PFriends
 
             RoleLogger.Info("[Shared]",
                 $"[Diag] v2 审计放行 patch 状态: " +
-                $"SteamPlayerIsLocalServerHostPatch.Enabled={Patches.SteamPlayerIsLocalServerHostPatch.Enabled}, " +
-                $"PlayerUpdateGuardPatch.Enabled={Patches.PlayerUpdateGuardPatch.Enabled}, " +
-                $"PlayerMovementInitializePlayerPrefixPatch.Enabled={Patches.PlayerMovementInitializePlayerPrefixPatch.Enabled}, " +
-                $"GameplayReadyBitmaskPatch.Enabled={Patches.GameplayReadyBitmaskPatch.Enabled}");
+                $"SteamPlayerIsLocalServerHostPatch.Enabled={Core.Patches.SteamPlayerIsLocalServerHostPatch.Enabled}, " +
+                $"PlayerUpdateGuardPatch.Enabled={Core.Patches.PlayerUpdateGuardPatch.Enabled}, " +
+                $"PlayerMovementInitializePlayerPrefixPatch.Enabled={Core.Patches.PlayerMovementInitializePlayerPrefixPatch.Enabled}, " +
+                $"GameplayReadyBitmaskPatch.Enabled={Core.Patches.GameplayReadyBitmaskPatch.Enabled}");
 
-            if (!Patches.UnityLogBridgePatch.IsSubscribed || Patches.UnityLogBridgePatch.IsFailed)
+            if (!Core.Patches.UnityLogBridgePatch.IsSubscribed || Core.Patches.UnityLogBridgePatch.IsFailed)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: D-11 Unity bridge 未订阅 " +
-                    $"(IsSubscribed={Patches.UnityLogBridgePatch.IsSubscribed}, " +
-                    $"IsFailed={Patches.UnityLogBridgePatch.IsFailed})");
+                    $"(IsSubscribed={Core.Patches.UnityLogBridgePatch.IsSubscribed}, " +
+                    $"IsFailed={Core.Patches.UnityLogBridgePatch.IsFailed})");
                 allOk = false;
             }
             else
@@ -560,19 +560,19 @@ namespace SteamP2PFriends
             }
 
             // 不能只依赖 Harmony 元数据数量与 owner，必须同时检查 RegisterManual 返回值
-            bool p0cAll = Patches.InitialStateReceiveDiagnosticPatch.AllRegistrationsSucceeded;
+            bool p0cAll = Core.Patches.InitialStateReceiveDiagnosticPatch.AllRegistrationsSucceeded;
             if (!p0cAll)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: P0-C AllRegistrationsSucceeded=false " +
-                    $"summary={Patches.InitialStateReceiveDiagnosticPatch.RegistrationSummary}");
+                    $"summary={Core.Patches.InitialStateReceiveDiagnosticPatch.RegistrationSummary}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK P0-C AllRegistrationsSucceeded=true " +
-                    $"summary={Patches.InitialStateReceiveDiagnosticPatch.RegistrationSummary}");
+                    $"summary={Core.Patches.InitialStateReceiveDiagnosticPatch.RegistrationSummary}");
             }
 
             //   三个 ClientMethodHandle.SendAndLoopback* Prefix 必须全部手动登记成功，
@@ -582,37 +582,37 @@ namespace SteamP2PFriends
             //   精确自检是对 Harmony 元数据的独立验证（双保险）。
             //   AccessTools.DeclaredMethod 从 ClientMethodHandle 声明类型精确解析 private InvokeLoopback
             //   派生类型 GetMethod 找不到基类 private 方法，旧 ReflectionUtil.InvokeInstance 必失败
-            bool loopbackRegOk = Patches.ClientMethodLoopbackPatch.AllRegistrationsSucceeded;
+            bool loopbackRegOk = Core.Patches.ClientMethodLoopbackPatch.AllRegistrationsSucceeded;
             if (!loopbackRegOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: ClientMethodLoopbackPatch AllRegistrationsSucceeded=false " +
-                    $"summary={Patches.ClientMethodLoopbackPatch.RegistrationSummary}");
+                    $"summary={Core.Patches.ClientMethodLoopbackPatch.RegistrationSummary}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK ClientMethodLoopbackPatch AllRegistrationsSucceeded=true " +
-                    $"summary={Patches.ClientMethodLoopbackPatch.RegistrationSummary}");
+                    $"summary={Core.Patches.ClientMethodLoopbackPatch.RegistrationSummary}");
             }
 
             //   VerifyInvokeLoopbackMethod 已在 RegisterManual 开头执行，
             //   此处仅读取结果做阻断门聚合。
             //   验证：DeclaringType==ClientMethodHandle + Name==InvokeLoopback + 参数==NetPakWriter + 返回 void
-            bool invokeLoopbackOk = Patches.ClientMethodLoopbackPatch.InvokeLoopbackResolved;
+            bool invokeLoopbackOk = Core.Patches.ClientMethodLoopbackPatch.InvokeLoopbackResolved;
             if (!invokeLoopbackOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: ClientMethodLoopbackPatch InvokeLoopbackResolved=false " +
-                    $"summary={Patches.ClientMethodLoopbackPatch.InvokeLoopbackSummary}");
+                    $"summary={Core.Patches.ClientMethodLoopbackPatch.InvokeLoopbackSummary}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK ClientMethodLoopbackPatch InvokeLoopbackResolved=true " +
-                    $"summary={Patches.ClientMethodLoopbackPatch.InvokeLoopbackSummary}");
+                    $"summary={Core.Patches.ClientMethodLoopbackPatch.InvokeLoopbackSummary}");
             }
 
             // 精确方法验证：3 个 Prefix 的 DeclaringType + Name 必须匹配
@@ -624,7 +624,7 @@ namespace SteamP2PFriends
                     typeof(SDG.NetTransport.ITransportConnection),
                     typeof(NetPakWriter)
                 },
-                Patches.ClientMethodLoopbackPatch.PrefixIfLocalName,
+                Core.Patches.ClientMethodLoopbackPatch.PrefixIfLocalName,
                 "ClientMethodLoopback/IfLocal");
 
             allOk &= VerifyClientMethodLoopbackPrefix(
@@ -634,7 +634,7 @@ namespace SteamP2PFriends
                     typeof(System.Collections.Generic.List<SDG.NetTransport.ITransportConnection>),
                     typeof(NetPakWriter)
                 },
-                Patches.ClientMethodLoopbackPatch.PrefixIfAnyAreLocalName,
+                Core.Patches.ClientMethodLoopbackPatch.PrefixIfAnyAreLocalName,
                 "ClientMethodLoopback/IfAnyAreLocal");
 
             allOk &= VerifyClientMethodLoopbackPrefix(
@@ -644,7 +644,7 @@ namespace SteamP2PFriends
                     typeof(System.Collections.Generic.List<SDG.NetTransport.ITransportConnection>),
                     typeof(NetPakWriter)
                 },
-                Patches.ClientMethodLoopbackPatch.PrefixSendAndLoopbackName,
+                Core.Patches.ClientMethodLoopbackPatch.PrefixSendAndLoopbackName,
                 "ClientMethodLoopback/SendAndLoopback");
 
             //   - AllRegistrationsSucceeded=true
@@ -654,127 +654,127 @@ namespace SteamP2PFriends
             //   - TranspilerOwnerVerified=true（owner=com.yu80rice.steamp2pfriends + method=OnRegionUpdated_Transpiler + count=1）
             //   - PrefixOwnerVerified=true（owner=com.yu80rice.steamp2pfriends + method=SendRegion_Prefix + count=1）
             //   任一不满足强制 DiagnosticBuildValid=false
-            bool barricadeRegionOk = Patches.BarricadeManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool barricadeRegionOk = Core.Patches.BarricadeManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!barricadeRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: BarricadeManagerRegionSyncPatch " +
-                    $"summary={Patches.BarricadeManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"replacement={Patches.BarricadeManagerRegionSyncPatch.ReplacementCount} " +
-                    $"signature={Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
-                    $"sendRegionPrefix={Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
-                    $"transpilerOwner={Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={Core.Patches.BarricadeManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"replacement={Core.Patches.BarricadeManagerRegionSyncPatch.ReplacementCount} " +
+                    $"signature={Core.Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
+                    $"sendRegionPrefix={Core.Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={Core.Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK BarricadeManagerRegionSyncPatch: " +
-                    $"replacement={Patches.BarricadeManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"signature={Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
-                    $"sendRegionPrefix={Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
-                    $"transpilerOwner={Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"replacement={Core.Patches.BarricadeManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"signature={Core.Patches.BarricadeManagerRegionSyncPatch.SignatureResolved} " +
+                    $"sendRegionPrefix={Core.Patches.BarricadeManagerRegionSyncPatch.SendRegionPrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.BarricadeManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={Core.Patches.BarricadeManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool structureRegionOk = Patches.StructureManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool structureRegionOk = Core.Patches.StructureManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!structureRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: StructureManagerRegionSyncPatch " +
-                    $"summary={Patches.StructureManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"replacement={Patches.StructureManagerRegionSyncPatch.ReplacementCount} " +
-                    $"signature={Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
-                    $"askStructuresPrefix={Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
-                    $"transpilerOwner={Patches.StructureManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Patches.StructureManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={Core.Patches.StructureManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"replacement={Core.Patches.StructureManagerRegionSyncPatch.ReplacementCount} " +
+                    $"signature={Core.Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
+                    $"askStructuresPrefix={Core.Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.StructureManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={Core.Patches.StructureManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK StructureManagerRegionSyncPatch: " +
-                    $"replacement={Patches.StructureManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"signature={Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
-                    $"askStructuresPrefix={Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
-                    $"transpilerOwner={Patches.StructureManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Patches.StructureManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"replacement={Core.Patches.StructureManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"signature={Core.Patches.StructureManagerRegionSyncPatch.SignatureResolved} " +
+                    $"askStructuresPrefix={Core.Patches.StructureManagerRegionSyncPatch.AskStructuresPrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.StructureManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={Core.Patches.StructureManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool p0S1S2Ok = Patches.PlayerManagerBroadcastPatch.AllRegistrationsSucceeded;
+            bool p0S1S2Ok = Core.Patches.PlayerManagerBroadcastPatch.AllRegistrationsSucceeded;
             if (!p0S1S2Ok)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: PlayerManagerBroadcastPatch " +
-                    $"P0-S1={Patches.PlayerManagerBroadcastPatch.P0S1_Registered} " +
-                    $"P0-S2={Patches.PlayerManagerBroadcastPatch.P0S2_Registered} " +
-                    $"replacementCount={Patches.PlayerManagerBroadcastPatch.P0S1_ReplacementCount} " +
-                    $"P0S1_owner={Patches.PlayerManagerBroadcastPatch.P0S1_TranspilerOwnerVerified} " +
-                    $"P0S2_owner={Patches.PlayerManagerBroadcastPatch.P0S2_PrefixOwnerVerified} " +
-                    $"P0S2_reflection={Patches.PlayerManagerBroadcastPatch.P0S2_ReflectionComplete}");
+                    $"P0-S1={Core.Patches.PlayerManagerBroadcastPatch.P0S1_Registered} " +
+                    $"P0-S2={Core.Patches.PlayerManagerBroadcastPatch.P0S2_Registered} " +
+                    $"replacementCount={Core.Patches.PlayerManagerBroadcastPatch.P0S1_ReplacementCount} " +
+                    $"P0S1_owner={Core.Patches.PlayerManagerBroadcastPatch.P0S1_TranspilerOwnerVerified} " +
+                    $"P0S2_owner={Core.Patches.PlayerManagerBroadcastPatch.P0S2_PrefixOwnerVerified} " +
+                    $"P0S2_reflection={Core.Patches.PlayerManagerBroadcastPatch.P0S2_ReflectionComplete}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK PlayerManagerBroadcastPatch: " +
-                    $"P0-S1={Patches.PlayerManagerBroadcastPatch.P0S1_Registered} " +
-                    $"P0-S2={Patches.PlayerManagerBroadcastPatch.P0S2_Registered} " +
-                    $"replacement={Patches.PlayerManagerBroadcastPatch.P0S1_ReplacementCount}/1 " +
-                    $"P0S1_owner={Patches.PlayerManagerBroadcastPatch.P0S1_TranspilerOwnerSummary} " +
-                    $"P0S2_owner={Patches.PlayerManagerBroadcastPatch.P0S2_PrefixOwnerSummary} " +
-                    $"P0S2_reflection={Patches.PlayerManagerBroadcastPatch.P0S2_ReflectionComplete}");
+                    $"P0-S1={Core.Patches.PlayerManagerBroadcastPatch.P0S1_Registered} " +
+                    $"P0-S2={Core.Patches.PlayerManagerBroadcastPatch.P0S2_Registered} " +
+                    $"replacement={Core.Patches.PlayerManagerBroadcastPatch.P0S1_ReplacementCount}/1 " +
+                    $"P0S1_owner={Core.Patches.PlayerManagerBroadcastPatch.P0S1_TranspilerOwnerSummary} " +
+                    $"P0S2_owner={Core.Patches.PlayerManagerBroadcastPatch.P0S2_PrefixOwnerSummary} " +
+                    $"P0S2_reflection={Core.Patches.PlayerManagerBroadcastPatch.P0S2_ReflectionComplete}");
             }
 
-            bool p0S3Ok = Patches.RemotePlayerClothingVisibleBridgePatch.AllRegistrationsSucceeded;
+            bool p0S3Ok = Core.Patches.RemotePlayerClothingVisibleBridgePatch.AllRegistrationsSucceeded;
             if (!p0S3Ok)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: RemotePlayerClothingVisibleBridgePatch " +
-                    $"P0-S3={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_Registered} " +
-                    $"P0S3_owner={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_PostfixOwnerVerified} " +
-                    $"P0S3_ownerSummary={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_PostfixOwnerSummary} " +
-                    $"P0S3_reflection={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_ReflectionComplete}");
+                    $"P0-S3={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_Registered} " +
+                    $"P0S3_owner={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_PostfixOwnerVerified} " +
+                    $"P0S3_ownerSummary={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_PostfixOwnerSummary} " +
+                    $"P0S3_reflection={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_ReflectionComplete}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK RemotePlayerClothingVisibleBridgePatch: " +
-                    $"P0-S3={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_Registered} " +
-                    $"P0S3_owner={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_PostfixOwnerSummary} " +
-                    $"P0S3_reflection={Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_ReflectionComplete}");
+                    $"P0-S3={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_Registered} " +
+                    $"P0S3_owner={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_PostfixOwnerSummary} " +
+                    $"P0S3_reflection={Core.Patches.RemotePlayerClothingVisibleBridgePatch.P0S3_ReflectionComplete}");
             }
 
-            bool p1S5Ok = Patches.PlayerManagerBroadcastDiagnosticPatch.AllRegistrationsSucceeded;
+            bool p1S5Ok = Core.Patches.PlayerManagerBroadcastDiagnosticPatch.AllRegistrationsSucceeded;
             if (!p1S5Ok)
             {
                 RoleLogger.Warn("[Shared]",
                     $"[Diag] WARN PlayerManagerBroadcastDiagnosticPatch P1-S5 登记不全（不阻断联机）: " +
-                    $"P1-S5={Patches.PlayerManagerBroadcastDiagnosticPatch.P1S5_Registered} " +
-                    $"updatePost={Patches.PlayerManagerBroadcastDiagnosticPatch.UpdatePostfixRegistered} " +
-                    $"sendPre={Patches.PlayerManagerBroadcastDiagnosticPatch.SendPrefixRegistered} " +
-                    $"sendPost={Patches.PlayerManagerBroadcastDiagnosticPatch.SendPostfixRegistered} " +
-                    $"sendFinal={Patches.PlayerManagerBroadcastDiagnosticPatch.SendFinalizerRegistered} " +
-                    $"receivePost={Patches.PlayerManagerBroadcastDiagnosticPatch.ReceivePostfixRegistered}");
+                    $"P1-S5={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.P1S5_Registered} " +
+                    $"updatePost={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.UpdatePostfixRegistered} " +
+                    $"sendPre={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.SendPrefixRegistered} " +
+                    $"sendPost={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.SendPostfixRegistered} " +
+                    $"sendFinal={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.SendFinalizerRegistered} " +
+                    $"receivePost={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.ReceivePostfixRegistered}");
             }
             else
             {
                 RoleLogger.Info("[Shared]",
-                    $"[Diag] OK PlayerManagerBroadcastDiagnosticPatch: P1-S5={Patches.PlayerManagerBroadcastDiagnosticPatch.P1S5_Registered} " +
-                    $"updatePost={Patches.PlayerManagerBroadcastDiagnosticPatch.UpdatePostfixRegistered} " +
-                    $"sendPre={Patches.PlayerManagerBroadcastDiagnosticPatch.SendPrefixRegistered} " +
-                    $"sendPost={Patches.PlayerManagerBroadcastDiagnosticPatch.SendPostfixRegistered} " +
-                    $"sendFinal={Patches.PlayerManagerBroadcastDiagnosticPatch.SendFinalizerRegistered} " +
-                    $"receivePost={Patches.PlayerManagerBroadcastDiagnosticPatch.ReceivePostfixRegistered}");
+                    $"[Diag] OK PlayerManagerBroadcastDiagnosticPatch: P1-S5={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.P1S5_Registered} " +
+                    $"updatePost={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.UpdatePostfixRegistered} " +
+                    $"sendPre={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.SendPrefixRegistered} " +
+                    $"sendPost={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.SendPostfixRegistered} " +
+                    $"sendFinal={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.SendFinalizerRegistered} " +
+                    $"receivePost={Core.Patches.PlayerManagerBroadcastDiagnosticPatch.ReceivePostfixRegistered}");
             }
 
             //   审计 §5 要求：精确验证 Prefix 登记一次
             //   失败时聚合到 DiagnosticBuildValid=false（INVALID 门控）
             try
             {
-                if (!Patches.PlayerClothingLoadAppearanceFixPatch.VerifyRegistration())
+                if (!Core.Patches.PlayerClothingLoadAppearanceFixPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -792,7 +792,7 @@ namespace SteamP2PFriends
             //   任一链路失败即 DiagnosticBuildValid=false
             try
             {
-                if (!Patches.ItemManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.ItemManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -805,17 +805,17 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.AuthoritativeItemGenerationGatePatch.AllRegistrationsSucceeded
-                    || !Patches.AuthoritativeItemGenerationGatePatch.VerifyRegistration())
+                if (!Core.Patches.AuthoritativeItemGenerationGatePatch.AllRegistrationsSucceeded
+                    || !Core.Patches.AuthoritativeItemGenerationGatePatch.VerifyRegistration())
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[ItemAuthorityGate] DIAGNOSTIC BUILD INVALID: {Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
+                        $"[ItemAuthorityGate] DIAGNOSTIC BUILD INVALID: {Core.Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[ItemAuthorityGate] registration verified: {Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
+                        $"[ItemAuthorityGate] registration verified: {Core.Patches.AuthoritativeItemGenerationGatePatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -826,17 +826,17 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.InventoryWorldAuthorityProbe.AllRegistrationsSucceeded
-                    || !Patches.InventoryWorldAuthorityProbe.VerifyRegistration())
+                if (!Core.Patches.InventoryWorldAuthorityProbe.AllRegistrationsSucceeded
+                    || !Core.Patches.InventoryWorldAuthorityProbe.VerifyRegistration())
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[Alpha-AuthorityProbe] DIAGNOSTIC BUILD INVALID: {Patches.InventoryWorldAuthorityProbe.RegistrationSummary}");
+                        $"[Alpha-AuthorityProbe] DIAGNOSTIC BUILD INVALID: {Core.Patches.InventoryWorldAuthorityProbe.RegistrationSummary}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[Alpha-AuthorityProbe] registration verified: {Patches.InventoryWorldAuthorityProbe.RegistrationSummary}");
+                        $"[Alpha-AuthorityProbe] registration verified: {Core.Patches.InventoryWorldAuthorityProbe.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -847,7 +847,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.ResourceManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.ResourceManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -860,7 +860,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.ObjectManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.ObjectManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -873,10 +873,10 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.Issue7ObjectBinaryStateDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.Issue7ObjectBinaryStateDiagnosticPatch.VerifyRegistration())
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[Issue7/ObjectBinary] DIAGNOSTIC BUILD INVALID: {Patches.Issue7ObjectBinaryStateDiagnosticPatch.RegistrationSummary}");
+                        $"[Issue7/ObjectBinary] DIAGNOSTIC BUILD INVALID: {Core.Patches.Issue7ObjectBinaryStateDiagnosticPatch.RegistrationSummary}");
                     allOk = false;
                 }
             }
@@ -888,7 +888,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.VehicleManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.VehicleManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -901,7 +901,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.AnimalManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.AnimalManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -914,7 +914,7 @@ namespace SteamP2PFriends
 
             try
             {
-                if (!Patches.ZombieManagerWorldSyncDiagnosticPatch.VerifyRegistration())
+                if (!Core.Patches.ZombieManagerWorldSyncDiagnosticPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -929,7 +929,7 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.ZombieManagerP0DGenerateZombiesPatch.VerifyRegistration())
+                if (!Core.Patches.ZombieManagerP0DGenerateZombiesPatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -945,7 +945,7 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.P0EZombieLifecycle.ZombieLifecyclePatch.VerifyRegistration())
+                if (!Core.Patches.P0EZombieLifecycle.ZombieLifecyclePatch.VerifyRegistration())
                 {
                     allOk = false;
                 }
@@ -958,8 +958,8 @@ namespace SteamP2PFriends
 
             try
             {
-                bool m3Ready = Patches.ZombieManagerP0DGenerateZombiesPatch.AllRegistrationsSucceeded
-                    && Patches.P0EZombieLifecycle.ZombieLifecyclePatch.AllRegistrationsSucceeded;
+                bool m3Ready = Core.Patches.ZombieManagerP0DGenerateZombiesPatch.AllRegistrationsSucceeded
+                    && Core.Patches.P0EZombieLifecycle.ZombieLifecyclePatch.AllRegistrationsSucceeded;
                 Adapters.Zombie.ZombieRegionLifecycleAdapter.SetRegistrationReady(m3Ready);
                 if (!m3Ready)
                 {
@@ -985,19 +985,19 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.ZombieManagerP0C1SendZombieStatesPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-C-1/Zombie] !!! DIAGNOSTIC BUILD INVALID: summary={Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary} " +
-                        $"replacement={Patches.ZombieManagerP0C1SendZombieStatesPatch.ReplacementCount} " +
-                        $"signature={Patches.ZombieManagerP0C1SendZombieStatesPatch.SignatureResolved} " +
-                        $"transpilerOwner={Patches.ZombieManagerP0C1SendZombieStatesPatch.TranspilerOwnerVerified}");
+                        $"[P0-C-1/Zombie] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary} " +
+                        $"replacement={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.ReplacementCount} " +
+                        $"signature={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.SignatureResolved} " +
+                        $"transpilerOwner={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.TranspilerOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-C-1/Zombie] OK summary={Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary}");
+                        $"[P0-C-1/Zombie] OK summary={Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1010,20 +1010,20 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.VehicleManagerP0C1ReplicationPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.VehicleManagerP0C1ReplicationPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-C-1/Vehicle] !!! DIAGNOSTIC BUILD INVALID: summary={Patches.VehicleManagerP0C1ReplicationPatch.RegistrationSummary} " +
-                        $"transpilerReplacement={Patches.VehicleManagerP0C1ReplicationPatch.TranspilerReplacementCount} " +
-                        $"signature={Patches.VehicleManagerP0C1ReplicationPatch.UpdateSignatureResolved} " +
-                        $"onUpdatePostfix={Patches.VehicleManagerP0C1ReplicationPatch.OnUpdatePostfixRegistered} " +
-                        $"transpilerOwner={Patches.VehicleManagerP0C1ReplicationPatch.TranspilerOwnerVerified}");
+                        $"[P0-C-1/Vehicle] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.VehicleManagerP0C1ReplicationPatch.RegistrationSummary} " +
+                        $"transpilerReplacement={Core.Patches.VehicleManagerP0C1ReplicationPatch.TranspilerReplacementCount} " +
+                        $"signature={Core.Patches.VehicleManagerP0C1ReplicationPatch.UpdateSignatureResolved} " +
+                        $"onUpdatePostfix={Core.Patches.VehicleManagerP0C1ReplicationPatch.OnUpdatePostfixRegistered} " +
+                        $"transpilerOwner={Core.Patches.VehicleManagerP0C1ReplicationPatch.TranspilerOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-C-1/Vehicle] OK summary={Patches.VehicleManagerP0C1ReplicationPatch.RegistrationSummary}");
+                        $"[P0-C-1/Vehicle] OK summary={Core.Patches.VehicleManagerP0C1ReplicationPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1036,19 +1036,19 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.AnimalManagerP0C2SendAnimalStatesPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-C-2/Animal] !!! DIAGNOSTIC BUILD INVALID: summary={Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary} " +
-                        $"replacement={Patches.AnimalManagerP0C2SendAnimalStatesPatch.ReplacementCount} " +
-                        $"signature={Patches.AnimalManagerP0C2SendAnimalStatesPatch.SignatureResolved} " +
-                        $"transpilerOwner={Patches.AnimalManagerP0C2SendAnimalStatesPatch.TranspilerOwnerVerified}");
+                        $"[P0-C-2/Animal] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary} " +
+                        $"replacement={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.ReplacementCount} " +
+                        $"signature={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.SignatureResolved} " +
+                        $"transpilerOwner={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.TranspilerOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-C-2/Animal] OK summary={Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary}");
+                        $"[P0-C-2/Animal] OK summary={Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1062,11 +1062,11 @@ namespace SteamP2PFriends
             try
             {
                 if (!Adapters.Item.ItemGenerationAuthorityAdapter.IsReady
-                    || Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount != 1)
+                    || Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount != 1)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[MultiObserver/M1-Item] DIAGNOSTIC BUILD INVALID: ready={Adapters.Item.ItemGenerationAuthorityAdapter.IsReady} " +
-                        $"generationReplacement={Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1");
+                        $"generationReplacement={Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1");
                     allOk = false;
                 }
                 else
@@ -1085,17 +1085,17 @@ namespace SteamP2PFriends
             try
             {
                 if (!Adapters.Item.ItemObserverReplicationAdapter.IsReady
-                    || !Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered
-                    || !Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered
-                    || !Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered
-                    || !Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered)
+                    || !Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered
+                    || !Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered
+                    || !Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered
+                    || !Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[MultiObserver/M2-Item] DIAGNOSTIC BUILD INVALID: ready={Adapters.Item.ItemObserverReplicationAdapter.IsReady} " +
-                        $"regionPrefix={Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
-                        $"askItems={Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
-                        $"{Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
-                        $"{Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered}");
+                        $"regionPrefix={Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
+                        $"askItems={Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
+                        $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
+                        $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered}");
                     allOk = false;
                 }
                 else
@@ -1114,18 +1114,18 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.NetMessagesPlayerConnectedLoopbackPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.NetMessagesPlayerConnectedLoopbackPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-PlayerVisibility] !!! DIAGNOSTIC BUILD INVALID: summary={Patches.NetMessagesPlayerConnectedLoopbackPatch.RegistrationSummary} " +
-                        $"prefix={Patches.NetMessagesPlayerConnectedLoopbackPatch.PrefixRegistered} " +
-                        $"prefixOwner={Patches.NetMessagesPlayerConnectedLoopbackPatch.PrefixOwnerVerified}");
+                        $"[P0-PlayerVisibility] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.NetMessagesPlayerConnectedLoopbackPatch.RegistrationSummary} " +
+                        $"prefix={Core.Patches.NetMessagesPlayerConnectedLoopbackPatch.PrefixRegistered} " +
+                        $"prefixOwner={Core.Patches.NetMessagesPlayerConnectedLoopbackPatch.PrefixOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-PlayerVisibility] OK summary={Patches.NetMessagesPlayerConnectedLoopbackPatch.RegistrationSummary}");
+                        $"[P0-PlayerVisibility] OK summary={Core.Patches.NetMessagesPlayerConnectedLoopbackPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1139,18 +1139,18 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.PlayerUIPauseTimeScalePatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.PlayerUIPauseTimeScalePatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-D-ESC] !!! DIAGNOSTIC BUILD INVALID: summary={Patches.PlayerUIPauseTimeScalePatch.RegistrationSummary} " +
-                        $"prefix={Patches.PlayerUIPauseTimeScalePatch.PrefixRegistered} " +
-                        $"prefixOwner={Patches.PlayerUIPauseTimeScalePatch.PrefixOwnerVerified}");
+                        $"[P0-D-ESC] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.PlayerUIPauseTimeScalePatch.RegistrationSummary} " +
+                        $"prefix={Core.Patches.PlayerUIPauseTimeScalePatch.PrefixRegistered} " +
+                        $"prefixOwner={Core.Patches.PlayerUIPauseTimeScalePatch.PrefixOwnerVerified}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-D-ESC] OK summary={Patches.PlayerUIPauseTimeScalePatch.RegistrationSummary}");
+                        $"[P0-D-ESC] OK summary={Core.Patches.PlayerUIPauseTimeScalePatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1164,18 +1164,18 @@ namespace SteamP2PFriends
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try
             {
-                if (!Patches.VehicleEnterDiagnosticPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.VehicleEnterDiagnosticPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
-                        $"[P0-C-1-V-a] !!! DIAGNOSTIC BUILD INVALID: summary={Patches.VehicleEnterDiagnosticPatch.RegistrationSummary} " +
-                        $"enterVehicle={Patches.VehicleEnterDiagnosticPatch.EnterVehiclePrefixRegistered} " +
-                        $"receiveEnterVehicleRequest={Patches.VehicleEnterDiagnosticPatch.ReceiveEnterVehicleRequestPrefixRegistered}");
+                        $"[P0-C-1-V-a] !!! DIAGNOSTIC BUILD INVALID: summary={Core.Patches.VehicleEnterDiagnosticPatch.RegistrationSummary} " +
+                        $"enterVehicle={Core.Patches.VehicleEnterDiagnosticPatch.EnterVehiclePrefixRegistered} " +
+                        $"receiveEnterVehicleRequest={Core.Patches.VehicleEnterDiagnosticPatch.ReceiveEnterVehicleRequestPrefixRegistered}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
-                        $"[P0-C-1-V-a] OK summary={Patches.VehicleEnterDiagnosticPatch.RegistrationSummary}");
+                        $"[P0-C-1-V-a] OK summary={Core.Patches.VehicleEnterDiagnosticPatch.RegistrationSummary}");
                 }
             }
             catch (System.Exception ex)
@@ -1189,101 +1189,101 @@ namespace SteamP2PFriends
             //   - ObjectManagerRegionSyncPatch
             //   每个要求：signature=true, replacement=1/1, prefix=true, transpilerOwner=true, prefixOwner=true
             //   任一失败强制 DiagnosticBuildValid=false
-            bool itemRegionOk = Patches.ItemManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool itemRegionOk = Core.Patches.ItemManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!itemRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: ItemManagerRegionSyncPatch " +
-                    $"summary={Patches.ItemManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"sendReplacement={Patches.ItemManagerRegionSyncPatch.ReplacementCount} " +
-                    $"generationReplacement={Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount} " +
-                    $"signature={Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
-                    $"regionPrefix={Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
-                    $"askItemsTransaction={Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
-                    $"{Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
-                    $"{Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
-                    $"transpilerOwner={Patches.ItemManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Patches.ItemManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={Core.Patches.ItemManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"sendReplacement={Core.Patches.ItemManagerRegionSyncPatch.ReplacementCount} " +
+                    $"generationReplacement={Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount} " +
+                    $"signature={Core.Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
+                    $"regionPrefix={Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
+                    $"askItemsTransaction={Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
+                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
+                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
+                    $"transpilerOwner={Core.Patches.ItemManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={Core.Patches.ItemManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK ItemManagerRegionSyncPatch: " +
-                    $"sendReplacement={Patches.ItemManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"generationReplacement={Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1 " +
-                    $"signature={Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
-                    $"regionPrefix={Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
-                    $"askItemsTransaction={Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
-                    $"{Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
-                    $"{Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
-                    $"transpilerOwner={Patches.ItemManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Patches.ItemManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"sendReplacement={Core.Patches.ItemManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"generationReplacement={Core.Patches.ItemManagerRegionSyncPatch.GenerationGateReplacementCount}/1 " +
+                    $"signature={Core.Patches.ItemManagerRegionSyncPatch.SignatureResolved} " +
+                    $"regionPrefix={Core.Patches.ItemManagerRegionSyncPatch.RegionPrefixRegistered} " +
+                    $"askItemsTransaction={Core.Patches.ItemManagerRegionSyncPatch.AskItemsPrefixRegistered}/" +
+                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsPostfixRegistered}/" +
+                    $"{Core.Patches.ItemManagerRegionSyncPatch.AskItemsFinalizerRegistered} " +
+                    $"transpilerOwner={Core.Patches.ItemManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={Core.Patches.ItemManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool resourceRegionOk = Patches.ResourceManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool resourceRegionOk = Core.Patches.ResourceManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!resourceRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: ResourceManagerRegionSyncPatch " +
-                    $"summary={Patches.ResourceManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"replacement={Patches.ResourceManagerRegionSyncPatch.ReplacementCount} " +
-                    $"signature={Patches.ResourceManagerRegionSyncPatch.SignatureResolved} " +
-                    $"sendResourcesWritePrefix={Patches.ResourceManagerRegionSyncPatch.SendResourcesWritePrefixRegistered} " +
-                    $"transpilerOwner={Patches.ResourceManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Patches.ResourceManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={Core.Patches.ResourceManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"replacement={Core.Patches.ResourceManagerRegionSyncPatch.ReplacementCount} " +
+                    $"signature={Core.Patches.ResourceManagerRegionSyncPatch.SignatureResolved} " +
+                    $"sendResourcesWritePrefix={Core.Patches.ResourceManagerRegionSyncPatch.SendResourcesWritePrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.ResourceManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={Core.Patches.ResourceManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK ResourceManagerRegionSyncPatch: " +
-                    $"replacement={Patches.ResourceManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"signature={Patches.ResourceManagerRegionSyncPatch.SignatureResolved} " +
-                    $"sendResourcesWritePrefix={Patches.ResourceManagerRegionSyncPatch.SendResourcesWritePrefixRegistered} " +
-                    $"transpilerOwner={Patches.ResourceManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Patches.ResourceManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"replacement={Core.Patches.ResourceManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"signature={Core.Patches.ResourceManagerRegionSyncPatch.SignatureResolved} " +
+                    $"sendResourcesWritePrefix={Core.Patches.ResourceManagerRegionSyncPatch.SendResourcesWritePrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.ResourceManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={Core.Patches.ResourceManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool objectRegionOk = Patches.ObjectManagerRegionSyncPatch.AllRegistrationsSucceeded;
+            bool objectRegionOk = Core.Patches.ObjectManagerRegionSyncPatch.AllRegistrationsSucceeded;
             if (!objectRegionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: ObjectManagerRegionSyncPatch " +
-                    $"summary={Patches.ObjectManagerRegionSyncPatch.RegistrationSummary} " +
-                    $"replacement={Patches.ObjectManagerRegionSyncPatch.ReplacementCount} " +
-                    $"signature={Patches.ObjectManagerRegionSyncPatch.SignatureResolved} " +
-                    $"askObjectsPrefix={Patches.ObjectManagerRegionSyncPatch.AskObjectsPrefixRegistered} " +
-                    $"transpilerOwner={Patches.ObjectManagerRegionSyncPatch.TranspilerOwnerVerified} " +
-                    $"prefixOwner={Patches.ObjectManagerRegionSyncPatch.PrefixOwnerVerified}");
+                    $"summary={Core.Patches.ObjectManagerRegionSyncPatch.RegistrationSummary} " +
+                    $"replacement={Core.Patches.ObjectManagerRegionSyncPatch.ReplacementCount} " +
+                    $"signature={Core.Patches.ObjectManagerRegionSyncPatch.SignatureResolved} " +
+                    $"askObjectsPrefix={Core.Patches.ObjectManagerRegionSyncPatch.AskObjectsPrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.ObjectManagerRegionSyncPatch.TranspilerOwnerVerified} " +
+                    $"prefixOwner={Core.Patches.ObjectManagerRegionSyncPatch.PrefixOwnerVerified}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK ObjectManagerRegionSyncPatch: " +
-                    $"replacement={Patches.ObjectManagerRegionSyncPatch.ReplacementCount}/1 " +
-                    $"signature={Patches.ObjectManagerRegionSyncPatch.SignatureResolved} " +
-                    $"askObjectsPrefix={Patches.ObjectManagerRegionSyncPatch.AskObjectsPrefixRegistered} " +
-                    $"transpilerOwner={Patches.ObjectManagerRegionSyncPatch.TranspilerOwnerSummary} " +
-                    $"prefixOwner={Patches.ObjectManagerRegionSyncPatch.PrefixOwnerSummary}");
+                    $"replacement={Core.Patches.ObjectManagerRegionSyncPatch.ReplacementCount}/1 " +
+                    $"signature={Core.Patches.ObjectManagerRegionSyncPatch.SignatureResolved} " +
+                    $"askObjectsPrefix={Core.Patches.ObjectManagerRegionSyncPatch.AskObjectsPrefixRegistered} " +
+                    $"transpilerOwner={Core.Patches.ObjectManagerRegionSyncPatch.TranspilerOwnerSummary} " +
+                    $"prefixOwner={Core.Patches.ObjectManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool levelObjectCollisionOk = Patches.LevelObjectRemoteCollisionPatch.AllRegistrationsSucceeded;
+            bool levelObjectCollisionOk = Core.Patches.LevelObjectRemoteCollisionPatch.AllRegistrationsSucceeded;
             if (!levelObjectCollisionOk)
             {
                 RoleLogger.Error("[Shared]",
                     $"[Diag] !!! DIAGNOSTIC BUILD INVALID: LevelObjectRemoteCollisionPatch " +
-                    $"summary={Patches.LevelObjectRemoteCollisionPatch.RegistrationSummary} " +
-                    $"rootPostfix={Patches.LevelObjectRemoteCollisionPatch.RootActivationPostfixRegistered} " +
-                    $"regionTrackerPostfix={Patches.LevelObjectRemoteCollisionPatch.RegionTrackerPostfixRegistered}");
+                    $"summary={Core.Patches.LevelObjectRemoteCollisionPatch.RegistrationSummary} " +
+                    $"rootPostfix={Core.Patches.LevelObjectRemoteCollisionPatch.RootActivationPostfixRegistered} " +
+                    $"regionTrackerPostfix={Core.Patches.LevelObjectRemoteCollisionPatch.RegionTrackerPostfixRegistered}");
                 allOk = false;
             }
             else
             {
                 RoleLogger.Info("[Shared]",
                     $"[Diag] OK LevelObjectRemoteCollisionPatch: " +
-                    $"summary={Patches.LevelObjectRemoteCollisionPatch.RegistrationSummary}");
+                    $"summary={Core.Patches.LevelObjectRemoteCollisionPatch.RegistrationSummary}");
             }
 
             //   - UseableBarricadeDiagnosticPatch：8 DP（startPrimary/check/checkSpace/checkClaims/ReceiveBarricadeNone/simulate/build/dropBarricade）
@@ -1292,38 +1292,38 @@ namespace SteamP2PFriends
             //   任一失败强制 DiagnosticBuildValid=false，聚合至阻断门。
             try
             {
-                if (!Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[P0-E-2-Diag] !!! DIAGNOSTIC BUILD INVALID: UseableBarricadeDiagnosticPatch " +
-                        $"dp1={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP1_StartPrimary_Registered} " +
-                        $"dp2={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP2_Check_Registered} " +
-                        $"dp3={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP3_CheckSpace_Registered} " +
-                        $"dp4={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP4_CheckClaims_Registered} " +
-                        $"dp5={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_ReceiveBarricadeNone_Registered} " +
-                        $"dp5Finalizer={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_Registered} " +
-                        $"owner5Finalizer={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerVerified} " +
-                        $"ownerSummary=\"{Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerSummary}\" " +
-                        $"dp6={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP6_Simulate_Registered} " +
-                        $"dp7={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP7_Build_Registered} " +
-                        $"dp8={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP8_DropBarricade_Registered}");
+                        $"dp1={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP1_StartPrimary_Registered} " +
+                        $"dp2={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP2_Check_Registered} " +
+                        $"dp3={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP3_CheckSpace_Registered} " +
+                        $"dp4={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP4_CheckClaims_Registered} " +
+                        $"dp5={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_ReceiveBarricadeNone_Registered} " +
+                        $"dp5Finalizer={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_Registered} " +
+                        $"owner5Finalizer={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerVerified} " +
+                        $"ownerSummary=\"{Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerSummary}\" " +
+                        $"dp6={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP6_Simulate_Registered} " +
+                        $"dp7={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP7_Build_Registered} " +
+                        $"dp8={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP8_DropBarricade_Registered}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
                         $"[P0-E-2-Diag] OK " +
-                        $"dp1={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP1_StartPrimary_Registered} " +
-                        $"dp2={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP2_Check_Registered} " +
-                        $"dp3={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP3_CheckSpace_Registered} " +
-                        $"dp4={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP4_CheckClaims_Registered} " +
-                        $"dp5={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_ReceiveBarricadeNone_Registered} " +
-                        $"dp5Finalizer={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_Registered} " +
-                        $"owner5Finalizer={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerVerified} " +
-                        $"ownerSummary=\"{Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerSummary}\" " +
-                        $"dp6={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP6_Simulate_Registered} " +
-                        $"dp7={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP7_Build_Registered} " +
-                        $"dp8={Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP8_DropBarricade_Registered}");
+                        $"dp1={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP1_StartPrimary_Registered} " +
+                        $"dp2={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP2_Check_Registered} " +
+                        $"dp3={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP3_CheckSpace_Registered} " +
+                        $"dp4={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP4_CheckClaims_Registered} " +
+                        $"dp5={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_ReceiveBarricadeNone_Registered} " +
+                        $"dp5Finalizer={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_Registered} " +
+                        $"owner5Finalizer={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerVerified} " +
+                        $"ownerSummary=\"{Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP5_Finalizer_OwnerSummary}\" " +
+                        $"dp6={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP6_Simulate_Registered} " +
+                        $"dp7={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP7_Build_Registered} " +
+                        $"dp8={Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.DP8_DropBarricade_Registered}");
                 }
             }
             catch (System.Exception ex)
@@ -1333,36 +1333,36 @@ namespace SteamP2PFriends
             }
             try
             {
-                if (!Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[P0-E-1-Diag/Zombie] !!! DIAGNOSTIC BUILD INVALID: ZombieEntityMappingDiagnosticPatch " +
-                        $"dp1={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
-                        $"dp2={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
-                        $"dp3={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
-                        $"dp4={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
-                        $"dp5={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
-                        $"dp6={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
-                        $"dp7={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
-                        $"dp8_7={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
-                        $"owner8_7={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
-                        $"reflectionFailed={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
+                        $"dp1={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
+                        $"dp2={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
+                        $"dp3={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
+                        $"dp4={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
+                        $"dp5={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
+                        $"dp6={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
+                        $"dp7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
+                        $"dp8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
+                        $"owner8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
+                        $"reflectionFailed={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
                         $"[P0-E-1-Diag/Zombie] OK " +
-                        $"dp1={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
-                        $"dp2={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
-                        $"dp3={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
-                        $"dp4={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
-                        $"dp5={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
-                        $"dp6={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
-                        $"dp7={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
-                        $"dp8_7={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
-                        $"owner8_7={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
-                        $"reflectionFailed={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
+                        $"dp1={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP1_SendZombiesWrite_Registered} " +
+                        $"dp2={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP2_ReceiveZombies_Registered} " +
+                        $"dp3={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP3_SendZombieStatesWrite_Registered} " +
+                        $"dp4={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP4_ReceiveZombieStates_Registered} " +
+                        $"dp5={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
+                        $"dp6={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP6_SendZombieDead_Registered} " +
+                        $"dp7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP7_ReceiveZombieDead_Registered} " +
+                        $"dp8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_Registered} " +
+                        $"owner8_7={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP8_7_Destroy_OwnerVerified} " +
+                        $"reflectionFailed={Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.ReflectionFailed}");
                 }
             }
             catch (System.Exception ex)
@@ -1372,22 +1372,22 @@ namespace SteamP2PFriends
             }
             try
             {
-                if (!Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.AllRegistrationsSucceeded)
+                if (!Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[P0-E-1-Diag/Culling] !!! DIAGNOSTIC BUILD INVALID: PlayerManagerCullingDiagnosticPatch " +
-                        $"dp1={Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP1_SendPlayerStatesWritePrefix_Registered} " +
-                        $"dp2={Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP2_ReceivePlayerStatesPostfix_Registered} " +
-                        $"dp3={Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP3_TellStatePrefix_Registered}");
+                        $"dp1={Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP1_SendPlayerStatesWritePrefix_Registered} " +
+                        $"dp2={Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP2_ReceivePlayerStatesPostfix_Registered} " +
+                        $"dp3={Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP3_TellStatePrefix_Registered}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
                         $"[P0-E-1-Diag/Culling] OK " +
-                        $"dp1={Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP1_SendPlayerStatesWritePrefix_Registered} " +
-                        $"dp2={Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP2_ReceivePlayerStatesPostfix_Registered} " +
-                        $"dp3={Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP3_TellStatePrefix_Registered}");
+                        $"dp1={Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP1_SendPlayerStatesWritePrefix_Registered} " +
+                        $"dp2={Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP2_ReceivePlayerStatesPostfix_Registered} " +
+                        $"dp3={Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.DP3_TellStatePrefix_Registered}");
                 }
             }
             catch (System.Exception ex)
@@ -1401,24 +1401,24 @@ namespace SteamP2PFriends
             //   仅两个 Transpiler：equip + checkClaims；不全局伪造 Dedicator.IsDedicatedServer。
             try
             {
-                if (!Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.DiagnosticBuildValid)
+                if (!Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.DiagnosticBuildValid)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[5B-1B] !!! DIAGNOSTIC BUILD INVALID: BarricadeLifecycleRegistration " +
-                        $"registrationSucceeded={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
-                        $"rollbackAttempted={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.WasRollbackAttempted} " +
-                        $"rollbackClean={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRollbackClean} " +
-                        $"equipReplacementApplied={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
-                        $"checkClaimsReplacementApplied={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
+                        $"registrationSucceeded={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
+                        $"rollbackAttempted={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.WasRollbackAttempted} " +
+                        $"rollbackClean={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRollbackClean} " +
+                        $"equipReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
+                        $"checkClaimsReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
                     allOk = false;
                 }
                 else
                 {
                     RoleLogger.Info("[Shared]",
                         $"[5B-1B] OK BarricadeLifecycleRegistration " +
-                        $"registrationSucceeded={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
-                        $"equipReplacementApplied={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
-                        $"checkClaimsReplacementApplied={Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
+                        $"registrationSucceeded={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.IsRegistrationSucceeded} " +
+                        $"equipReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.EquipReplacementApplied} " +
+                        $"checkClaimsReplacementApplied={Core.Patches.P0EBarricadeLifecycle.BarricadeLifecycleRegistration.CheckClaimsReplacementApplied}");
                 }
             }
             catch (System.Exception ex)

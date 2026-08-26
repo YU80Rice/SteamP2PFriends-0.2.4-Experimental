@@ -1,12 +1,14 @@
 using Steamworks;
 
+using SteamP2PFriends.Security;
+
 namespace SteamP2PFriends.WhitelistTests.Fakes
 {
     /// <summary>
     /// Route B 单元测试 Fake：P2PApprovalManager.IApprovalRuntimeContext。
     /// 蓝图 v2 §3.2：测试可行性，不启动 Unturned/Steam/Unity。
     /// </summary>
-    internal sealed class FakeApprovalRuntimeContext : SteamP2PFriends.Host.IApprovalRuntimeContext
+    internal sealed class FakeApprovalRuntimeContext : SteamP2PFriends.Security.IApprovalRuntimeContext
     {
         public bool IsActiveP2PHostValue = true;
         public CSteamID LocalUserValue = new CSteamID(76561199030780228UL);

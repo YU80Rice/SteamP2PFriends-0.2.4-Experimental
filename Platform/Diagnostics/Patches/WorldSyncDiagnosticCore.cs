@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Text;
 using HarmonyLib;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     /// 为 Item/Zombie/Vehicle/Animal/Object/Resource 六条世界同步链路提供

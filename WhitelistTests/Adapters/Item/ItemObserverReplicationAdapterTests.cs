@@ -1,5 +1,5 @@
 using SteamP2PFriends.Adapters.Item;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using HarmonyLib;
 using SDG.Unturned;
 using System;

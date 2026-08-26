@@ -7,6 +7,8 @@ using System.Text;
 using BepInEx;
 using HarmonyLib;
 
+using Patches = SteamP2PFriends.Core.Patches;
+
 namespace SteamP2PFriends.Shared
 {
     internal enum HarmonyCompatibilityDecision

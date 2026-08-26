@@ -9,7 +9,7 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -17,6 +17,10 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
+
+using SteamP2PFriends.Security;
+
+using SteamP2PFriends.Security.Patches;
 
 namespace SteamP2PFriends
 {
@@ -78,10 +82,10 @@ namespace SteamP2PFriends
 
         private bool VerifyStage78UnifiedConnectRegistrations()
         {
-            MethodBase routeOriginal = Patches.MenuPlayConnectP2PRoutePatch.TargetMethod();
-            MethodInfo routePrefix = AccessTools.Method(typeof(Patches.MenuPlayConnectP2PRoutePatch), "Prefix");
-            MethodBase indicatorOriginal = Patches.MenuPlayConnectP2PIndicatorPatch.TargetMethod();
-            MethodInfo indicatorPostfix = AccessTools.Method(typeof(Patches.MenuPlayConnectP2PIndicatorPatch), "Postfix");
+            MethodBase routeOriginal = Core.Patches.MenuPlayConnectP2PRoutePatch.TargetMethod();
+            MethodInfo routePrefix = AccessTools.Method(typeof(Core.Patches.MenuPlayConnectP2PRoutePatch), "Prefix");
+            MethodBase indicatorOriginal = Core.Patches.MenuPlayConnectP2PIndicatorPatch.TargetMethod();
+            MethodInfo indicatorPostfix = AccessTools.Method(typeof(Core.Patches.MenuPlayConnectP2PIndicatorPatch), "Postfix");
 
             bool routeOk = HasOwnedPatch(routeOriginal, routePrefix, true);
             bool indicatorOk = HasOwnedPatch(indicatorOriginal, indicatorPostfix, false);
@@ -103,10 +107,10 @@ namespace SteamP2PFriends
         /// </summary>
         private bool VerifyStage92SinglePortRegistration()
         {
-            MethodBase original = Patches.DirectIpSinglePortQueryPortPatch.TargetMethod();
+            MethodBase original = Core.Patches.DirectIpSinglePortQueryPortPatch.TargetMethod();
             MethodInfo postfix = AccessTools.Method(
-                typeof(Patches.DirectIpSinglePortQueryPortPatch),
-                nameof(Patches.DirectIpSinglePortQueryPortPatch.Postfix));
+                typeof(Core.Patches.DirectIpSinglePortQueryPortPatch),
+                nameof(Core.Patches.DirectIpSinglePortQueryPortPatch.Postfix));
 
             bool ok = HasOwnedPatch(original, postfix, false);
             if (!ok)
@@ -126,11 +130,11 @@ namespace SteamP2PFriends
 
         private bool VerifyStage10DeathCommitRegistration()
         {
-            MethodBase original = Patches.P2PWorldDeathCommitPatch.TargetMethod();
-            MethodInfo prefix = AccessTools.Method(typeof(Patches.P2PWorldDeathCommitPatch),
-                nameof(Patches.P2PWorldDeathCommitPatch.Prefix));
-            MethodInfo postfix = AccessTools.Method(typeof(Patches.P2PWorldDeathCommitPatch),
-                nameof(Patches.P2PWorldDeathCommitPatch.Postfix));
+            MethodBase original = Core.Patches.P2PWorldDeathCommitPatch.TargetMethod();
+            MethodInfo prefix = AccessTools.Method(typeof(Core.Patches.P2PWorldDeathCommitPatch),
+                nameof(Core.Patches.P2PWorldDeathCommitPatch.Prefix));
+            MethodInfo postfix = AccessTools.Method(typeof(Core.Patches.P2PWorldDeathCommitPatch),
+                nameof(Core.Patches.P2PWorldDeathCommitPatch.Postfix));
 
             bool ok = HasOwnedPatch(original, prefix, true) &&
                       HasOwnedPatch(original, postfix, false);
@@ -145,8 +149,8 @@ namespace SteamP2PFriends
 
         private bool VerifyStage10ChatAvatarRegistration()
         {
-            MethodInfo prefix = AccessTools.Method(typeof(Patches.P2PWorldChatAvatarPatch),
-                nameof(Patches.P2PWorldChatAvatarPatch.PrefixProject));
+            MethodInfo prefix = AccessTools.Method(typeof(Core.Patches.P2PWorldChatAvatarPatch),
+                nameof(Core.Patches.P2PWorldChatAvatarPatch.PrefixProject));
             MethodInfo v1 = AccessTools.PropertySetter(typeof(SleekChatEntryV1),
                 "representingChatMessage");
             MethodInfo v2 = AccessTools.PropertySetter(typeof(SleekChatEntryV2),
@@ -180,13 +184,13 @@ namespace SteamP2PFriends
             MethodInfo drop = AccessTools.Method(typeof(PlayerInventory),
                 nameof(PlayerInventory.ReceiveDropItem), dropArgs);
 
-            bool ok = Patches.ListenHostInventoryUiProjectionPatch.ReflectionContractAvailable &&
+            bool ok = Core.Patches.ListenHostInventoryUiProjectionPatch.ReflectionContractAvailable &&
                       HasOwnedPatch(drag,
-                          Patches.ListenHostInventoryUiProjectionPatch.DragPostfix, false) &&
+                          Core.Patches.ListenHostInventoryUiProjectionPatch.DragPostfix, false) &&
                       HasOwnedPatch(swap,
-                          Patches.ListenHostInventoryUiProjectionPatch.SwapPostfix, false) &&
+                          Core.Patches.ListenHostInventoryUiProjectionPatch.SwapPostfix, false) &&
                       HasOwnedPatch(drop,
-                          Patches.ListenHostInventoryUiProjectionPatch.DropPostfix, false);
+                          Core.Patches.ListenHostInventoryUiProjectionPatch.DropPostfix, false);
             if (ok)
                 RoleLogger.Info("[Shared]",
                     "[InventoryUI-Reconcile] OK listen-host drag/swap/drop projection repair registered");

@@ -9,7 +9,7 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -69,7 +69,7 @@ namespace SteamP2PFriends
                         $"params=[{string.Join(", ", System.Array.ConvertAll(clientTarget.GetParameters(), p => p.ParameterType.Name + " " + p.Name))}]");
 
                     System.Reflection.MethodInfo clientPrefix = AccessTools.Method(
-                        typeof(Patches.AssetIntegritySnapshotPatch),
+                        typeof(Core.Patches.AssetIntegritySnapshotPatch),
                         "ClientReceiveKickPrefix");
 
                     if (clientPrefix == null)
@@ -144,7 +144,7 @@ namespace SteamP2PFriends
                         $"params=[{string.Join(", ", System.Array.ConvertAll(serverTarget.GetParameters(), p => p.ParameterType.Name + " " + p.Name))}]");
 
                     System.Reflection.MethodInfo serverPrefix = AccessTools.Method(
-                        typeof(Patches.AssetIntegritySnapshotPatch),
+                        typeof(Core.Patches.AssetIntegritySnapshotPatch),
                         "ServerInvokePrefix");
 
                     if (serverPrefix == null)
@@ -206,7 +206,7 @@ namespace SteamP2PFriends
             // 仅状态日志
             try
             {
-                Patches.PlayerMovementInitializePlayerPrefixPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerMovementInitializePlayerPrefixPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -217,7 +217,7 @@ namespace SteamP2PFriends
             // 完整兼容性补丁集。
                 try
                 {
-                    Patches.SteamPlayerIsLocalServerHostPatch.RegisterManual(_harmony);
+                    Core.Patches.SteamPlayerIsLocalServerHostPatch.RegisterManual(_harmony);
                 }
                 catch (System.Exception ex)
                 {
@@ -227,7 +227,7 @@ namespace SteamP2PFriends
 
                 try
                 {
-                    Patches.PlayerUpdateGuardPatch.RegisterManual(_harmony);
+                    Core.Patches.PlayerUpdateGuardPatch.RegisterManual(_harmony);
                 }
                 catch (System.Exception ex)
                 {
@@ -237,7 +237,7 @@ namespace SteamP2PFriends
 
                 try
                 {
-                    Patches.GameplayReadyBitmaskPatch.RegisterManual(_harmony);
+                    Core.Patches.GameplayReadyBitmaskPatch.RegisterManual(_harmony);
                 }
                 catch (System.Exception ex)
                 {

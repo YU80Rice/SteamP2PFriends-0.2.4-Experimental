@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace SteamP2PFriends.Patches
+using Patches = SteamP2PFriends.Core.Patches;
+
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     /// ResourceManager.onRegionUpdated step 3 远程区域同步资格 patch + SendResources_Write 决定性日志。

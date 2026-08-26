@@ -7,7 +7,7 @@ using Steamworks;
 using System;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     /// Routes individual Steam IDs to P2P and numeric IPv4 endpoints to the query-less

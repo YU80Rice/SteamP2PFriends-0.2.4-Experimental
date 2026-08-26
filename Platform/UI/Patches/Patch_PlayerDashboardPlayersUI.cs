@@ -8,7 +8,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Patches
+using SteamP2PFriends.Security;
+
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     /// Route B P-key player-list decorator. Unturned's current P-key players tab lives in

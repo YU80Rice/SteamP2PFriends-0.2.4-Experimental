@@ -1,7 +1,7 @@
 using System;
 using SDG.Unturned;
 
-namespace SteamP2PFriends.Patches.P0EZombieLifecycle
+namespace SteamP2PFriends.Core.Patches.P0EZombieLifecycle
 {
     /// <summary>
     ///

@@ -61,8 +61,8 @@ namespace SteamP2PFriends.Client
             try
             {
                 explicitDnsEnabled = SteamP2PFriends.UI.ExplicitDnsDirectIpModeUI.IsEnabled;
-                var hostField = SteamP2PFriends.Patches.MenuPlayConnectP2PRoutePatch.GetStaticField<ISleekField>("hostField");
-                var portField = SteamP2PFriends.Patches.MenuPlayConnectP2PRoutePatch.GetStaticField<ISleekUInt16Field>("portField");
+                var hostField = SteamP2PFriends.Core.Patches.MenuPlayConnectP2PRoutePatch.GetStaticField<ISleekField>("hostField");
+                var portField = SteamP2PFriends.Core.Patches.MenuPlayConnectP2PRoutePatch.GetStaticField<ISleekUInt16Field>("portField");
                 if (hostField == null || portField == null) return false;
                 rawHost = hostField.Text;
                 portFieldValue = portField.Value;

@@ -9,7 +9,7 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
@@ -29,7 +29,7 @@ namespace SteamP2PFriends
             RoleLogger.Info("[Shared]", "[Diag] === 手动登记 internal 类型诊断 patch ===");
             try
             {
-                Patches.NetMessagesSendDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.NetMessagesSendDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -38,7 +38,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.AuthHandshakeJournalPatch.RegisterManual(_harmony);
+                Core.Patches.AuthHandshakeJournalPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -47,7 +47,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.ClientAcceptedHandlerDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ClientAcceptedHandlerDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -57,7 +57,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.ProviderAcceptStageDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ProviderAcceptStageDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -67,7 +67,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.PlayerComponentInitializeDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerComponentInitializeDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -77,7 +77,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.ProviderRejectDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ProviderRejectDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -87,7 +87,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.QueuePositionChangedDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.QueuePositionChangedDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -98,7 +98,7 @@ namespace SteamP2PFriends
             bool p0cOk = false;
             try
             {
-                p0cOk = Patches.InitialStateReceiveDiagnosticPatch.RegisterManual(_harmony);
+                p0cOk = Core.Patches.InitialStateReceiveDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -107,13 +107,13 @@ namespace SteamP2PFriends
                 p0cOk = false;
             }
             RoleLogger.Info("[Shared]",
-                $"[P0-C] AllRegistrationsSucceeded={Patches.InitialStateReceiveDiagnosticPatch.AllRegistrationsSucceeded} " +
-                $"summary={Patches.InitialStateReceiveDiagnosticPatch.RegistrationSummary} " +
+                $"[P0-C] AllRegistrationsSucceeded={Core.Patches.InitialStateReceiveDiagnosticPatch.AllRegistrationsSucceeded} " +
+                $"summary={Core.Patches.InitialStateReceiveDiagnosticPatch.RegistrationSummary} " +
                 $"registerReturned={p0cOk}");
 
             try
             {
-                Patches.LocalRegionProgressDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.LocalRegionProgressDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -123,7 +123,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.DisconnectTracerPatch.RegisterManual(_harmony);
+                Core.Patches.DisconnectTracerPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -140,7 +140,7 @@ namespace SteamP2PFriends
             //   - D-Vis-6: 扩展 RemotePlayerRenderProbe 采样（不需要 patch 登记）
             try
             {
-                Patches.PlayerClothingVisibilityDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerClothingVisibilityDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -149,7 +149,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerLookAnimatorDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerLookAnimatorDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -158,7 +158,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.SteamChannelTransportDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.SteamChannelTransportDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -174,7 +174,7 @@ namespace SteamP2PFriends
             //   - D-Vis-14: Unity Tag 错误源头追踪
             try
             {
-                Patches.PlayerMovementTellStateDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerMovementTellStateDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -183,7 +183,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerAnimatorSmrEnabledDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerAnimatorSmrEnabledDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -192,7 +192,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.LoadingUIUpdateDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.LoadingUIUpdateDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -201,7 +201,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerIsLoadingClothingDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerIsLoadingClothingDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -210,7 +210,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerInitializePlayerStageDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerInitializePlayerStageDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -219,7 +219,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.UnityTagErrorSourceDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.UnityTagErrorSourceDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -233,7 +233,7 @@ namespace SteamP2PFriends
             //   - D-Vis-18: InitializePlayer 分阶段计时（clothing/movement/animator/quests 4 阶段）
             try
             {
-                Patches.PlayerMovementTellStateCallerDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerMovementTellStateCallerDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -242,7 +242,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.NetMessageDeliveryPathDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.NetMessageDeliveryPathDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -251,7 +251,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerLifecycleReadyDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerLifecycleReadyDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -260,7 +260,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerInitializePlayerStagedTimingDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerInitializePlayerStagedTimingDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -270,7 +270,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.PlayerManagerBroadcastPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerManagerBroadcastPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -279,7 +279,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.RemotePlayerClothingVisibleBridgePatch.RegisterManual(_harmony);
+                Core.Patches.RemotePlayerClothingVisibleBridgePatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -288,7 +288,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.PlayerManagerBroadcastDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.PlayerManagerBroadcastDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -314,7 +314,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.ItemManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ItemManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -324,7 +324,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.AuthoritativeItemGenerationGatePatch.RegisterManual(_harmony);
+                Core.Patches.AuthoritativeItemGenerationGatePatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -335,7 +335,7 @@ namespace SteamP2PFriends
             // Alpha inventory/world authority probe: read-only fingerprints and transaction tracing.
             try
             {
-                Patches.InventoryWorldAuthorityProbe.RegisterManual(_harmony);
+                Core.Patches.InventoryWorldAuthorityProbe.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -345,7 +345,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.ResourceManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ResourceManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -355,7 +355,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.ObjectManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ObjectManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -365,7 +365,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.Issue7ObjectBinaryStateDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.Issue7ObjectBinaryStateDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -375,7 +375,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.VehicleManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.VehicleManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -385,7 +385,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.AnimalManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.AnimalManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -395,7 +395,7 @@ namespace SteamP2PFriends
 
             try
             {
-                Patches.ZombieManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.ZombieManagerWorldSyncDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -408,7 +408,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.ZombieManagerP0DGenerateZombiesPatch.RegisterManual(_harmony);
+                Core.Patches.ZombieManagerP0DGenerateZombiesPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -421,7 +421,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.P0EZombieLifecycle.ZombieLifecyclePatch.RegisterManual(_harmony);
+                Core.Patches.P0EZombieLifecycle.ZombieLifecyclePatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -434,7 +434,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.ZombieManagerP0C1SendZombieStatesPatch.RegisterManual(_harmony);
+                Core.Patches.ZombieManagerP0C1SendZombieStatesPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -446,7 +446,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.VehicleManagerP0C1ReplicationPatch.RegisterManual(_harmony);
+                Core.Patches.VehicleManagerP0C1ReplicationPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -459,7 +459,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegisterManual(_harmony);
+                Core.Patches.AnimalManagerP0C2SendAnimalStatesPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -472,7 +472,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.NetMessagesPlayerConnectedLoopbackPatch.RegisterManual(_harmony);
+                Core.Patches.NetMessagesPlayerConnectedLoopbackPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -486,7 +486,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.PlayerUIPauseTimeScalePatch.RegisterManual(_harmony);
+                Core.Patches.PlayerUIPauseTimeScalePatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -499,7 +499,7 @@ namespace SteamP2PFriends
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
             {
-                Patches.VehicleEnterDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.VehicleEnterDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -513,7 +513,7 @@ namespace SteamP2PFriends
             //   阶段 2 完成后等待阶段 2 重审，不自动进入阶段 3（双机诊断测试）或阶段 5（功能修复）。
             try
             {
-                Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.P0EDiagnostic.UseableBarricadeDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -522,7 +522,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {
@@ -531,7 +531,7 @@ namespace SteamP2PFriends
             }
             try
             {
-                Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.RegisterManual(_harmony);
+                Core.Patches.P0EDiagnostic.PlayerManagerCullingDiagnosticPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {

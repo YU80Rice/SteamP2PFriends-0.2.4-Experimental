@@ -5,7 +5,9 @@ using SteamP2PFriends.Shared;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Patches
+using Patches = SteamP2PFriends.Core.Patches;
+
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

@@ -4,7 +4,7 @@ using SteamP2PFriends.Shared;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     /// AnimalManager 世界同步链路五段证据诊断。

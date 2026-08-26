@@ -1,6 +1,8 @@
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System;
+
+using SteamP2PFriends.Security.Patches;
 
 namespace SteamP2PFriends
 {

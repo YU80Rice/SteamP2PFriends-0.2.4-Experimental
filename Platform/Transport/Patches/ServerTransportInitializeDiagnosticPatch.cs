@@ -7,7 +7,7 @@ using SteamP2PFriends.Shared.Enums;
 using Steamworks;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

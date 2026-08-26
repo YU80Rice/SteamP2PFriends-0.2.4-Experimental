@@ -4,7 +4,7 @@ using SteamP2PFriends.Shared;
 using Steamworks;
 using System;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

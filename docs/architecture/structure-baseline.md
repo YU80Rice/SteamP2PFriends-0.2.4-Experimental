@@ -1,6 +1,6 @@
 # 0.2.4-Experimental 结构基线
 
-状态：Ticket 01-03 源码批次完成；Runtime 与完整 StaticIL 门禁仍待执行
+状态：Ticket 01-04 源码批次完成；Runtime 与完整 StaticIL 门禁仍待执行
 
 ## 目标
 
@@ -12,7 +12,7 @@
 - U3-SDK 对照 commit 固定为 `ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`；
 - 主项目与测试项目共同导入 `Build/Version.props`；
 - 建立 Registration Trace 与 Migration Manifest；
-- 不移动源码文件，不统一 namespace，不接入 Resource 生产控制接缝；
+- 按 Ticket 02-04 的迁移清单整理物理源码目录；兼容 namespace 暂不全量重命名；不接入 Resource 生产控制接缝；
 - 不修复 Zombie、Item、Route B、连接路由或其他功能问题。
 
 ## 目标结构
@@ -23,21 +23,17 @@ Core/
   Identity/
   Lifecycle/
   Registration/
-  Patches/
+  Shared/
+  Ownership/
+  Patches/                 # 受控跨领域补丁唯一入口
 
 Adapters/
-  Resource/
-  Zombie/
-  Item/
-  Structure/
-  Animal/
-  Collision/
-  Security/
+  Resource/ Zombie/ Item/ Structure/ Animal/ Collision/
 
-Transport/
-  SteamP2P/
-  DirectIp/
-  Diagnostics/
+Platform/
+  Client/ Host/ Transport/ UI/ Diagnostics/
+
+Security/
 
 Tests/
   PureMemory/
@@ -46,7 +42,7 @@ Tests/
   Runtime/
 ```
 
-当前已完成 `Core/Identity`、`Adapters/Animal`、`Adapters/Zombie` 的本批次归属整理，以及 `MultiObserver` 空间身份接缝整理。根目录 `Patches/` 仍只保留尚未按 Domain Ownership 归属的跨领域补丁；无法证明归属的文件暂不移动。
+当前已完成 `Core/Identity`、`Core/ControlPlane`、`Core/Shared`、`Platform/*`、`Security`、`Adapters/Animal`、`Adapters/Zombie` 的本批次归属整理。无法证明单一领域归属的补丁统一位于 `Core/Patches`，并由 `docs/architecture/module-ownership.md` 登记原因。
 
 ## 不变量
 
@@ -61,3 +57,4 @@ Tests/
 - [Registration Trace](./registration-trace.md)
 - [Migration Manifest](./migration-manifest.md)
 - [ADR-0006](../adr/0006-behavior-preserving-structure-baseline-and-resource-migration.md)
+- [ADR-0008](../adr/0008-core-platform-security-module-ownership.md)

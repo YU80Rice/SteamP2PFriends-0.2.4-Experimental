@@ -1,7 +1,7 @@
 using HarmonyLib;
 using SDG.Unturned;
 using SteamP2PFriends.Adapters.Item;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using System;
 using System.Collections.Generic;
 using System.Reflection;

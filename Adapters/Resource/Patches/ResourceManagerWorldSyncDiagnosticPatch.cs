@@ -4,7 +4,7 @@ using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     /// ResourceManager 世界同步链路五段证据诊断。

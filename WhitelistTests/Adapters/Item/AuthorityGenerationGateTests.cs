@@ -1,4 +1,4 @@
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 
 namespace SteamP2PFriends.WhitelistTests
 {

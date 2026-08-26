@@ -1,4 +1,4 @@
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System;
 
@@ -11,7 +11,7 @@ namespace SteamP2PFriends
             _registrationStageFailed = false;
             try
             {
-                Patches.AssetIntegritySnapshotPatch.RuntimeProbe();
+                Core.Patches.AssetIntegritySnapshotPatch.RuntimeProbe();
             }
             catch (Exception ex)
             {
@@ -38,7 +38,7 @@ namespace SteamP2PFriends
             bool ok = true;
             try
             {
-                Patches.UnityLogBridgePatch.Initialize();
+                Core.Patches.UnityLogBridgePatch.Initialize();
             }
             catch (Exception ex)
             {

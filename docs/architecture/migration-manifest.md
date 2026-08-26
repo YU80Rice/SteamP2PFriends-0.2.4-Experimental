@@ -75,7 +75,7 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | Evidence Class | 结果 | 证据 |
 |---|---|---|
 | PureMemory | PASS | RegistrationClosure seam 场景并入现有测试入口 |
-| StaticIL | PENDING | 需后续静态 target/IL 快照门禁确认 |
+| StaticIL | PASS（由 Ticket 04 补齐） | Ticket 02 当时的待办已由 `ticket-04-static-metadata-snapshot.md` 与 Registration Trace 65 单元矩阵完成 |
 | BuildArtifact | PASS | 主项目、WhitelistTests Release 构建 0 errors / 0 warnings |
 | Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
 
@@ -114,11 +114,44 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | Evidence Class | 结果 | 证据 |
 |---|---|---|
 | PureMemory | PASS | `IdentityContractTests` 与现有 Spatial/Registration 测试入口 |
-| StaticIL | PASS（Ticket 03 身份契约） | `IdentityStaticILContractTests`；完整注册单元/Harmony target 快照仍由后续门禁负责 |
+| StaticIL | PASS（Ticket 03 身份契约；后续由 Ticket 04 扩展） | `IdentityStaticILContractTests`；注册单元/Harmony target 静态矩阵已在 Ticket 04 快照中补齐 |
 | BuildArtifact | PASS | 主项目与 WhitelistTests Release 构建 0 errors / 0 warnings |
 | Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
 
 ### 未决项
 
 - U3-SDK 原生 `int`/`byte` 仍在 patch 边界出现，但进入 Core、MultiObserver 和领域 ledger 前均显式转换为值对象。
-- 完整注册单元/Harmony target 静态快照与 Runtime 仍 Pending，不由本票据的身份 StaticIL 测试替代。
+- Ticket 03 当时的完整注册单元/Harmony target 静态快照待办已由 Ticket 04 的静态元数据快照补齐；最终 Harmony 运行排序与 Runtime 仍 Pending。
+
+## Batch 4：Core、Platform、Security 所有权
+
+状态：源码结构、Release 构建和结构 StaticIL 已完成；Runtime Pending
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Core/Patches/*` | 已迁移 | 根级跨领域补丁的唯一受控物理入口；未复制实现 |
+| `Core/ControlPlane/*` | 已迁移 | Multi-Observer 控制面和 SPI 的唯一物理入口 |
+| `Core/Shared/*` | 已迁移 | 核心共享协议/状态/枚举的物理归属 |
+| `Platform/Client/*`、`Platform/Host/*` | 已迁移 | 外部运行时适配按 Platform 子模块归属 |
+| `Security/*` | 已迁移 | P2PApprovalManager、P2PWhitelistService 与准入补丁唯一入口 |
+| `Core/Ownership/ModuleOwnershipCatalog.cs` | 新增 | 模块 ID、物理根、权威类型和 Trace 覆盖的单一结构目录 |
+| `WhitelistTests/StaticIL/ModuleOwnershipStaticILContractTests.cs` | 新增 | 唯一权威入口与 Security/Registration Closure 的编译产物契约 |
+| `docs/architecture/module-ownership.md` | 新增 | 归属表、跨领域保留原因和行为不变量 |
+| `docs/architecture/ticket-04-static-metadata-snapshot.md` | 新增 | Release 产物与结构 StaticIL 的可复核快照 |
+
+### 保持不变
+
+- Harmony target、owner、priority、执行顺序、P2P 通道、SteamID、配置键、插件 GUID、Route B 状态机和日志语义未改动；
+- `PatchRegistrationOrchestrator` 仍是唯一顶层注册编排入口，`RegistrationClosure` 仍是唯一适配器关闭入口；
+- Resource Production Control Seam、旧 Authority Writer 和 Runtime 行为未迁移。
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | 既有 183 项测试 + Ticket 04 结构契约入口，共 184 项，未复制领域测试 |
+| StaticIL | PASS（结构 + 注册元数据） | `ModuleOwnershipStaticILContractTests` 通过；Registration Trace 71 行/65 单元矩阵已绑定 target、patch type/method、owner、priority、order |
+| BuildArtifact | PASS（独立快照） | Release DLL/测试 EXE 的版本、FileVersion、MVID 与 SHA-256 已写入 Ticket 04 交付报告；本次重建产物以报告值为准 |
+| Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |

@@ -5,7 +5,7 @@ using SteamP2PFriends.UI;
 using System;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

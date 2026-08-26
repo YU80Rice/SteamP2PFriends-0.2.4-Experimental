@@ -1,7 +1,7 @@
 using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Host;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;

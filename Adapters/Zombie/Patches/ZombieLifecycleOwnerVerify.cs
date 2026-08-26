@@ -4,7 +4,7 @@ using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches.P0EZombieLifecycle
+namespace SteamP2PFriends.Core.Patches.P0EZombieLifecycle
 {
     /// <summary>
     ///

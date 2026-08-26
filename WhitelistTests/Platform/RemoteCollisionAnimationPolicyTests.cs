@@ -1,6 +1,6 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using System;
 using System.Linq;
 

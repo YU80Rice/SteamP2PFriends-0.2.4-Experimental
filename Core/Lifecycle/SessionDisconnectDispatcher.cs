@@ -1,10 +1,12 @@
 using SDG.Unturned;
 using SteamP2PFriends.Client;
 using SteamP2PFriends.Host;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using Steamworks;
 using System;
+
+using SteamP2PFriends.Security;
 
 namespace SteamP2PFriends.Core.Lifecycle
 {

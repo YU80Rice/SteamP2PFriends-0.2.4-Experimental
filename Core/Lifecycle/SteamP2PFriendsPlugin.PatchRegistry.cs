@@ -9,13 +9,15 @@ using SteamP2PFriends.Client;
 using SteamP2PFriends.Core.Registration;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.UI;
 using Steamworks;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+
+using SteamP2PFriends.Security;
 
 namespace SteamP2PFriends
 {
@@ -78,23 +80,23 @@ namespace SteamP2PFriends
             SteamP2PFriends.Client.ExplicitDnsDirectIpService.Shutdown();
             try { P2PWorldStatusBroadcaster.Shutdown(); }
             catch (System.Exception wbEx) { RoleLogger.Warn("[Shared]", "[WorldBroadcast] Shutdown 异常: " + wbEx.GetType().Name); }
-            Patches.UnityLogBridgePatch.Shutdown();
+            Core.Patches.UnityLogBridgePatch.Shutdown();
             SteamP2PFriends.Shared.ConnectionLifecycleTracker.Shutdown();
             SteamP2PFriends.Client.NativeSnsLogProbe.Disable();
             SteamP2PFriends.Host.RemotePlayerRenderProbe.Shutdown();
             SteamP2PFriends.Client.ClientRemotePlayerRenderProbe.Shutdown();
             MultiObserverShadowCoordinator.Shutdown();
-            Patches.UnityTagErrorSourceDiagnosticPatch.Shutdown();
-            Patches.PlayerLifecycleReadyDiagnosticPatch.Shutdown();
-            Patches.BarricadeManagerRegionSyncPatch.ResetAll();
-            Patches.StructureManagerRegionSyncPatch.ResetAll();
-            Patches.ItemManagerRegionSyncPatch.ResetAll();
-            Patches.ResourceManagerRegionSyncPatch.ResetAll();
-            Patches.ObjectManagerRegionSyncPatch.ResetAll();
-            Patches.LevelObjectRemoteCollisionPatch.ResetAll();
+            Core.Patches.UnityTagErrorSourceDiagnosticPatch.Shutdown();
+            Core.Patches.PlayerLifecycleReadyDiagnosticPatch.Shutdown();
+            Core.Patches.BarricadeManagerRegionSyncPatch.ResetAll();
+            Core.Patches.StructureManagerRegionSyncPatch.ResetAll();
+            Core.Patches.ItemManagerRegionSyncPatch.ResetAll();
+            Core.Patches.ResourceManagerRegionSyncPatch.ResetAll();
+            Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();
+            Core.Patches.LevelObjectRemoteCollisionPatch.ResetAll();
             SteamP2PFriends.Host.RemotePlayerRenderProbe.ResetAll();
             SteamP2PFriends.Client.ClientRemotePlayerRenderProbe.ResetAll();
-            Patches.WorldSyncDiagnosticCore.ResetAll();
+            Core.Patches.WorldSyncDiagnosticCore.ResetAll();
             try { P2PNativeMenuUI.Destroy(); } catch (System.Exception ex) { RoleLogger.Warn("[Shared]", $"[P2P] P2PNativeMenuUI.Destroy 异常: {ex.Message}"); }
             try { P2PQuarantineClientView.Destroy(); } catch (System.Exception ex) { RoleLogger.Warn("[Shared]", $"[P2P] P2PQuarantineClientView.Destroy 异常: {ex.Message}"); }
             try { P2PApprovalManager.UninstallProviderLifecycleHooks(); } catch (System.Exception ex) { RoleLogger.Warn("[Shared]", $"[P2P] P2PApprovalManager.Uninstall 异常: {ex.Message}"); }
@@ -135,7 +137,7 @@ namespace SteamP2PFriends
                 SteamP2PFriends.Client.NativeSnsLogProbe.Tick();
                 SteamP2PFriends.Host.RemotePlayerRenderProbe.Tick();
                 SteamP2PFriends.Client.ClientRemotePlayerRenderProbe.Tick();
-                Patches.RemotePlayerClothingVisibleBridgePatch.Tick();
+                Core.Patches.RemotePlayerClothingVisibleBridgePatch.Tick();
             }
             catch (System.Exception ex)
             {

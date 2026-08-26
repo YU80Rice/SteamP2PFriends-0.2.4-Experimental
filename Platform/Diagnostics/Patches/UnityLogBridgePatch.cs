@@ -2,7 +2,7 @@ using HarmonyLib;
 using SteamP2PFriends.Shared;
 using UnityEngine;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

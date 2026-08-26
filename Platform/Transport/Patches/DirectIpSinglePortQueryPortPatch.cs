@@ -4,7 +4,7 @@ using SDG.Unturned;
 using SteamP2PFriends.Shared;
 using System.Reflection;
 
-namespace SteamP2PFriends.Patches
+namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///

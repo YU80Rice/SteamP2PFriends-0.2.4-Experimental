@@ -1,12 +1,14 @@
 using HarmonyLib;
 using SDG.Unturned;
-using SteamP2PFriends.Patches;
+using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace SteamP2PFriends.Patches.P0EDiagnostic
+using Patches = SteamP2PFriends.Core.Patches;
+
+namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
 {
     /// <summary>
     ///
