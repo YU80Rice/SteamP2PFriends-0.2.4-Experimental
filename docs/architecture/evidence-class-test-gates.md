@@ -17,6 +17,8 @@
 
 `WhitelistTests/Program.cs` 是唯一执行入口。入口按 PureMemory → StaticIL → BuildArtifact → Runtime 的顺序输出分类；Runtime 只输出 `PENDING`，不伪造通过数量。`Tools/Verify-EvidenceClassLayout.ps1` 负责在构建前核验目录、项目编译项和唯一入口，不替代测试项目。
 
+本批次对混合测试做了按证明范围的拆分：`IUI1–IUI4`、`M1I01–M1I05`、`M2I01–M2I08/M2I10–M2I11`、`B1–B10/B12` 保留在 `PureMemory`；`RC1–RC2`、`HC1–HC3`、`IUI5–IUI6`、`M1I06`、`M2I09` 和 `B11` 迁入 `StaticIL`。这些测试没有复制，只有执行阶段与物理证据根发生变化。
+
 ## 已覆盖接缝
 
 - Registration Closure：注册角色、顺序、重复注册、关闭后的不可变性，以及 StaticIL 的 Registration Closure/Registration Trace 形状；
@@ -28,4 +30,4 @@
 
 ## 门禁解释
 
-PureMemory 通过只表示纯逻辑接缝通过；StaticIL 通过只表示编译结构与注册形状通过；BuildArtifact 通过只表示交付产物身份可追踪；Runtime 必须有真实运行日志和共享 Case-ID 才能通过。结构阶段 Runtime 保持 Pending，并在 Migration Manifest 与审计报告中单独记录。
+PureMemory 通过只表示纯逻辑接缝通过；StaticIL 通过只表示编译结构与注册形状通过；BuildArtifact 通过只表示交付产物身份可追踪；Runtime 必须有真实运行日志和共享 Case-ID 才能通过。结构阶段 Runtime 保持 Pending，并在 Migration Manifest 与审计报告中单独记录。当前布局核验计数为 `PureMemory 29 / StaticIL 11 / BuildArtifact 1 / Runtime 1` 个 C# 文件，唯一入口完整回归为 `189/189 PASS`。

@@ -261,11 +261,11 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 
 | 项目 | 状态 | 说明 |
 |---|---|---|
-| `WhitelistTests/Evidence/PureMemory/*` | 已迁移 | 既有纯内存领域测试、Platform/Security 测试、MultiObserver 测试与 Fakes 的唯一物理根；未复制测试 |
-| `WhitelistTests/Evidence/StaticIL/*` | 已迁移 | 身份、模块归属、Resource/Collision、Item/Zombie、Animal/Structure 的编译产物结构门禁 |
+| `WhitelistTests/Evidence/PureMemory/*` | 已迁移 | 既有纯内存领域测试、Platform/Security 测试、MultiObserver 测试与 Fakes 的唯一物理根；混合测试中的纯逻辑断言保留于此，未复制测试 |
+| `WhitelistTests/Evidence/StaticIL/*` | 已迁移 | 身份、模块归属、Resource/Collision、Item/Zombie、Animal/Structure，以及 RC/HC/IUI/M1I/M2I/B11 的编译产物、Harmony 或 U3 元数据门禁 |
 | `WhitelistTests/Evidence/BuildArtifact/BuildArtifactEvidenceTests.cs` | 新增 | 版本、FileVersion、MVID、插件 GUID、产物文件与 SHA-256 可重算性接缝 |
 | `WhitelistTests/Evidence/Runtime/RuntimeEvidenceStatus.cs` | 新增 | 真实游戏 Runtime 状态占位，明确 SP/listen-host/U3DS/P2P 仍 Pending |
-| `WhitelistTests/Program.cs` | 已更新 | 保持单一 `Program.Main`，按四类输出；Runtime 不计入 PASS 数量 |
+| `WhitelistTests/Program.cs` | 已更新 | 保持单一 `Program.Main`，按四类输出；Runtime 不计入 PASS 数量；完整回归 `189/189 PASS` |
 | `docs/architecture/evidence-class-test-gates.md` | 新增 | 物理布局、证明边界、覆盖接缝和门禁解释 |
 | `Tools/Verify-EvidenceClassLayout.ps1` | 新增 | 构建前核验四类目录、单一项目、单一入口和无旧测试根目录 |
 
@@ -279,9 +279,9 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 
 | Evidence Class | 结果 | 证据 |
 |---|---|---|
-| PureMemory | PASS | 单一入口中的既有纯内存测试与 EvidenceClass Catalog 测试 |
-| StaticIL | PASS | 单一入口中的五组结构 StaticIL 契约 |
+| PureMemory | PASS | 单一入口中的既有纯内存测试与 EvidenceClass Catalog/Registration Closure 测试；`IUI1–IUI4`、`M1I01–M1I05`、`M2I01–M2I08/M2I10–M2I11`、`B1–B10/B12` 已按范围保留 |
+| StaticIL | PASS | 单一入口中的五组结构契约，加上 RC/HC/IUI/M1I/M2I/B11 的结构、Harmony 或 U3 元数据断言 |
 | BuildArtifact | PASS | `BuildArtifactEvidenceTests`；Release DLL 版本、FileVersion、MVID、插件 GUID 和 SHA-256 重算 |
 | Runtime | PENDING | `RuntimeEvidenceStatus`；未执行 SP、listen-host、U3DS、P2P 真实运行验证 |
 
-完整回归结果与最终 SHA-256/MVID 归档于本票 `audit/2026-08-27/Implementation-0.2.4.8-<HHMM>.md`。
+完整回归结果与最终 SHA-256/MVID 归档于本票 `audit/2026-08-27/Implementation-0.2.4.8-0915.md`。

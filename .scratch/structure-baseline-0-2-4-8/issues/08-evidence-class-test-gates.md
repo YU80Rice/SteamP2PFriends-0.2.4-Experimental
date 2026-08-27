@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 / Core、Platform、Security 所有权迁移；05 / Resource 与 Collision 结构迁移；06 / Item 与 Zombie 结构迁移；07 / Animal、Structure 与其他领域结构迁移
 
-**Status:** ready-for-agent
+**Status:** completed
 
 - [x] 测试物理结构按四类 Evidence Class 组织，同时保持一个测试项目和一个测试入口。
 - [x] PureMemory、StaticIL、BuildArtifact 和 Runtime 的证明范围不可互相升级替代。
@@ -16,4 +16,4 @@
 `WhitelistTests/Evidence/EvidenceClass.cs`、
 `WhitelistTests/Evidence/BuildArtifact/BuildArtifactEvidenceTests.cs`、
 `WhitelistTests/Program.cs`、
-`audit/2026-08-27/Implementation-0.2.4.8-<HHMM>.md`。
+`audit/2026-08-27/Implementation-0.2.4.8-0915.md`。

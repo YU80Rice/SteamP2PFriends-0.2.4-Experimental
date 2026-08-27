@@ -19,7 +19,9 @@ namespace SteamP2PFriends.WhitelistTests
 
             _currentEvidenceClass = EvidenceClass.PureMemory;
             Console.WriteLine("\n=== Evidence Class: PureMemory ===");
-            RunTest("EvidenceClass Catalog", EvidenceClassCatalogTests.Test_All, ref total, ref passed, ref failed);
+            RunTest("EvidenceClass Catalog + Registration Closure", () =>
+                EvidenceClassCatalogTests.Test_All() && RegistrationClosureTests.Test_All(),
+                ref total, ref passed, ref failed);
 
             #region 1. Core & Logging Policy Tests (4 Tests)
             Console.WriteLine("\n--- [PureMemory / Domain 1/8: Core & Diagnostics Policy] ---");
@@ -63,7 +65,6 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M1I03 RegistrationGate", ItemGenerationAuthorityAdapterTests.Test_M1I03_ListenRemoteRequiresRegistration, ref total, ref passed, ref failed);
             RunTest("M1I04 RemoteEligibility", ItemGenerationAuthorityAdapterTests.Test_M1I04_UnrelatedRemoteCannotGenerate, ref total, ref passed, ref failed);
             RunTest("M1I05 PendingObserver", ItemGenerationAuthorityAdapterTests.Test_M1I05_AuthorizationIsNotPartOfWorldPresenceDecision, ref total, ref passed, ref failed);
-            RunTest("M1I06 CurrentU3IL", ItemGenerationAuthorityAdapterTests.Test_M1I06_CurrentU3IlMatchesExactlyOneGenerationGate, ref total, ref passed, ref failed);
             RunTest("M2I01 ReliableCommit", ItemObserverReplicationAdapterTests.Test_M2I01_ReliableReturnCommitsExactlyOnce, ref total, ref passed, ref failed);
             RunTest("M2I02 AbortRetry", ItemObserverReplicationAdapterTests.Test_M2I02_ExceptionAbortAllowsRetry, ref total, ref passed, ref failed);
             RunTest("M2I03 RelevanceReentry", ItemObserverReplicationAdapterTests.Test_M2I03_RelevanceExitReentryResendsSameGeneration, ref total, ref passed, ref failed);
@@ -72,7 +73,6 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M2I06 DifferentRegions", ItemObserverReplicationAdapterTests.Test_M2I06_DifferentRegionsDoNotCrossCommit, ref total, ref passed, ref failed);
             RunTest("M2I07 NewWorldGeneration", ItemObserverReplicationAdapterTests.Test_M2I07_NewWorldGenerationResendsWithoutRelevanceExit, ref total, ref passed, ref failed);
             RunTest("M2I08 ExplicitCapability", ItemObserverReplicationAdapterTests.Test_M2I08_CapabilityIsExplicitReliableEnqueue, ref total, ref passed, ref failed);
-            RunTest("M2I09 CurrentU3ReplicationGate", ItemObserverReplicationAdapterTests.Test_M2I09_CurrentU3IlUsesM2ReplicationGate, ref total, ref passed, ref failed);
             RunTest("M2I10 LoadedRollback", ItemObserverReplicationAdapterTests.Test_M2I10_LoadedProjectionRollbackRequiresCurrentConnection, ref total, ref passed, ref failed);
             RunTest("M2I11 ExactDisconnect", ItemObserverReplicationAdapterTests.Test_M2I11_ExactDisconnectInvalidatesEvenReusedConnectionToken, ref total, ref passed, ref failed);
             #endregion
@@ -211,7 +211,6 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("B8 TimeoutLayout", RouteBApprovalTests.Test_B8_TimeoutKicksOnceAndPKeyLayoutIsStable, ref total, ref passed, ref failed);
             RunTest("B9 Revoke", RouteBApprovalTests.Test_B9_RevokeRemovesWhitelistAndKicks, ref total, ref passed, ref failed);
             RunTest("B10 RevokePersistFailure", RouteBApprovalTests.Test_B10_RevokePersistenceFailureDoesNotKick, ref total, ref passed, ref failed);
-            RunTest("B11 AuthoritativeGates", RouteBApprovalTests.Test_B11_PendingActionAndCommandGatesAreAuthoritative, ref total, ref passed, ref failed);
             RunTest("B12 InputSanitizer", RouteBApprovalTests.Test_B12_InputSanitizerPreservesNetworkProgress, ref total, ref passed, ref failed);
             #endregion
 
@@ -227,19 +226,10 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("P4 PersonaValid", SteamPersonaDisplayTests.Test_v4_P4_Normalize_Valid_Preserved, ref total, ref passed, ref failed);
             RunTest("P5 PersonaFormat", SteamPersonaDisplayTests.Test_v4_P5_FormatPlayer_KeepsSteamId_AndFallback, ref total, ref passed, ref failed);
             RunTest("P6 PersonaInvalid", SteamPersonaDisplayTests.Test_v4_P6_GetRemoteDisplayName_InvalidId_Fallback, ref total, ref passed, ref failed);
-            RunTest("HC1 Observer", HarmonyCompatibilityAuditTests.Test_ObserverPatch_IsRecordedWithoutBlocking, ref total, ref passed, ref failed);
-            RunTest("HC2 ForeignTranspiler", HarmonyCompatibilityAuditTests.Test_ForeignTranspiler_OnOwnTranspiledTarget_Blocks, ref total, ref passed, ref failed);
-            RunTest("HC3 TransportExclusive", HarmonyCompatibilityAuditTests.Test_P2PTransportTargets_RemainExclusive, ref total, ref passed, ref failed);
             RunTest("IUI1 Exact", InventoryUiProjectionTests.Test_IUI1_ExactProjectionNoRepair, ref total, ref passed, ref failed);
             RunTest("IUI2 StaleRendered", InventoryUiProjectionTests.Test_IUI2_StaleRenderedJarDetected, ref total, ref passed, ref failed);
             RunTest("IUI3 StalePending", InventoryUiProjectionTests.Test_IUI3_StalePendingJarDetected, ref total, ref passed, ref failed);
             RunTest("IUI4 Identity", InventoryUiProjectionTests.Test_IUI4_IdentityNotValueEquivalence, ref total, ref passed, ref failed);
-            RunTest("IUI5 Reflection", InventoryUiProjectionTests.Test_IUI5_ReflectionContractExact, ref total, ref passed, ref failed);
-            RunTest("IUI6 Production", InventoryUiProjectionTests.Test_IUI6_ProductionPostfixesActivate, ref total, ref passed, ref failed);
-            RunTest("RC1 AnimationRestore", RemoteCollisionAnimationPolicyTests.Test_RC1_CullingPolicyIsSavedAndRestored, ref total, ref passed, ref failed);
-            RunTest("RC2 PolicyBeforeActivation + RegistrationClosure", () =>
-                RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation() &&
-                RegistrationClosureTests.Test_All(), ref total, ref passed, ref failed);
             #endregion
 
             _currentEvidenceClass = EvidenceClass.StaticIL;
@@ -250,6 +240,26 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
             RunTest("T07 AnimalStructureOwnershipStaticIL", AnimalStructureOwnershipStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("M1I06 CurrentU3IL", ItemGenerationAuthorityStaticILTests.Test_M1I06_CurrentU3IlMatchesExactlyOneGenerationGate,
+                ref total, ref passed, ref failed);
+            RunTest("M2I09 CurrentU3ReplicationGate", ItemObserverReplicationStaticILTests.Test_M2I09_CurrentU3IlUsesM2ReplicationGate,
+                ref total, ref passed, ref failed);
+            RunTest("B11 AuthoritativeGates", RouteBApprovalStaticILTests.Test_B11_PendingActionAndCommandGatesAreAuthoritative,
+                ref total, ref passed, ref failed);
+            RunTest("Harmony HC1 Observer", HarmonyCompatibilityAuditTests.Test_ObserverPatch_IsRecordedWithoutBlocking,
+                ref total, ref passed, ref failed);
+            RunTest("Harmony HC2 ForeignTranspiler", HarmonyCompatibilityAuditTests.Test_ForeignTranspiler_OnOwnTranspiledTarget_Blocks,
+                ref total, ref passed, ref failed);
+            RunTest("Harmony HC3 TransportExclusive", HarmonyCompatibilityAuditTests.Test_P2PTransportTargets_RemainExclusive,
+                ref total, ref passed, ref failed);
+            RunTest("Inventory IUI5 Reflection", InventoryUiProjectionStaticILTests.Test_IUI5_ReflectionContractExact,
+                ref total, ref passed, ref failed);
+            RunTest("Inventory IUI6 Production", InventoryUiProjectionStaticILTests.Test_IUI6_ProductionPostfixesActivate,
+                ref total, ref passed, ref failed);
+            RunTest("Collision RC1 AnimationRestore", RemoteCollisionAnimationPolicyTests.Test_RC1_CullingPolicyIsSavedAndRestored,
+                ref total, ref passed, ref failed);
+            RunTest("Collision RC2 PolicyBeforeActivation", RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;
