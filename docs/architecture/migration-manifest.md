@@ -358,3 +358,30 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 - Guest 重连的 Connection Generation、资源区域重建的 Region Generation 和 Session Reset；
 - 远端资源碰撞、采伐/重生、区域重建、快照与增量复制的 Host/Guest 因果日志；
 - 当 DLL 或核心生产源码再次变化时，重新生成共享 Case-ID 并独立核验 DLL hash。
+
+## Batch 11：Resource 旧 Authority Writer 退出与 Runtime Gate
+
+状态：旧 Resource 租约释放 Writer 已从生产调用图退出；真实 Runtime Gate `PENDING`，Resource Migration Slice 未完成。
+
+### Authority Writer 状态
+
+| Writer/路径 | 当前状态 | 证据与边界 |
+|---|---|---|
+| 旧租约释放路径：`ResourceDomainAdapter.OnRelease` → `ResourceRegionLifecycleAdapter.OnObserverRelease` | 已删除 | `ResourceRegionLifecycleAdapter.OnObserverRelease` 不再编译；`ResourceAuthorityRetirementStaticILContractTests` 断言旧入口不存在 |
+| 当前租约权威：`ResourceProductionControlSeam` → `ResourceDomainAdapter.OnRelease` → `CommitRelease` | 已接线 | Ticket 10 生产接缝与 session/region generation 校验；本轮 StaticIL 再验证唯一调用 |
+| U3-SDK `ResourceManager` 原生数据/协议执行器 | 保留，非本轮删除对象 | 继续负责原生资源状态、快照编码和 `ReceiveResources` 协议；是否已完全服从接缝的实际运行因果必须由 Runtime Gate 证明 |
+
+### Runtime Gate 状态
+
+当前仓库没有同一 `0.2.4.8` DLL、共享 Case-ID 下的 Host、Guest、多观察者、重连和离开/重新进入原始运行日志；本机也未发现可执行的 Unturned Runtime。因此：
+
+- Host/Guest 日志与当次 DLL 的 SHA-256、MVID、版本、插件 GUID 关联：`PENDING`；
+- Resource 碰撞、采伐、2 秒租约释放、generation 防护、快照与增量复制：`PENDING`；
+- 不得把 Ticket 10 的 PureMemory/StaticIL/BuildArtifact PASS 升级为 Ticket 11 Runtime PASS；
+- 不得把本 Batch 标记为 `Resource Migration Slice complete`，也不得推进依赖该结论的其他领域迁移。
+
+### 本轮静态交付
+
+- 新增 `ResourceAuthorityRetirementStaticILContractTests` 并接入单一测试入口；
+- 证明旧租约释放调用退出，同时明确原生协议执行器仍需 Runtime 验收，避免“删除旧 writer”造成未验证的协议回归；
+- 详细报告：见 `audit/2026-08-27/Implementation-0.2.4.8-Ticket11.md`。

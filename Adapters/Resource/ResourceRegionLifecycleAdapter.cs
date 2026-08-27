@@ -237,14 +237,6 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static ResourceReleaseLease OnObserverRelease(RegionKey regionKey, float now, float hysteresisSeconds = DefaultHysteresisSeconds)
-        {
-            lock (SyncLock)
-            {
-                return Ledger.ScheduleRelease(regionKey, now, hysteresisSeconds);
-            }
-        }
-
         public static bool CancelRelease(RegionKey regionKey)
         {
             lock (SyncLock)

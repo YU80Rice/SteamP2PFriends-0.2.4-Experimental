@@ -251,6 +251,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Resource/Collision StaticIL", ResourceCollisionOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("Resource Production Control StaticIL", ResourceProductionControlStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
+            RunTest("Resource Authority Retirement StaticIL", ResourceAuthorityRetirementStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
             RunTest("Item/Zombie StaticIL", ItemZombieOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
