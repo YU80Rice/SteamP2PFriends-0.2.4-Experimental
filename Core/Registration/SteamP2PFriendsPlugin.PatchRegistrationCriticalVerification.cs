@@ -1524,7 +1524,7 @@ namespace SteamP2PFriends
                 allOk = false;
             }
 
-            DiagnosticBuildValid = allOk;
+            DiagnosticBuildValid = allOk && BuildFingerprintValid;
 
             try
             {
@@ -1576,7 +1576,7 @@ namespace SteamP2PFriends
                 RoleLogger.Warn("[Shared]", $"[Diag] NativeSnsLogProbe 状态读取异常（不阻断）: {ex.Message}");
             }
 
-            if (allOk)
+            if (DiagnosticBuildValid)
             {
                 RoleLogger.Info("[Shared]", "[Diag] 关键补丁自检通过 (DiagnosticBuildValid=true)");
             }
@@ -1597,7 +1597,7 @@ namespace SteamP2PFriends
                 //   篡改了用户合法配置。INVALID 时 cfg 保持用户设定值，VALID 时自然恢复。
             }
 
-            return allOk;
+            return DiagnosticBuildValid;
         }
 
         /// <summary>

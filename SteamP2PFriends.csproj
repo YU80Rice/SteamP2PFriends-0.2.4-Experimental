@@ -105,6 +105,7 @@
     <Compile Include="Core\Identity\DomainId.cs" />
     <Compile Include="Core\Identity\LifecycleAxes.cs" />
     <Compile Include="Core\Identity\RegionKey.cs" />
+    <Compile Include="Core\Build\BuildFingerprint.cs" />
     <Compile Include="Core\Ownership\ModuleOwnershipCatalog.cs" />
     <Compile Include="Adapters\Animal\AnimalDomainAdapter.cs" />
     <Compile Include="Adapters\Animal\AnimalRegionLifecycleAdapter.cs" />
@@ -298,4 +299,27 @@
     <Compile Include="Core\Shared\Enums\EP2PLobbyState.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <BuildMetadataGeneratedFile>$(IntermediateOutputPath)SteamP2PFriends.BuildMetadata.g.cs</BuildMetadataGeneratedFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(BuildMetadataGeneratedFile)" />
+  </ItemGroup>
+  <Target Name="GenerateSteamP2PFriendsBuildMetadata" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_BuildMetadataLines Include="namespace SteamP2PFriends.Core.Build" />
+      <_BuildMetadataLines Include="{" />
+      <_BuildMetadataLines Include="    internal static class BuildMetadata" />
+      <_BuildMetadataLines Include="    {" />
+      <_BuildMetadataLines Include="        internal const string Version = &quot;$(SteamP2PFriendsVersion)&quot;%3B" />
+      <_BuildMetadataLines Include="        internal const string ReleaseChannel = &quot;$(SteamP2PFriendsReleaseChannel)&quot;%3B" />
+      <_BuildMetadataLines Include="        internal const string VersionIdentity = &quot;$(SteamP2PFriendsVersionIdentity)&quot;%3B" />
+      <_BuildMetadataLines Include="        internal const string PluginGuid = &quot;$(SteamP2PFriendsPluginGuid)&quot;%3B" />
+      <_BuildMetadataLines Include="        internal const string DefaultCaseId = &quot;$(SteamP2PFriendsDefaultCaseId)&quot;%3B" />
+      <_BuildMetadataLines Include="    }" />
+      <_BuildMetadataLines Include="}" />
+    </ItemGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(BuildMetadataGeneratedFile)" Lines="@(_BuildMetadataLines)" Overwrite="true" Encoding="UTF-8" />
+  </Target>
 </Project>

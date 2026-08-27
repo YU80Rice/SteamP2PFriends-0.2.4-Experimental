@@ -136,7 +136,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Evidence\**\*.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <TestBuildMetadataGeneratedFile>$(IntermediateOutputPath)SteamP2PFriends.WhitelistTests.BuildMetadata.g.cs</TestBuildMetadataGeneratedFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(TestBuildMetadataGeneratedFile)" />
+  </ItemGroup>
+  <Target Name="GenerateSteamP2PFriendsWhitelistTestsBuildMetadata" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_TestBuildMetadataLines Include="namespace SteamP2PFriends.WhitelistTests.Build" />
+      <_TestBuildMetadataLines Include="{" />
+      <_TestBuildMetadataLines Include="internal static class BuildMetadata" />
+      <_TestBuildMetadataLines Include="{" />
+      <_TestBuildMetadataLines Include="internal const string Version = &quot;$(SteamP2PFriendsVersion)&quot;%3B" />
+      <_TestBuildMetadataLines Include="internal const string ReleaseChannel = &quot;$(SteamP2PFriendsReleaseChannel)&quot;%3B" />
+      <_TestBuildMetadataLines Include="internal const string VersionIdentity = &quot;$(SteamP2PFriendsVersionIdentity)&quot;%3B" />
+      <_TestBuildMetadataLines Include="internal const string PluginGuid = &quot;$(SteamP2PFriendsPluginGuid)&quot;%3B" />
+      <_TestBuildMetadataLines Include="internal const string DefaultCaseId = &quot;$(SteamP2PFriendsDefaultCaseId)&quot;%3B" />
+      <_TestBuildMetadataLines Include="}" />
+      <_TestBuildMetadataLines Include="}" />
+    </ItemGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(TestBuildMetadataGeneratedFile)" Lines="@(_TestBuildMetadataLines)" Overwrite="true" Encoding="UTF-8" />
+  </Target>
 </Project>

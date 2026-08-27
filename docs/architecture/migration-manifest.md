@@ -265,7 +265,7 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | `WhitelistTests/Evidence/StaticIL/*` | 已迁移 | 身份、模块归属、Resource/Collision、Item/Zombie、Animal/Structure，以及 RC/HC/IUI/M1I/M2I/B11 的编译产物、Harmony 或 U3 元数据门禁 |
 | `WhitelistTests/Evidence/BuildArtifact/BuildArtifactEvidenceTests.cs` | 新增 | 版本、FileVersion、MVID、插件 GUID、产物文件与 SHA-256 可重算性接缝 |
 | `WhitelistTests/Evidence/Runtime/RuntimeEvidenceStatus.cs` | 新增 | 真实游戏 Runtime 状态占位，明确 SP/listen-host/U3DS/P2P 仍 Pending |
-| `WhitelistTests/Program.cs` | 已更新 | 保持单一 `Program.Main`，按四类输出；Runtime 不计入 PASS 数量；完整回归 `189/189 PASS` |
+| `WhitelistTests/Program.cs` | 已更新 | 保持单一 `Program.Main`，按四类输出；Runtime 不计入 PASS 数量；Batch 8 历史回归 `189/189 PASS` |
 | `docs/architecture/evidence-class-test-gates.md` | 新增 | 物理布局、证明边界、覆盖接缝和门禁解释 |
 | `Tools/Verify-EvidenceClassLayout.ps1` | 新增 | 构建前核验四类目录、单一项目、单一入口和无旧测试根目录 |
 
@@ -284,4 +284,36 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | BuildArtifact | PASS | `BuildArtifactEvidenceTests`；Release DLL 版本、FileVersion、MVID、插件 GUID 和 SHA-256 重算 |
 | Runtime | PENDING | `RuntimeEvidenceStatus`；未执行 SP、listen-host、U3DS、P2P 真实运行验证 |
 
-完整回归结果与最终 SHA-256/MVID 归档于本票 `audit/2026-08-27/Implementation-0.2.4.8-0915.md`。
+完整回归结果与最终 SHA-256/MVID 归档于 Ticket 08 报告 `audit/2026-08-27/Implementation-0.2.4.8-0915.md`。
+
+## Batch 9：Build Fingerprint 与独立产物关联
+
+状态：运行时 Fingerprint 接缝、BuildArtifact 测试、Release 构建和独立 DLL 验证已完成；真实游戏 Runtime 仍 Pending。
+
+本 Batch 的构建元数据统一来自 `Build/Version.props`：版本 `0.2.4.8`，发布通道 `Experimental`，插件 GUID `com.yu80rice.steamp2pfriends`，Default Case-ID `SPF-0.2.4.8-Experimental-StructureBaseline`。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Build/Version.props` | 已扩展 | 增加插件 GUID 与构建级 Default Case-ID；继续作为唯一版本元数据源 |
+| `SteamP2PFriends.csproj` | 已扩展 | 编译前生成 `BuildMetadata` 常量，程序集属性由该常量消费 |
+| `Properties/AssemblyInfo.cs` | 已收敛 | Assembly/File/Informational Version 与 AssemblyMetadata 不再重复硬编码版本值 |
+| `WhitelistTests/Properties/AssemblyInfo.cs` 与测试项目生成目标 | 新增 | 测试程序集也从 `Build/Version.props` 生成并消费独立的统一元数据常量 |
+| `Core/Build/BuildFingerprint.cs` | 新增 | 从加载程序集/DLL 读取版本、MVID、SHA-256、GUID 和共享 Case-ID |
+| `SteamP2PFriendsPlugin.cs` | 已接线 | Awake 日志输出 Runtime Self-Reported Fingerprint；不改变注册与生产逻辑 |
+| `SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs` | 已接线 | Fingerprint 不完整时并入既有 `DiagnosticBuildValid` fail-closed 门 |
+| `WhitelistTests/Evidence/BuildArtifact/BuildArtifactEvidenceTests.cs` | 已加强 | 验证 Fingerprint 完整性、hash 独立重算与 Case-ID 共享接缝 |
+| `Tools/Verify-BuildFingerprintArtifact.ps1` | 新增 | 独立读取交付 DLL，输出 Independent Artifact Verification |
+| `docs/architecture/build-fingerprint-artifact-evidence.md` | 新增 | 记录元数据来源、证据边界、Case-ID 关联和测试接缝 |
+
+### 证据门禁
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | 单一入口既有纯内存回归保持通过 |
+| StaticIL | PASS | 单一入口既有结构、注册与结构不变量断言保持通过 |
+| BuildArtifact | PASS | `192/192 PASS`；Release DLL 与测试 EXE 的统一版本、FileVersion、MVID、GUID、Case-ID 和 SHA-256 均可读取；独立脚本在带日志的默认及外部 Case-ID 关联模式均输出 `INDEPENDENT_ARTIFACT_VERIFICATION_PASS` |
+| Runtime | PENDING | 本 Ticket 未执行真实 SP、listen-host、U3DS 或 P2P 场景；自报告日志不升级为 Runtime PASS |
+
+本 Ticket 不修改 P2P 通道、SteamID、配置键、Harmony 注册顺序、Authority Writer、Resource Production Control Seam、当前标签或已归档版本。

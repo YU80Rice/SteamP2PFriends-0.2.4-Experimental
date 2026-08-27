@@ -3,8 +3,8 @@
 > 为 Unturned 提供无 U3DS 的便捷 listen-host 联机，同时支持 SteamID P2P 和 IPv4 直连。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.4.3--experimental-blue.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
-[![Status](https://img.shields.io/badge/status-M3%20Zombie%20Lifecycle-orange.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
+[![Version](https://img.shields.io/badge/version-0.2.4.8--experimental-blue.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
+[![Status](https://img.shields.io/badge/status-Ticket%2009%20Build%20Fingerprint-orange.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
 
 > **实验区**：本目录专用于 Multi-Observer 架构升级。稳定的 `0.2.3.70-beta.2` 仍保留在相邻 `SteamP2PFriends` 目录；两个 DLL 不得同时部署。
 
@@ -67,7 +67,7 @@ Unturned/
 
 ### 连接日志
 
-`v0.2.4.3` 在 M2 物品逐观察者复制的基础上进入 M3 僵尸区域生命周期实验。listen-host 复用原生 `PlayerCountInRegion` 与 `generateZombies`，由 `ZombieRegionLifecycleAdapter` 监督区域代、最后观察者滞回释放和旧状态恢复；不新增 Zombie RPC。
+`v0.2.4.8` 当前处于 Structure Baseline / Ticket 09 构建证据阶段。运行时启动日志会输出 Build Fingerprint；验收脚本可独立核验 DLL 版本、MVID、SHA-256、插件 GUID，并通过共享 Case-ID 关联自报告日志。
 
 ### 客机通过 IPv4 加入
 
@@ -100,17 +100,19 @@ Windows 防火墙必须允许 Unturned 在相应网络上使用 UDP `27016`。
 
 | 项目 | 值 |
 |---|---|
-| BepInPlugin | `0.2.4.3` |
-| AssemblyVersion | `0.2.4.3` |
-| AssemblyFileVersion | `0.2.4.3` |
-| 架构阶段 | `M3 ZombieRegionLifecycleAdapter`：原生 demand 优先、区域代与滞回释放 |
-| 静态状态 | Debug/Release 0 errors / 0 warnings；自动化回归 `92/92 PASS`；独立静态审核 PASS |
+| BepInPlugin | `0.2.4.8` |
+| AssemblyVersion | `0.2.4.8` |
+| AssemblyFileVersion | `0.2.4.8` |
+| 架构阶段 | `Structure Baseline / Ticket 09`：Build Fingerprint、统一元数据与独立产物证据 |
+| 静态状态 | Release 0 errors / 0 warnings；自动化回归 `192/192 PASS`；独立产物审核 PASS |
 | 发布标识 | 无；实验构建，不覆盖 `0.2.3.70-beta.2` |
-| 运行状态 | M3 已完成静态与自动化构建，等待双端运行验收 |
+| 运行状态 | 结构与产物证据已完成，等待 SP/listen-host/U3DS/P2P 双端运行验收 |
 
-## 已验证边界与免责声明
+## 历史运行证据（不属于 0.2.4.8 当前验收）
 
-已验证：
+以下条目来自旧版本或旧构建的运行归档，仅作历史参考，不计入当前 `0.2.4.8` 的 Runtime 验收。当前版本的 Runtime 状态仍为 `PENDING`。
+
+历史归档中曾验证：
 
 - SteamID P2P 加入。
 - Radmin LAN IPv4 直连。
@@ -120,7 +122,7 @@ Windows 防火墙必须允许 Unturned 在相应网络上使用 UDP `27016`。
 - 地面自然刷新物品的房主权威同步。
 - 普通静态场景物件（例如家具、柜子、沙发）的远区碰撞：房主离开客机所在区域后，客机仍受房主权威碰撞约束。
 
-已验证边界与免责声明：
+历史证据限定：
 
 - 当前版本的双端手动测试归档为 `Beta2-P2P-AHost-20260818-1300`，双方使用同一 DLL，归档摘要为 `AllOK=true`。部署与日志归档由测试人员手动控制；`TestLogs` 中的 CFG 哈希工具仅作可选辅助记录，不构成额外发布门。
 - 家具远区碰撞验收使用 `UMM-诊断包_20260820_172007`（客机）和 `UMM-诊断包_20260820_172032`（房主）。测试时房主部署的碰撞候选 DLL SHA-256 为 `2FC58A382E9B7E86ED2EC202001CD6A7574509FB55394CAF5459007B53EBABFC`；客机归档记录版本 `0.2.3.62`，但未保存可独立核验的 DLL 哈希。

@@ -1,4 +1,5 @@
 using System;
+using SteamP2PFriends.Core.Build;
 
 namespace SteamP2PFriends.WhitelistTests
 {
@@ -13,7 +14,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 189 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 192 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -264,7 +265,14 @@ namespace SteamP2PFriends.WhitelistTests
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;
             Console.WriteLine("\n=== Evidence Class: BuildArtifact ===");
+            Console.WriteLine("  Self-reported Fingerprint: " + BuildFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly).ToLogString());
             RunTest("BuildArtifact Fingerprint Shape", BuildArtifactEvidenceTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Shared Case-ID", BuildArtifactEvidenceTests.Test_CaseIdOverrideIsShared,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Case-ID Fallback", BuildArtifactEvidenceTests.Test_InvalidCaseIdFallsBackToBuildMetadata,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Test Metadata", BuildArtifactEvidenceTests.Test_TestAssemblyConsumesVersionMetadata,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.Runtime;

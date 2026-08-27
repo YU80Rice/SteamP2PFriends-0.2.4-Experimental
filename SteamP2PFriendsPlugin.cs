@@ -6,6 +6,7 @@ using SDG.NetPak;
 using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Client;
+using SteamP2PFriends.Core.Build;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.Core.Patches;
@@ -22,11 +23,11 @@ namespace SteamP2PFriends
     /// 该插件仅支持 SteamUser P2P listen-host：房主客户端同时承担原版服务端和本地客户端。
     /// 不启动 U3DS，不修改全局 Dedicated Server 判定，也不伪造原版加载完成状态。
     /// </summary>
-    [BepInPlugin("com.yu80rice.steamp2pfriends", "SteamP2PFriends", "0.2.4.8")]
+    [BepInPlugin(BuildMetadata.PluginGuid, "SteamP2PFriends", BuildMetadata.Version)]
     [BepInDependency("com.yu80rice.launchinventorytidy", BepInDependency.DependencyFlags.SoftDependency)]
     public partial class SteamP2PFriendsPlugin : BaseUnityPlugin
     {
-        public const string HARMONY_ID = "com.yu80rice.steamp2pfriends";
+        public const string HARMONY_ID = BuildMetadata.PluginGuid;
 
         public static SteamP2PFriendsPlugin Instance { get; private set; }
 
@@ -45,6 +46,7 @@ namespace SteamP2PFriends
         public static ConfigEntry<bool> EnableMultiObserverShadow;
 
         public static bool DiagnosticBuildValid { get; private set; } = true;
+        public static bool BuildFingerprintValid { get; private set; } = true;
 
         internal static bool IsP2PEntryReady => EntryReadiness.IsReady(
             DiagnosticBuildValid, Core.Patches.AuthHandshakeJournalPatch.RegistrationValid);
@@ -90,6 +92,23 @@ namespace SteamP2PFriends
             EnableMultiObserverShadow = Core.Config.PluginConfig.EnableMultiObserverShadow;
 
             RoleLogger.Initialize(Logger, VerboseLog.Value);
+            try
+            {
+                BuildFingerprintSnapshot fingerprint = BuildFingerprint.Capture();
+                BuildFingerprintValid = fingerprint.IsComplete;
+                RoleLogger.Info("[Shared]", "[BuildFingerprint] " + fingerprint.ToLogString());
+                if (!fingerprint.IsComplete)
+                {
+                    DiagnosticBuildValid = false;
+                    RoleLogger.Error("[Shared]", "[BuildFingerprint] 不完整，DiagnosticBuildValid=false，P2P 入口保持关闭");
+                }
+            }
+            catch (System.Exception fingerprintEx)
+            {
+                BuildFingerprintValid = false;
+                DiagnosticBuildValid = false;
+                RoleLogger.Error("[Shared]", "[BuildFingerprint] 采集失败，DiagnosticBuildValid=false，P2P 入口保持关闭: " + fingerprintEx.GetType().Name);
+            }
             MultiObserverShadowCoordinator.Initialize();
 
             // Bind configuration and enter Pending here; real subscription is deferred to Update.

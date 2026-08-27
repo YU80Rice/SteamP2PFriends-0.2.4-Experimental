@@ -8,7 +8,7 @@
 |---|---|---|
 | PureMemory | `WhitelistTests/Evidence/PureMemory` | 控制面、空间索引、租约、generation、适配器和 Fake 的纯内存外部行为 |
 | StaticIL | `WhitelistTests/Evidence/StaticIL` | 编译产物中的类型、Harmony target、owner、priority、顺序、注册闭合和结构不变量 |
-| BuildArtifact | `WhitelistTests/Evidence/BuildArtifact` | 加载 DLL 的版本、FileVersion、MVID、插件 GUID、文件存在性和独立 hash 重算 |
+| BuildArtifact | `WhitelistTests/Evidence/BuildArtifact` | 加载 DLL 的版本、FileVersion、MVID、插件 GUID、Case-ID、文件存在性和独立 hash 重算 |
 | Runtime | `WhitelistTests/Evidence/Runtime` | 真实游戏 Host/Guest、SP、listen-host、U3DS、P2P 的因果证据；当前为 Pending |
 
 测试不得通过复制同一测试增加 PASS 数量，也不得把一类证据的 PASS 改写为另一类证据的 PASS。
@@ -26,8 +26,8 @@
 - Spatial Lease：多观察者区域需求、Acquire、Hysteresis Release、断线、重连和跨区域隔离；
 - Generation：Session、Connection、Region、Entity/领域快照的过期与重建拒绝；
 - Structure Invariants：Harmony target/owner/priority/order、P2P 通道、SteamID、配置键、插件 GUID、Authority Writer 和 Pending 领域边界；
-- BuildArtifact：当前加载 DLL 的版本、MVID、插件身份和 SHA-256 可重算性。
+- BuildArtifact：当前加载 DLL 的版本、MVID、插件身份、Case-ID 和 SHA-256 可重算性；运行时自报告与验收侧独立产物复核分开记录。
 
 ## 门禁解释
 
-PureMemory 通过只表示纯逻辑接缝通过；StaticIL 通过只表示编译结构与注册形状通过；BuildArtifact 通过只表示交付产物身份可追踪；Runtime 必须有真实运行日志和共享 Case-ID 才能通过。结构阶段 Runtime 保持 Pending，并在 Migration Manifest 与审计报告中单独记录。当前布局核验计数为 `PureMemory 29 / StaticIL 11 / BuildArtifact 1 / Runtime 1` 个 C# 文件，唯一入口完整回归为 `189/189 PASS`。
+PureMemory 通过只表示纯逻辑接缝通过；StaticIL 通过只表示编译结构与注册形状通过；BuildArtifact 通过只表示交付产物身份可追踪；Runtime 必须有真实运行日志和共享 Case-ID 才能通过。结构阶段 Runtime 保持 Pending，并在 Migration Manifest 与审计报告中单独记录。当前布局核验计数为 `PureMemory 29 / StaticIL 11 / BuildArtifact 1 / Runtime 1` 个 C# 文件，唯一入口完整回归为 `192/192 PASS`。
