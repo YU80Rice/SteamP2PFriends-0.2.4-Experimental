@@ -4,31 +4,34 @@ namespace SteamP2PFriends.WhitelistTests
 {
     /// <summary>
     /// 模块化测试启动器 (Modular TestRunner)
-    /// 统一按领域分层组织并执行全量内存单元与回归测试套件。
+    /// 统一按 Evidence Class 分层组织并执行全量回归测试套件。
     /// </summary>
     internal static class Program
     {
+        private static EvidenceClass _currentEvidenceClass = EvidenceClass.PureMemory;
+
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 187 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 189 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
+            _currentEvidenceClass = EvidenceClass.PureMemory;
+            Console.WriteLine("\n=== Evidence Class: PureMemory ===");
+            RunTest("EvidenceClass Catalog", EvidenceClassCatalogTests.Test_All, ref total, ref passed, ref failed);
+
             #region 1. Core & Logging Policy Tests (4 Tests)
-            Console.WriteLine("\n--- [Domain 1/8: Core & Diagnostics Policy] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 1/8: Core & Diagnostics Policy] ---");
             RunTest("LOG1 Markers", LoggingPolicyTests.Test_LegacyDiagnosticMarkersAreClassified, ref total, ref passed, ref failed);
             RunTest("LOG2 Defaults", LoggingPolicyTests.Test_VerboseToggleIsAtomicAndDefaultsOff, ref total, ref passed, ref failed);
             RunTest("LOG3 Labels", LoggingPolicyTests.Test_LegacyLabelsAreRemovedAtOutputBoundary, ref total, ref passed, ref failed);
             RunTest("LOG4 Tags", LoggingPolicyTests.Test_InternalDiagnosticTagsAreRemovedFromOperationalText, ref total, ref passed, ref failed);
             RunTest("ID Contract", IdentityContractTests.Test_All, ref total, ref passed, ref failed);
-            RunTest("ID StaticIL", IdentityStaticILContractTests.Test_All, ref total, ref passed, ref failed);
-            RunTest("Resource/Collision StaticIL", ResourceCollisionOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
-            RunTest("Item/Zombie StaticIL", ItemZombieOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             #endregion
 
             #region 2. MultiObserver Control Plane & Spatial Index Tests (18 Tests)
-            Console.WriteLine("\n--- [Domain 2/8: MultiObserver Control Plane & Spatial Index] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 2/8: MultiObserver Control Plane & Spatial Index] ---");
             RunTest("SPI01 Grid2DDiff", SpatialObserverIndexTests.Test_SPI01_Grid2DDiffCalculation, ref total, ref passed, ref failed);
             RunTest("SPI02 Bound1DDiff", SpatialObserverIndexTests.Test_SPI02_Bound1DDiffCalculation, ref total, ref passed, ref failed);
             RunTest("SPI03 DisconnectReleasesAll", SpatialObserverIndexTests.Test_SPI03_ObserverDisconnectReleasesAll, ref total, ref passed, ref failed);
@@ -50,7 +53,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 3. Adapters: Item Domain Tests (21 Tests)
-            Console.WriteLine("\n--- [Domain 3/8: Adapters / Item Domain (M1 + M2)] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 3/8: Adapters / Item Domain (M1 + M2)] ---");
             RunTest("G1 FirstCommit", AuthorityGenerationGateTests.Test_G1_FirstCommitBlocksSecondProducer, ref total, ref passed, ref failed);
             RunTest("G2 Abort", AuthorityGenerationGateTests.Test_G2_AbortAllowsRetry, ref total, ref passed, ref failed);
             RunTest("G3 Reset", AuthorityGenerationGateTests.Test_G3_ResetInvalidatesOldEpoch, ref total, ref passed, ref failed);
@@ -75,7 +78,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
-            Console.WriteLine("\n--- [Domain 4/8: Adapters / Zombie Domain (M3 + M4)] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 4/8: Adapters / Zombie Domain (M3 + M4)] ---");
             RunTest("M3Z01 FirstAcquire", ZombieRegionLifecycleAdapterTests.Test_M3Z01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
             RunTest("M3Z02 GenerationCommit", ZombieRegionLifecycleAdapterTests.Test_M3Z02_RepeatedAcquireAdvancesOnlyOnRealCommit, ref total, ref passed, ref failed);
             RunTest("M3Z03 ReleaseHysteresis", ZombieRegionLifecycleAdapterTests.Test_M3Z03_ReleaseUsesHysteresis, ref total, ref passed, ref failed);
@@ -101,7 +104,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 5. Adapters: Animal Domain Tests (17 Tests)
-            Console.WriteLine("\n--- [Domain 5/8: Adapters / Animal Domain (M5)] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 5/8: Adapters / Animal Domain (M5)] ---");
             RunTest("M5A01 FirstAcquire", AnimalRegionLifecycleAdapterTests.Test_M5A01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
             RunTest("M5A02 GenerationCommit", AnimalRegionLifecycleAdapterTests.Test_M5A02_GenerationCommitAdvancesMonotonically, ref total, ref passed, ref failed);
             RunTest("M5A03 ReleaseHysteresis", AnimalRegionLifecycleAdapterTests.Test_M5A03_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
@@ -122,7 +125,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 6. Adapters: Collision & Resource Domain Tests (22 Tests)
-            Console.WriteLine("\n--- [Domain 6/8: Adapters / Collision & Resource Domains (M6)] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 6/8: Adapters / Collision & Resource Domains (M6)] ---");
             RunTest("M6C01 FirstAcquire", LevelObjectCollisionAdapterTests.Test_M6C01_FirstAcquireActivatesRegion, ref total, ref passed, ref failed);
             RunTest("M6C02 ReleaseHysteresis", LevelObjectCollisionAdapterTests.Test_M6C02_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
             RunTest("M6C03 DemandCancelsRelease", LevelObjectCollisionAdapterTests.Test_M6C03_DemandCancelsRelease, ref total, ref passed, ref failed);
@@ -177,7 +180,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 7. Adapters: Security & Whitelist Tests (32 Tests)
-            Console.WriteLine("\n--- [Domain 7/8: Adapters / Security Domain (Whitelist & Route B)] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 7/8: Adapters / Security Domain (Whitelist & Route B)] ---");
             RunTest("WL1 Bootstrap", WhitelistServiceTests.Test_Bootstrap_Success, ref total, ref passed, ref failed);
             RunTest("WL2 BootstrapSaveFailure", WhitelistServiceTests.Test_Bootstrap_SaveFailure_NoDisconnect, ref total, ref passed, ref failed);
             RunTest("WL3 BootstrapLoadFailure", WhitelistServiceTests.Test_Bootstrap_LoadFailure_NoDisconnect, ref total, ref passed, ref failed);
@@ -213,7 +216,7 @@ namespace SteamP2PFriends.WhitelistTests
             #endregion
 
             #region 8. Platform: UI, Gate & Diagnostic Tests (21 Tests)
-            Console.WriteLine("\n--- [Domain 8/8: Platform UI, Readiness & Compatibility] ---");
+            Console.WriteLine("\n--- [PureMemory / Domain 8/8: Platform UI, Readiness & Compatibility] ---");
             RunTest("E1 EntryEarlyMenu", P2PEntryReadinessGateTests.Test_E1_EarlyMenuCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E2 EntryLifecycleFailure", P2PEntryReadinessGateTests.Test_E2_FailedLifecycleCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E3 EntryIdempotentReset", P2PEntryReadinessGateTests.Test_E3_SuccessIsIdempotentAndResetFailsClosed, ref total, ref passed, ref failed);
@@ -237,11 +240,26 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("RC2 PolicyBeforeActivation + RegistrationClosure", () =>
                 RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation() &&
                 RegistrationClosureTests.Test_All(), ref total, ref passed, ref failed);
+            #endregion
+
+            _currentEvidenceClass = EvidenceClass.StaticIL;
+            Console.WriteLine("\n=== Evidence Class: StaticIL ===");
+            RunTest("ID StaticIL", IdentityStaticILContractTests.Test_All, ref total, ref passed, ref failed);
+            RunTest("Resource/Collision StaticIL", ResourceCollisionOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
+            RunTest("Item/Zombie StaticIL", ItemZombieOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
             RunTest("T07 AnimalStructureOwnershipStaticIL", AnimalStructureOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
-            #endregion
+
+            _currentEvidenceClass = EvidenceClass.BuildArtifact;
+            Console.WriteLine("\n=== Evidence Class: BuildArtifact ===");
+            RunTest("BuildArtifact Fingerprint Shape", BuildArtifactEvidenceTests.Test_All,
+                ref total, ref passed, ref failed);
+
+            _currentEvidenceClass = EvidenceClass.Runtime;
+            Console.WriteLine("\n=== Evidence Class: Runtime ===");
+            Console.WriteLine("  PENDING Runtime evidence: " + RuntimeEvidenceStatus.RequiredScenarios);
 
             Console.WriteLine("\n===============================================================");
             Console.WriteLine($"=== Final Result: {passed}/{total} PASS (Failed: {failed}) ===");
@@ -257,18 +275,18 @@ namespace SteamP2PFriends.WhitelistTests
                 if (test())
                 {
                     passed++;
-                    Console.WriteLine("  PASS " + name);
+                    Console.WriteLine("  PASS [" + _currentEvidenceClass + "] " + name);
                 }
                 else
                 {
                     failed++;
-                    Console.WriteLine("  FAIL " + name);
+                    Console.WriteLine("  FAIL [" + _currentEvidenceClass + "] " + name);
                 }
             }
             catch (Exception ex)
             {
                 failed++;
-                Console.WriteLine("  FAIL " + name + ": " + ex);
+                Console.WriteLine("  FAIL [" + _currentEvidenceClass + "] " + name + ": " + ex);
             }
         }
     }

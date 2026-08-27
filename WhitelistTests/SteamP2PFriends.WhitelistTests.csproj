@@ -136,41 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs" />
-    <Compile Include="Adapters\Animal\AnimalSnapshotAdapterTests.cs" />
-    <Compile Include="Adapters\Collision\LevelObjectCollisionAdapterTests.cs" />
-    <Compile Include="Adapters\Item\AuthorityGenerationGateTests.cs" />
-    <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapterTests.cs" />
-    <Compile Include="Adapters\Item\ItemObserverReplicationAdapterTests.cs" />
-    <Compile Include="Adapters\Resource\ResourceHarvestReplicationTests.cs" />
-    <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapterTests.cs" />
-    <Compile Include="Adapters\Resource\ResourceSnapshotAdapterTests.cs" />
-    <Compile Include="Adapters\Structure\BarricadeRegionLifecycleAdapterTests.cs" />
-    <Compile Include="Adapters\Structure\StructureRegionLifecycleAdapterTests.cs" />
-    <Compile Include="Security\RouteBApprovalTests.cs" />
-    <Compile Include="Security\WhitelistServiceTests.cs" />
-    <Compile Include="Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs" />
-    <Compile Include="Adapters\Zombie\ZombieSnapshotAdapterTests.cs" />
-    <Compile Include="Core\LoggingPolicyTests.cs" />
-    <Compile Include="Core\IdentityContractTests.cs" />
-    <Compile Include="StaticIL\IdentityStaticILContractTests.cs" />
-    <Compile Include="StaticIL\ModuleOwnershipStaticILContractTests.cs" />
-    <Compile Include="StaticIL\ResourceCollisionOwnershipStaticILContractTests.cs" />
-    <Compile Include="StaticIL\ItemZombieOwnershipStaticILContractTests.cs" />
-    <Compile Include="StaticIL\AnimalStructureOwnershipStaticILContractTests.cs" />
-    <Compile Include="Core\RegistrationClosureTests.cs" />
-    <Compile Include="Fakes\FakeApprovalRuntimeContext.cs" />
-    <Compile Include="Fakes\FakeApprovalWhitelistProxy.cs" />
-    <Compile Include="Fakes\FakeWhitelistDisconnectGateway.cs" />
-    <Compile Include="Fakes\FakeWhitelistRuntimeContext.cs" />
-    <Compile Include="Fakes\FakeWhitelistStore.cs" />
-    <Compile Include="MultiObserver\MultiObserverShadowTests.cs" />
-    <Compile Include="MultiObserver\SpatialObserverIndexTests.cs" />
-    <Compile Include="Platform\HarmonyCompatibilityAuditTests.cs" />
-    <Compile Include="Platform\InventoryUiProjectionTests.cs" />
-    <Compile Include="Platform\P2PEntryReadinessGateTests.cs" />
-    <Compile Include="Platform\RemoteCollisionAnimationPolicyTests.cs" />
-    <Compile Include="Platform\SteamPersonaDisplayTests.cs" />
+    <Compile Include="Evidence\**\*.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -252,3 +252,36 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 - Resource Production Control Seam 未接线；本批次不宣称功能修复或 Runtime 通过。
 - PureMemory/既有领域测试与结构 StaticIL 全量入口通过；Runtime 仍需分别执行 SP、listen-host、U3DS、P2P 验收。
 - 独立 Standards/Spec 审核记录与 BuildArtifact 指纹归档于本票 `audit/2026-08-26/Implementation-0.2.4.8-2334.md`。
+
+## Batch 8：Evidence Class 测试结构与门禁
+
+状态：四类测试物理结构、分类入口、Release 构建与 PureMemory/StaticIL/BuildArtifact 门禁已完成；Runtime Pending
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `WhitelistTests/Evidence/PureMemory/*` | 已迁移 | 既有纯内存领域测试、Platform/Security 测试、MultiObserver 测试与 Fakes 的唯一物理根；未复制测试 |
+| `WhitelistTests/Evidence/StaticIL/*` | 已迁移 | 身份、模块归属、Resource/Collision、Item/Zombie、Animal/Structure 的编译产物结构门禁 |
+| `WhitelistTests/Evidence/BuildArtifact/BuildArtifactEvidenceTests.cs` | 新增 | 版本、FileVersion、MVID、插件 GUID、产物文件与 SHA-256 可重算性接缝 |
+| `WhitelistTests/Evidence/Runtime/RuntimeEvidenceStatus.cs` | 新增 | 真实游戏 Runtime 状态占位，明确 SP/listen-host/U3DS/P2P 仍 Pending |
+| `WhitelistTests/Program.cs` | 已更新 | 保持单一 `Program.Main`，按四类输出；Runtime 不计入 PASS 数量 |
+| `docs/architecture/evidence-class-test-gates.md` | 新增 | 物理布局、证明边界、覆盖接缝和门禁解释 |
+| `Tools/Verify-EvidenceClassLayout.ps1` | 新增 | 构建前核验四类目录、单一项目、单一入口和无旧测试根目录 |
+
+### 证明边界
+
+- PureMemory 只证明纯逻辑/内存接缝；StaticIL 只证明编译结构、注册形状和结构不变量；BuildArtifact 只证明当前加载产物身份可追踪；Runtime 必须通过真实游戏 Host/Guest 运行日志和共享 Case-ID 才能通过。
+- BuildArtifact 测试中的 hash 是当前进程对加载 DLL 的重算形状检查；交付报告中的 hash/MVID 仍须由验收侧独立重算，不能互相替代。
+- Runtime 本批次明确为 `PENDING`，没有用 PureMemory、StaticIL 或 BuildArtifact 的 PASS 升级替代运行时证据。
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | 单一入口中的既有纯内存测试与 EvidenceClass Catalog 测试 |
+| StaticIL | PASS | 单一入口中的五组结构 StaticIL 契约 |
+| BuildArtifact | PASS | `BuildArtifactEvidenceTests`；Release DLL 版本、FileVersion、MVID、插件 GUID 和 SHA-256 重算 |
+| Runtime | PENDING | `RuntimeEvidenceStatus`；未执行 SP、listen-host、U3DS、P2P 真实运行验证 |
+
+完整回归结果与最终 SHA-256/MVID 归档于本票 `audit/2026-08-27/Implementation-0.2.4.8-<HHMM>.md`。
