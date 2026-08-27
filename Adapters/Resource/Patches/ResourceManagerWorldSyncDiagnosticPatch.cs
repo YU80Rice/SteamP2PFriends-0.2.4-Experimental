@@ -1,5 +1,7 @@
 using HarmonyLib;
 using SDG.Unturned;
+using SteamP2PFriends.Adapters.Resource;
+using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Core.Patches;
 using SteamP2PFriends.Shared;
 using System;
@@ -235,6 +237,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             __state = false;
             try
             {
+                int receiveCount = ResourceSnapshotAdapter.RecordNativeSnapshotReceive();
                 // ReceiveResources 签名为 (in ClientInvocationContext context)，无法直接读取 x/y
                 // 在 Prefix 中仅记录调用事件，Postfix 中读取 regions 状态变化
                 if (!WorldSyncDiagnosticCore.TryAcquireQuota("Resource.ReceiveResources", out int count))
@@ -244,7 +247,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
 
                 RoleLogger.Info("[Client]",
                     $"{PointPrefix} ReceiveResources #{count}/{WorldSyncDiagnosticCore.PerPointLimit} " +
-                    $"(初始区域资源包 - 客机收到)");
+                    $"spiSnapshotReceiveCount={receiveCount} (初始区域资源包 - 客机收到)");
             }
             catch (System.Exception ex)
             {

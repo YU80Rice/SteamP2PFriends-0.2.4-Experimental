@@ -1,6 +1,7 @@
 using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
 using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.Shared;
 using System;
 using RegionKey = SteamP2PFriends.Core.Identity.RegionKey;
 
@@ -34,7 +35,11 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             if (ticket.Valid)
             {
-                ResourceRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+                uint generation = ResourceRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+                RoleLogger.Info("[Host]",
+                    $"[ResourceSPI] event=LeaseAcquire leaseAuthority=ResourceProductionControlSeam " +
+                    $"region={ticket.RegionKey} sessionGeneration={ticket.SessionEpoch.Value} " +
+                    $"regionGeneration={generation} demand={ticket.ActiveDemandCount}");
             }
         }
 
@@ -42,11 +47,15 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             if (ticket.Valid)
             {
-                ResourceRegionLifecycleAdapter.CommitRelease(
+                bool committed = ResourceRegionLifecycleAdapter.CommitRelease(
                     ticket.RegionKey,
                     ticket.SessionEpoch.Value,
                     ticket.RegionGeneration.Value,
                     out _);
+                RoleLogger.Info("[Host]",
+                    $"[ResourceSPI] event=LeaseRelease leaseAuthority=ResourceProductionControlSeam " +
+                    $"region={ticket.RegionKey} sessionGeneration={ticket.SessionEpoch.Value} " +
+                    $"regionGeneration={ticket.RegionGeneration.Value} committed={committed}");
             }
         }
 
@@ -57,23 +66,32 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void OnObserverDisconnect(ulong observerId, ulong connectionToken)
         {
-            ResourceSnapshotAdapter.OnObserverDisconnect(observerId, connectionToken);
+            bool removed = ResourceSnapshotAdapter.OnObserverDisconnect(observerId, connectionToken);
+            RoleLogger.Info("[Host]",
+                $"[ResourceSPI] event=ObserverDisconnect observer={observerId} " +
+                $"connectionToken={connectionToken} removed={removed}");
         }
 
         public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             uint gen = ResourceRegionLifecycleAdapter.GetGeneration(regionKey);
-            ResourceSnapshotAdapter.EnqueueInitialSnapshot(observerId, connectionToken, regionKey, gen);
+            bool queued = ResourceSnapshotAdapter.EnqueueInitialSnapshot(observerId, connectionToken, regionKey, gen);
+            RoleLogger.Info("[Host]",
+                $"[ResourceSPI] event=SnapshotEnqueue observer={observerId} connectionToken={connectionToken} " +
+                $"region={regionKey} regionGeneration={gen} queued={queued}");
         }
 
         public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
-            ResourceSnapshotAdapter.RemoveSnapshot(observerId, connectionToken, regionKey);
+            bool removed = ResourceSnapshotAdapter.RemoveSnapshot(observerId, connectionToken, regionKey);
+            RoleLogger.Info("[Host]",
+                $"[ResourceSPI] event=SnapshotRemove observer={observerId} connectionToken={connectionToken} " +
+                $"region={regionKey} removed={removed}");
         }
 
         public void OnReplicationTick(float deltaTime)
         {
-            // 状态同步 Tick
+            ResourceSnapshotAdapter.OnReplicationTick(deltaTime);
         }
 
         public void ResetReplication(uint sessionEpoch)

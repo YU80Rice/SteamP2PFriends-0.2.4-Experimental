@@ -77,12 +77,14 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             try
             {
                 uint nextGen = ResourceRegionLifecycleAdapter.RecordResourceDead(x, y, index);
-                    ResourceSnapshotAdapter.UpdateRegionGeneration(new RegionKey(x, y), nextGen);
+                RegionKey regionKey = new RegionKey(x, y);
+                ResourceSnapshotAdapter.UpdateRegionGeneration(regionKey, nextGen);
+                int acceptedObservers = ResourceSnapshotAdapter.RecordNativeDelta(regionKey, nextGen);
 
                 if (_deadLogCount < MaxLogCount)
                 {
                     _deadLogCount++;
-                    RoleLogger.Info("[Host]", $"[ResourceHarvest] Tree/Ore dead #{_deadLogCount}: region=({x},{y}) index={index} nextGen={nextGen}");
+                    RoleLogger.Info("[Host]", $"[ResourceHarvest] Tree/Ore dead #{_deadLogCount}: region=({x},{y}) index={index} nextGen={nextGen} spiDeltaObservers={acceptedObservers} leaseAuthority=ResourceProductionControlSeam stateEncoder=ResourceManager.ServerSetResourceDead");
                 }
             }
             catch (Exception ex)
@@ -101,12 +103,14 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             try
             {
                 uint nextGen = ResourceRegionLifecycleAdapter.RecordResourceAlive(x, y, index);
-                    ResourceSnapshotAdapter.UpdateRegionGeneration(new RegionKey(x, y), nextGen);
+                RegionKey regionKey = new RegionKey(x, y);
+                ResourceSnapshotAdapter.UpdateRegionGeneration(regionKey, nextGen);
+                int acceptedObservers = ResourceSnapshotAdapter.RecordNativeDelta(regionKey, nextGen);
 
                 if (_aliveLogCount < MaxLogCount)
                 {
                     _aliveLogCount++;
-                    RoleLogger.Info("[Host]", $"[ResourceHarvest] Tree/Ore alive #{_aliveLogCount}: region=({x},{y}) index={index} nextGen={nextGen}");
+                    RoleLogger.Info("[Host]", $"[ResourceHarvest] Tree/Ore alive #{_aliveLogCount}: region=({x},{y}) index={index} nextGen={nextGen} spiDeltaObservers={acceptedObservers} leaseAuthority=ResourceProductionControlSeam stateEncoder=ResourceManager.ServerSetResourceAlive");
                 }
             }
             catch (Exception ex)

@@ -31,6 +31,11 @@ namespace SteamP2PFriends.Adapters.Resource
         private readonly Dictionary<ulong, ulong> _connectionTokens = new Dictionary<ulong, ulong>();
         private readonly Dictionary<RegionKey, uint> _regionGenerations = new Dictionary<RegionKey, uint>();
 
+        public int NativeSnapshotWriteCount { get; private set; }
+        public int NativeSnapshotReceiveCount { get; private set; }
+        public int NativeDeltaCount { get; private set; }
+        public int StaleDeltaRejectCount { get; private set; }
+
         public ulong SessionEpoch { get; private set; } = 1UL;
         public int TrackedSnapshotCount => _snapshots.Count;
 
@@ -40,10 +45,20 @@ namespace SteamP2PFriends.Adapters.Resource
             _snapshots.Clear();
             _connectionTokens.Clear();
             _regionGenerations.Clear();
+            NativeSnapshotWriteCount = 0;
+            NativeSnapshotReceiveCount = 0;
+            NativeDeltaCount = 0;
+            StaleDeltaRejectCount = 0;
         }
 
         public void UpdateRegionGeneration(RegionKey regionKey, uint generation)
         {
+            if (_regionGenerations.TryGetValue(regionKey, out uint current)
+                && generation < current)
+            {
+                return;
+            }
+
             _regionGenerations[regionKey] = generation;
         }
 
@@ -171,6 +186,75 @@ namespace SteamP2PFriends.Adapters.Resource
 
             return true;
         }
+
+        public int RecordNativeSnapshotWrite(RegionKey regionKey)
+        {
+            NativeSnapshotWriteCount++;
+            int trackedObservers = 0;
+            foreach (var key in _snapshots.Keys)
+            {
+                if (key.RegionKey == regionKey)
+                {
+                    trackedObservers++;
+                }
+            }
+
+            return trackedObservers;
+        }
+
+        public int RecordNativeSnapshotReceive()
+        {
+            NativeSnapshotReceiveCount++;
+            return NativeSnapshotReceiveCount;
+        }
+
+        public int RecordNativeDelta(RegionKey regionKey, uint regionGeneration)
+        {
+            NativeDeltaCount++;
+
+            if (_regionGenerations.TryGetValue(regionKey, out uint latestGeneration)
+                && regionGeneration < latestGeneration)
+            {
+                StaleDeltaRejectCount++;
+                return 0;
+            }
+
+            _regionGenerations[regionKey] = regionGeneration;
+
+            int acceptedObservers = 0;
+            var keys = new List<(ulong SteamId, RegionKey RegionKey)>();
+            foreach (var key in _snapshots.Keys)
+            {
+                if (key.RegionKey == regionKey)
+                {
+                    keys.Add(key);
+                }
+            }
+
+            foreach (var key in keys)
+            {
+                ResourceSnapshotRecord current = _snapshots[key];
+                if (current.RegionGeneration > regionGeneration)
+                {
+                    StaleDeltaRejectCount++;
+                    continue;
+                }
+
+                uint nextSequence = current.DeltaSequence == uint.MaxValue
+                    ? 1U
+                    : current.DeltaSequence + 1U;
+                if (nextSequence == 0U) nextSequence = 1U;
+                _snapshots[key] = new ResourceSnapshotRecord(
+                    current.SessionEpoch,
+                    current.ConnectionToken,
+                    current.RegionKey,
+                    regionGeneration,
+                    nextSequence);
+                acceptedObservers++;
+            }
+
+            return acceptedObservers;
+        }
     }
 
     /// <summary>
@@ -180,6 +264,26 @@ namespace SteamP2PFriends.Adapters.Resource
     {
         private static readonly ResourceSnapshotReplicationLedger Ledger = new ResourceSnapshotReplicationLedger();
         private static readonly object SyncLock = new object();
+
+        public static int NativeSnapshotWriteCount
+        {
+            get { lock (SyncLock) return Ledger.NativeSnapshotWriteCount; }
+        }
+
+        public static int NativeSnapshotReceiveCount
+        {
+            get { lock (SyncLock) return Ledger.NativeSnapshotReceiveCount; }
+        }
+
+        public static int NativeDeltaCount
+        {
+            get { lock (SyncLock) return Ledger.NativeDeltaCount; }
+        }
+
+        public static int StaleDeltaRejectCount
+        {
+            get { lock (SyncLock) return Ledger.StaleDeltaRejectCount; }
+        }
 
         public static void ResetSession(ulong sessionEpoch)
         {
@@ -236,6 +340,35 @@ namespace SteamP2PFriends.Adapters.Resource
             {
                 return Ledger.OnObserverDisconnect(steamId, connectionToken);
             }
+        }
+
+        public static int RecordNativeSnapshotWrite(RegionKey regionKey)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.RecordNativeSnapshotWrite(regionKey);
+            }
+        }
+
+        public static int RecordNativeSnapshotReceive()
+        {
+            lock (SyncLock)
+            {
+                return Ledger.RecordNativeSnapshotReceive();
+            }
+        }
+
+        public static int RecordNativeDelta(RegionKey regionKey, uint regionGeneration)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.RecordNativeDelta(regionKey, regionGeneration);
+            }
+        }
+
+        public static void OnReplicationTick(float deltaTime)
+        {
+            if (deltaTime < 0f) throw new ArgumentOutOfRangeException(nameof(deltaTime));
         }
 
         public static void UpdateRegionGeneration(RegionKey regionKey, uint generation)

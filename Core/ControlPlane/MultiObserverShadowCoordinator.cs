@@ -198,7 +198,11 @@ namespace SteamP2PFriends.MultiObserver
                         $"summary={_summaryLogCount}/{SessionSummaryLogLimit} epoch={Ledger.SessionEpoch} " +
                         $"observers={Ledger.ObserverCount} pendingObservers={pendingCount} " +
                         $"itemDemandRegions={Ledger.ItemDemandRegionCount} " +
-                        $"zombieDemandBounds={Ledger.ZombieDemandBoundCount} shadowOnly=true");
+                        $"zombieDemandBounds={Ledger.ZombieDemandBoundCount} " +
+                        $"resourceDemandRegions={ResourceProduction?.DemandRegionCount ?? 0} " +
+                        $"resourceActiveLeases={ResourceProduction?.ActiveLeaseCount ?? 0} " +
+                        $"resourcePendingReleases={ResourceProduction?.PendingReleaseCount ?? 0} " +
+                        "controlPlane=active");
                 }
             }
 

@@ -1,6 +1,7 @@
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.MultiObserver.SPI;
 using SteamP2PFriends.MultiObserver.Spatial;
+using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
 
@@ -66,6 +67,7 @@ namespace SteamP2PFriends.Adapters.Resource
         public int ObserverCount => _observerCount;
         public int ActiveLeaseCount => _leases.Count;
         public int PendingReleaseCount => _pendingReleases.Count;
+        public int DemandRegionCount => _demand.Count;
 
         private int _observerCount;
 
@@ -189,6 +191,10 @@ namespace SteamP2PFriends.Adapters.Resource
                     currentPending.RegionGeneration = current;
                     currentPending.Deadline = _clock + _hysteresisSeconds;
                     _leases[pending.RegionKey] = current;
+                    RoleLogger.Info("[Host]",
+                        $"[ResourceSPI] event=LeaseReleaseDeferred reason=staleRegionGeneration " +
+                        $"region={pending.RegionKey} sessionGeneration={pending.SessionEpoch.Value} " +
+                        $"regionGeneration={current.Value} deadlineInSeconds={_hysteresisSeconds:0.###}");
                     continue;
                 }
 
@@ -234,6 +240,11 @@ namespace SteamP2PFriends.Adapters.Resource
                         RegionGeneration = ReadGeneration(region, _leases[region]),
                         Deadline = _clock + _hysteresisSeconds
                     };
+                    RoleLogger.Info("[Host]",
+                        $"[ResourceSPI] event=LeaseReleaseScheduled authority=ResourceProductionControlSeam " +
+                        $"region={region} sessionGeneration={_sessionEpoch.Value} " +
+                        $"regionGeneration={_pendingReleases[region].RegionGeneration.Value} " +
+                        $"hysteresisSeconds={_hysteresisSeconds:0.###} demand=0");
                 }
             }
         }
@@ -251,6 +262,12 @@ namespace SteamP2PFriends.Adapters.Resource
                     RegionGeneration beforeAcquire = ReadGeneration(region, default);
                     _lifecycle.OnAcquire(CreateTicket(region, beforeAcquire, 1));
                     _leases[region] = ReadGeneration(region, beforeAcquire);
+                }
+                else if (previous == 0 && _pendingReleases.ContainsKey(region))
+                {
+                    RoleLogger.Info("[Host]",
+                        $"[ResourceSPI] event=LeaseReentry region={region} " +
+                        $"connectionToken={connectionToken} hysteresisCancelled=true");
                 }
 
                 _replication.OnObserverEntered(observerId, connectionToken, region);

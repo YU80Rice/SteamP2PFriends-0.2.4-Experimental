@@ -50,6 +50,15 @@ namespace SteamP2PFriends.WhitelistTests
                 && CountMethodCalls(onRelease, lifecycle.FullName, "OnObserverRelease") == 0
                 && adapter.GetMethod("OnObserverExited") != null
                 && CountMethodCalls(configure, seam.FullName, ".ctor") == 1
+                && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch")?.GetMethod(
+                    "SendResources_Write_Prefix", BindingFlags.Static | BindingFlags.Public),
+                    "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeSnapshotWrite") == 1
+                && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerWorldSyncDiagnosticPatch")?.GetMethod(
+                    "ReceiveResources_Prefix", BindingFlags.Static | BindingFlags.Public),
+                    "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeSnapshotReceive") == 1
+                && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch")?.GetMethod(
+                    "ServerSetResourceDead_Postfix", BindingFlags.Static | BindingFlags.Public),
+                    "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeDelta") == 1
                 && CountAssemblyMethodCalls(assembly, lifecycle.FullName, "OnObserverRelease") == 0
                 && assembly.GetTypes().Count(type =>
                     type.FullName == "SteamP2PFriends.Adapters.Resource.ResourceProductionControlSeam") == 1;

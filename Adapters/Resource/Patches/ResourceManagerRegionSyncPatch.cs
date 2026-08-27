@@ -1,6 +1,8 @@
 using HarmonyLib;
 using SDG.NetPak;
 using SDG.Unturned;
+using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Shared;
 using System.Collections.Generic;
 using System.Reflection;
@@ -452,6 +454,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         [HarmonyPatch(typeof(ResourceManager), SendResourcesWriteMethodName)]
         public static void SendResources_Write_Prefix(byte x, byte y)
         {
+            int trackedObservers = ResourceSnapshotAdapter.RecordNativeSnapshotWrite(new RegionKey(x, y));
             int count = ++_writeLogCount;
             if (count > WriteLogLimit) return;
 
@@ -461,7 +464,8 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
 
             RoleLogger.Info("[Host]",
                 $"[ListenRegionSync/Resource] write #{count}/{WriteLogLimit} " +
-                $"{escPrefix}step=3 region=({x},{y})");
+                $"{escPrefix}step=3 region=({x},{y}) spiSnapshotObservers={trackedObservers} " +
+                "leaseAuthority=ResourceProductionControlSeam stateEncoder=ResourceManager.SendResources_Write");
         }
 
         public static void OnClientDisconnected()

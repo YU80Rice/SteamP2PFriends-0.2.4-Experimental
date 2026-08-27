@@ -152,6 +152,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6S05 ResourceOverlapping", ResourceSnapshotAdapterTests.Test_M6S05_OverlappingObserversHaveIndependentSnapshots, ref total, ref passed, ref failed);
             RunTest("M6S06 ResourceDisconnectClean", ResourceSnapshotAdapterTests.Test_M6S06_DisconnectCleansObserver, ref total, ref passed, ref failed);
             RunTest("M6S07 ResourceStaleDisconnect", ResourceSnapshotAdapterTests.Test_M6S07_StaleDisconnectDoesNotClearReconnectedObserver, ref total, ref passed, ref failed);
+            RunTest("M6S08 ResourceNativeDataPlane", ResourceSnapshotAdapterTests.Test_M6S08_NativeDataPlaneEventsAreRecordedThroughResourceLedger, ref total, ref passed, ref failed);
 
             RunTest("M6H01 HarvestDeadGen", ResourceHarvestReplicationTests.Test_M6H01_ResourceDeadAdvancesGeneration, ref total, ref passed, ref failed);
             RunTest("M6H02 HarvestMultiDead", ResourceHarvestReplicationTests.Test_M6H02_MultipleResourcesDeadTrackedIndependently, ref total, ref passed, ref failed);

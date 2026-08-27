@@ -115,5 +115,44 @@ namespace SteamP2PFriends.WhitelistTests
 
             return staleIgnored && currentPreserved && ledger.TrackedSnapshotCount == 1;
         }
+
+        public static bool Test_M6S08_NativeDataPlaneEventsAreRecordedThroughResourceLedger()
+        {
+            var ledger = new ResourceSnapshotReplicationLedger();
+            ledger.ResetSession(1UL);
+
+            ulong steamId = 76561198000000001UL;
+            RegionKey regionKey = new RegionKey(11, 12);
+            ledger.EnqueueInitialSnapshot(steamId, 101UL, regionKey, 1U);
+            ledger.UpdateRegionGeneration(regionKey, 1U);
+
+            int snapshotObservers = ledger.RecordNativeSnapshotWrite(regionKey);
+            int receiveCount = ledger.RecordNativeSnapshotReceive();
+
+            int acceptedDeltaCount = ledger.RecordNativeDelta(regionKey, 1U);
+            int staleDeltaCount = ledger.RecordNativeDelta(regionKey, 0U);
+            bool staleRejected = ledger.StaleDeltaRejectCount == 1;
+
+            ledger.UpdateRegionGeneration(regionKey, 3U);
+            ledger.UpdateRegionGeneration(regionKey, 2U);
+            bool generationRemainsMonotonic = ledger.GetRegionGeneration(regionKey) == 3U;
+            int nextGenerationDeltaCount = ledger.RecordNativeDelta(regionKey, 3U);
+            bool acceptedGenerationAdvanced = ledger.TryGetSnapshot(
+                steamId, regionKey, out ResourceSnapshotRecord latest)
+                && latest.RegionGeneration == 3U
+                && latest.DeltaSequence == 3U;
+
+            return snapshotObservers == 1
+                && receiveCount == 1
+                && staleDeltaCount == 0
+                && staleRejected
+                && generationRemainsMonotonic
+                && acceptedDeltaCount == 1
+                && nextGenerationDeltaCount == 1
+                && acceptedGenerationAdvanced
+                && ledger.NativeSnapshotWriteCount == 1
+                && ledger.NativeSnapshotReceiveCount == 1
+                && ledger.NativeDeltaCount == 3;
+        }
     }
 }
