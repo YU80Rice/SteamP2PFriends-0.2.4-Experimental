@@ -22,10 +22,13 @@ namespace SteamP2PFriends.Adapters.Resource
             ResourceRegionLifecycleAdapter.SetRegistrationReady(true);
             ResourceRegionLifecycleAdapter.BeginSession(sessionEpoch);
             ResourceSnapshotAdapter.ResetSession(sessionEpoch);
+            RoleLogger.Info("[Host]", $"[ResourceSPI] event=SessionBegin sessionEpoch={sessionEpoch}");
         }
 
         public void OnSessionEnd()
         {
+            RoleLogger.Info("[Host]",
+                $"[ResourceSPI] event=SessionEnd sessionEpoch={ResourceRegionLifecycleAdapter.CurrentSessionEpoch}");
             ResourceRegionLifecycleAdapter.EndSession();
             ResourceRegionLifecycleAdapter.SetRegistrationReady(false);
             ResourceSnapshotAdapter.ResetSession(ResourceRegionLifecycleAdapter.CurrentSessionEpoch);
@@ -38,7 +41,7 @@ namespace SteamP2PFriends.Adapters.Resource
                 uint generation = ResourceRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
                 RoleLogger.Info("[Host]",
                     $"[ResourceSPI] event=LeaseAcquire leaseAuthority=ResourceProductionControlSeam " +
-                    $"region={ticket.RegionKey} sessionGeneration={ticket.SessionEpoch.Value} " +
+                    $"region={ticket.RegionKey} sessionEpoch={ticket.SessionEpoch.Value} " +
                     $"regionGeneration={generation} demand={ticket.ActiveDemandCount}");
             }
         }
@@ -54,7 +57,7 @@ namespace SteamP2PFriends.Adapters.Resource
                     out _);
                 RoleLogger.Info("[Host]",
                     $"[ResourceSPI] event=LeaseRelease leaseAuthority=ResourceProductionControlSeam " +
-                    $"region={ticket.RegionKey} sessionGeneration={ticket.SessionEpoch.Value} " +
+                    $"region={ticket.RegionKey} sessionEpoch={ticket.SessionEpoch.Value} " +
                     $"regionGeneration={ticket.RegionGeneration.Value} committed={committed}");
             }
         }

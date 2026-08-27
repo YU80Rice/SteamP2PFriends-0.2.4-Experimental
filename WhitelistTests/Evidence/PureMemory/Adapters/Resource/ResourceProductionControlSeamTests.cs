@@ -60,6 +60,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && seam.IsLeased(new RegionKey(10, 10))
                 && fake.Lifecycle.Acquires.Count == 1
                 && fake.Lifecycle.Releases.Count == 0
+                && seam.ReentryCount == 1
                 && fake.Replication.Entered.Count == 2;
         }
 

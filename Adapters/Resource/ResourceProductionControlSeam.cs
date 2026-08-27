@@ -68,6 +68,7 @@ namespace SteamP2PFriends.Adapters.Resource
         public int ActiveLeaseCount => _leases.Count;
         public int PendingReleaseCount => _pendingReleases.Count;
         public int DemandRegionCount => _demand.Count;
+        public int ReentryCount { get; private set; }
 
         private int _observerCount;
 
@@ -85,6 +86,7 @@ namespace SteamP2PFriends.Adapters.Resource
             _observers.Clear();
             _connectionTokens.Clear();
             _observerCount = 0;
+            ReentryCount = 0;
             _clock = 0f;
             _sessionEpoch = sessionEpoch;
             _sessionActive = true;
@@ -105,6 +107,7 @@ namespace SteamP2PFriends.Adapters.Resource
             _observers.Clear();
             _connectionTokens.Clear();
             _observerCount = 0;
+            ReentryCount = 0;
             _sessionActive = false;
         }
 
@@ -193,7 +196,7 @@ namespace SteamP2PFriends.Adapters.Resource
                     _leases[pending.RegionKey] = current;
                     RoleLogger.Info("[Host]",
                         $"[ResourceSPI] event=LeaseReleaseDeferred reason=staleRegionGeneration " +
-                        $"region={pending.RegionKey} sessionGeneration={pending.SessionEpoch.Value} " +
+                        $"region={pending.RegionKey} sessionEpoch={pending.SessionEpoch.Value} " +
                         $"regionGeneration={current.Value} deadlineInSeconds={_hysteresisSeconds:0.###}");
                     continue;
                 }
@@ -242,7 +245,7 @@ namespace SteamP2PFriends.Adapters.Resource
                     };
                     RoleLogger.Info("[Host]",
                         $"[ResourceSPI] event=LeaseReleaseScheduled authority=ResourceProductionControlSeam " +
-                        $"region={region} sessionGeneration={_sessionEpoch.Value} " +
+                        $"region={region} sessionEpoch={_sessionEpoch.Value} " +
                         $"regionGeneration={_pendingReleases[region].RegionGeneration.Value} " +
                         $"hysteresisSeconds={_hysteresisSeconds:0.###} demand=0");
                 }
@@ -255,7 +258,7 @@ namespace SteamP2PFriends.Adapters.Resource
             {
                 int previous = GetDemand(region);
                 _demand[region] = previous + 1;
-                _pendingReleases.Remove(region);
+                bool cancelledPendingRelease = _pendingReleases.Remove(region);
 
                 if (previous == 0 && !_leases.ContainsKey(region))
                 {
@@ -263,8 +266,9 @@ namespace SteamP2PFriends.Adapters.Resource
                     _lifecycle.OnAcquire(CreateTicket(region, beforeAcquire, 1));
                     _leases[region] = ReadGeneration(region, beforeAcquire);
                 }
-                else if (previous == 0 && _pendingReleases.ContainsKey(region))
+                else if (previous == 0 && cancelledPendingRelease)
                 {
+                    ReentryCount++;
                     RoleLogger.Info("[Host]",
                         $"[ResourceSPI] event=LeaseReentry region={region} " +
                         $"connectionToken={connectionToken} hysteresisCancelled=true");
