@@ -91,12 +91,29 @@ namespace SteamP2PFriends.WhitelistTests
             ledger.EnqueueInitialSnapshot(76561198000000001UL, 101UL, r2, 1U);
             ledger.EnqueueInitialSnapshot(76561198000000002UL, 102UL, r1, 1U);
 
-            ledger.OnObserverDisconnect(76561198000000001UL);
+            bool disconnected = ledger.OnObserverDisconnect(76561198000000001UL, 101UL);
 
             bool found1 = ledger.TryGetSnapshot(76561198000000001UL, r1, out _);
             bool found2 = ledger.TryGetSnapshot(76561198000000002UL, r1, out _);
 
-            return !found1 && found2 && ledger.TrackedSnapshotCount == 1;
+            return disconnected && !found1 && found2 && ledger.TrackedSnapshotCount == 1;
+        }
+
+        public static bool Test_M6S07_StaleDisconnectDoesNotClearReconnectedObserver()
+        {
+            var ledger = new ResourceSnapshotReplicationLedger();
+            ledger.ResetSession(1UL);
+
+            ulong steamId = 76561198000000001UL;
+            RegionKey regionKey = new RegionKey(3, 3);
+            ledger.EnqueueInitialSnapshot(steamId, 101UL, regionKey, 1U);
+            ledger.EnqueueInitialSnapshot(steamId, 202UL, regionKey, 1U);
+
+            bool staleIgnored = !ledger.OnObserverDisconnect(steamId, 101UL);
+            bool currentPreserved = ledger.TryGetSnapshot(steamId, regionKey, out ResourceSnapshotRecord record)
+                && record.ConnectionToken == 202UL;
+
+            return staleIgnored && currentPreserved && ledger.TrackedSnapshotCount == 1;
         }
     }
 }

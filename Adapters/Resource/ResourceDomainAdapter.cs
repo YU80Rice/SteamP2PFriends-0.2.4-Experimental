@@ -25,8 +25,9 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void OnSessionEnd()
         {
+            ResourceRegionLifecycleAdapter.EndSession();
             ResourceRegionLifecycleAdapter.SetRegistrationReady(false);
-            ResourceSnapshotAdapter.ResetSession(1);
+            ResourceSnapshotAdapter.ResetSession(ResourceRegionLifecycleAdapter.CurrentSessionEpoch);
         }
 
         public void OnAcquire(LeaseTicket ticket)
@@ -41,7 +42,11 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             if (ticket.Valid)
             {
-                ResourceRegionLifecycleAdapter.OnObserverRelease(ticket.RegionKey, 0f);
+                ResourceRegionLifecycleAdapter.CommitRelease(
+                    ticket.RegionKey,
+                    ticket.SessionEpoch.Value,
+                    ticket.RegionGeneration.Value,
+                    out _);
             }
         }
 
@@ -52,7 +57,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void OnObserverDisconnect(ulong observerId, ulong connectionToken)
         {
-            ResourceSnapshotAdapter.OnObserverDisconnect(observerId);
+            ResourceSnapshotAdapter.OnObserverDisconnect(observerId, connectionToken);
         }
 
         public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
@@ -63,7 +68,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
-            // 退出该区域
+            ResourceSnapshotAdapter.RemoveSnapshot(observerId, connectionToken, regionKey);
         }
 
         public void OnReplicationTick(float deltaTime)

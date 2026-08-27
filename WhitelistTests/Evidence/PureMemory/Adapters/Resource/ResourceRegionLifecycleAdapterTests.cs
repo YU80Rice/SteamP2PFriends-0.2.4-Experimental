@@ -114,5 +114,22 @@ namespace SteamP2PFriends.WhitelistTests
 
             return !ledger.IsRegionActive(7, 7) && ledger.PendingReleaseCount == 0;
         }
+
+        public static bool Test_M6R09_EndSessionClearsResourceState()
+        {
+            var ledger = new ResourceRegionLifecycleLedger();
+            ledger.BeginSession(1UL);
+            RegionKey regionKey = new RegionKey(9, 9);
+            ledger.CommitAcquire(regionKey);
+            ledger.ScheduleRelease(regionKey, 10.0f, 2.0f);
+            ledger.RecordResourceDead(regionKey, 4);
+
+            ledger.EndSession();
+
+            return ledger.ActiveRegionCount == 0
+                && ledger.PendingReleaseCount == 0
+                && !ledger.IsResourceDead(regionKey, 4)
+                && ledger.GetGeneration(regionKey) == 0U;
+        }
     }
 }

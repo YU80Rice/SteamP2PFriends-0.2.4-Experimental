@@ -317,3 +317,44 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | Runtime | PENDING | 本 Ticket 未执行真实 SP、listen-host、U3DS 或 P2P 场景；自报告日志不升级为 Runtime PASS |
 
 本 Ticket 不修改 P2P 通道、SteamID、配置键、Harmony 注册顺序、Authority Writer、Resource Production Control Seam、当前标签或已归档版本。
+
+## Batch 10：Resource Production Control Seam
+
+状态：Production Control Seam 已接线；PureMemory、StaticIL、BuildArtifact 通过；真实 Runtime Pending
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Adapters/Resource/ResourceProductionControlSeam.cs` | 新增 | 以 `SpatialObserverIndex` 为输入，合并 Host、Guest 和多观察者的 Resource 区域需求 |
+| `Adapters/Resource/ResourceDomainAdapter.cs` | 已调整 | `OnRelease` 只提交已由控制接缝完成滞回校验的区域释放；区域退出按 Connection Token 清理快照 |
+| `Adapters/Resource/ResourceRegionLifecycleAdapter.cs` | 已扩展 | 增加会话代与区域代校验的直接 Release Commit；旧资源状态账本仍为唯一领域状态入口 |
+| `Core/ControlPlane/MultiObserverShadowCoordinator.cs` | 已接线 | 真实玩家采样驱动 Resource 接缝；会话、断线、重连和逐帧 Tick 均纳入同一入口 |
+| `Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationDomainModules.cs` | 已接线 | Resource 生命周期与复制适配器完成 Registration Closure 后配置控制接缝 |
+| `WhitelistTests/Evidence/PureMemory/Adapters/Resource/ResourceProductionControlSeamTests.cs` | 新增 | 覆盖并集 Acquire、2 秒滞回、重入、重连/复位、真实领域适配器和区域代次 |
+| `WhitelistTests/Evidence/StaticIL/ResourceProductionControlStaticILContractTests.cs` | 新增 | 验证控制接缝、协调器接线、唯一 Resource Release Commit 调用和旧安排入口无生产调用 |
+
+### Authority Writer 与行为边界
+
+- Resource 原生状态与网络写入仍由现有 `ResourceManager` 路径负责；本批次未新增第二个原生状态写入者。
+- `ResourceProductionControlSeam` 唯一拥有观察者需求、区域租约和滞回释放调度；`ResourceDomainAdapter` 是唯一领域适配器提交入口。
+- Resource 碰撞通过 `ResourceRegionLifecycleAdapter.IsRegionActive` 读取接缝已提交的区域资格；原有 Harmony target、owner、priority、注册顺序与日志语义保持不变。
+- 采伐/重生仍由 `ServerSetResourceDead`/`ServerSetResourceAlive` 原生 Authority Writer 触发，之后更新 Resource 区域代次与快照账本；控制接缝发现待释放票据代次过期时会延后并刷新票据，不把过期票据提交给领域适配器。
+- 只有 Host/授权 Guest 进入 Resource 需求并集；快照初始进入、按旧/新 Connection Token 的退出与重连清理、采伐增量和会话复位均经由已登记的 Resource 复制适配器；过期 Region Generation 的增量先拒绝并要求新基线，没有复制一套并行网络协议。
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | Resource Production Control Seam 接缝测试 8 项；包含真实 ResourceDomainAdapter 高层链路、重连旧 token 负向校验和过期 Region Generation 延迟释放；全量入口最终结果见 Ticket 10 审计报告 |
+| StaticIL | PASS | `ResourceProductionControlStaticILContractTests`；Resource 控制入口、唯一 Release Commit 调用及接线存在性均有产物契约 |
+| BuildArtifact | PASS | 主项目与测试项目 Release 构建、版本/MVID/SHA-256 独立核验见 Ticket 10 审计报告 |
+| Runtime | PENDING | 尚未取得同一 DLL/Case-ID 下的 SP、listen-host、U3DS、P2P Host/Guest 运行日志；不得以本批次静态或纯内存证据替代 |
+
+### 必须保留的运行时验收项
+
+- Host、授权 Guest、多个观察者同区/跨区的需求并集与碰撞覆盖；
+- 0 -> 1 Acquire、N -> 0 后 2 秒 Hysteresis Release、滞回期间重新进入；
+- Guest 重连的 Connection Generation、资源区域重建的 Region Generation 和 Session Reset；
+- 远端资源碰撞、采伐/重生、区域重建、快照与增量复制的 Host/Guest 因果日志；
+- 当 DLL 或核心生产源码再次变化时，重新生成共享 Case-ID 并独立核验 DLL hash。

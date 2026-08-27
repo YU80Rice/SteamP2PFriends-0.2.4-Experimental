@@ -45,6 +45,14 @@ namespace SteamP2PFriends.Adapters.Resource
             _deadResources.Clear();
         }
 
+        public void EndSession()
+        {
+            _generations.Clear();
+            _releases.Clear();
+            _activeRegions.Clear();
+            _deadResources.Clear();
+        }
+
         public uint GetGeneration(RegionKey regionKey) =>
             _generations.TryGetValue(regionKey, out uint generation) ? generation : 0U;
 
@@ -87,6 +95,24 @@ namespace SteamP2PFriends.Adapters.Resource
             if (lease.SessionEpoch != expectedEpoch)
                 return false;
             if (lease.RegionGeneration != expectedGeneration)
+                return false;
+            if (GetGeneration(regionKey) != expectedGeneration)
+                return false;
+
+            _releases.Remove(regionKey);
+            _activeRegions.Remove(regionKey);
+            uint next = expectedGeneration == uint.MaxValue ? 1U : expectedGeneration + 1U;
+            if (next == 0U) next = 1U;
+            _generations[regionKey] = next;
+            committedGeneration = next;
+            return true;
+        }
+
+        public bool CommitRelease(RegionKey regionKey, ulong expectedEpoch, uint expectedGeneration,
+            out uint committedGeneration)
+        {
+            committedGeneration = 0U;
+            if (SessionEpoch != expectedEpoch || !_activeRegions.Contains(regionKey))
                 return false;
             if (GetGeneration(regionKey) != expectedGeneration)
                 return false;
@@ -187,6 +213,14 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
+        public static void EndSession()
+        {
+            lock (SyncLock)
+            {
+                Ledger.EndSession();
+            }
+        }
+
         public static bool IsRegionActive(byte x, byte y)
         {
             lock (SyncLock)
@@ -224,6 +258,15 @@ namespace SteamP2PFriends.Adapters.Resource
             lock (SyncLock)
             {
                 return Ledger.TryCommitRelease(regionKey, sessionEpoch, generation, out committedGeneration);
+            }
+        }
+
+        public static bool CommitRelease(RegionKey regionKey, ulong sessionEpoch, uint generation,
+            out uint committedGeneration)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.CommitRelease(regionKey, sessionEpoch, generation, out committedGeneration);
             }
         }
 

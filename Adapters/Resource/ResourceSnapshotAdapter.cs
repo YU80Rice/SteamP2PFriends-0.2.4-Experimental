@@ -87,6 +87,11 @@ namespace SteamP2PFriends.Adapters.Resource
             {
                 return 0U;
             }
+            if (_regionGenerations.TryGetValue(regionKey, out uint latestGeneration)
+                && current.RegionGeneration != latestGeneration)
+            {
+                return 0U;
+            }
 
             uint nextSeq = current.DeltaSequence == uint.MaxValue ? 1U : current.DeltaSequence + 1U;
             if (nextSeq == 0U) nextSeq = 1U;
@@ -101,8 +106,55 @@ namespace SteamP2PFriends.Adapters.Resource
             return nextSeq;
         }
 
-        public void OnObserverDisconnect(ulong steamId)
+        public bool TryAdvanceDeltaSequence(
+            ulong steamId, ulong connectionToken, RegionKey regionKey, out uint nextSequence)
         {
+            nextSequence = 0U;
+            if (!_connectionTokens.TryGetValue(steamId, out ulong currentToken)
+                || currentToken != connectionToken)
+            {
+                return false;
+            }
+
+            var key = (steamId, regionKey);
+            if (!_snapshots.TryGetValue(key, out ResourceSnapshotRecord current)
+                || current.ConnectionToken != connectionToken
+                || (_regionGenerations.TryGetValue(regionKey, out uint latestGeneration)
+                    && current.RegionGeneration != latestGeneration))
+            {
+                return false;
+            }
+
+            nextSequence = current.DeltaSequence == uint.MaxValue ? 1U : current.DeltaSequence + 1U;
+            if (nextSequence == 0U) nextSequence = 1U;
+            _snapshots[key] = new ResourceSnapshotRecord(
+                current.SessionEpoch,
+                current.ConnectionToken,
+                current.RegionKey,
+                current.RegionGeneration,
+                nextSequence);
+            return true;
+        }
+
+        public bool RemoveSnapshot(ulong steamId, ulong connectionToken, RegionKey regionKey)
+        {
+            if (!_connectionTokens.TryGetValue(steamId, out ulong currentToken)
+                || currentToken != connectionToken)
+            {
+                return false;
+            }
+
+            return _snapshots.Remove((steamId, regionKey));
+        }
+
+        public bool OnObserverDisconnect(ulong steamId, ulong connectionToken)
+        {
+            if (!_connectionTokens.TryGetValue(steamId, out ulong currentToken)
+                || currentToken != connectionToken)
+            {
+                return false;
+            }
+
             _connectionTokens.Remove(steamId);
             var keysToRemove = new List<(ulong SteamId, RegionKey RegionKey)>();
             foreach (var key in _snapshots.Keys)
@@ -116,6 +168,8 @@ namespace SteamP2PFriends.Adapters.Resource
             {
                 _snapshots.Remove(k);
             }
+
+            return true;
         }
     }
 
@@ -143,6 +197,14 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
+        public static bool TryGetSnapshot(ulong steamId, RegionKey regionKey, out ResourceSnapshotRecord snapshot)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.TryGetSnapshot(steamId, regionKey, out snapshot);
+            }
+        }
+
         public static uint AdvanceDeltaSequence(ulong steamId, RegionKey regionKey)
         {
             lock (SyncLock)
@@ -151,11 +213,28 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
-        public static void OnObserverDisconnect(ulong steamId)
+        public static bool TryAdvanceDeltaSequence(
+            ulong steamId, ulong connectionToken, RegionKey regionKey, out uint nextSequence)
         {
             lock (SyncLock)
             {
-                Ledger.OnObserverDisconnect(steamId);
+                return Ledger.TryAdvanceDeltaSequence(steamId, connectionToken, regionKey, out nextSequence);
+            }
+        }
+
+        public static bool RemoveSnapshot(ulong steamId, ulong connectionToken, RegionKey regionKey)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.RemoveSnapshot(steamId, connectionToken, regionKey);
+            }
+        }
+
+        public static bool OnObserverDisconnect(ulong steamId, ulong connectionToken)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.OnObserverDisconnect(steamId, connectionToken);
             }
         }
 

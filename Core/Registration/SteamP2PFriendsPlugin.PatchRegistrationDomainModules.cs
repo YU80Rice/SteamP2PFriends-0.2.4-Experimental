@@ -51,8 +51,14 @@ namespace SteamP2PFriends
             ok &= RegisterLifecycle(item);
             ok &= RegisterReplication(item);
             var resource = new ResourceDomainAdapter();
-            ok &= RegisterLifecycle(resource);
-            ok &= RegisterReplication(resource);
+            bool resourceLifecycleRegistered = RegisterLifecycle(resource);
+            bool resourceReplicationRegistered = RegisterReplication(resource);
+            ok &= resourceLifecycleRegistered;
+            ok &= resourceReplicationRegistered;
+            if (resourceLifecycleRegistered && resourceReplicationRegistered)
+            {
+                MultiObserver.MultiObserverShadowCoordinator.ConfigureResourceProduction(resource);
+            }
             var building = new BuildingDomainAdapter();
             ok &= RegisterLifecycle(building);
             ok &= RegisterReplication(building);

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Adapters.Item.Patches;
+using SteamP2PFriends.Adapters.Resource;
 using UnityEngine;
 
 using SteamP2PFriends.Security;
@@ -14,8 +15,8 @@ using SteamP2PFriends.Security;
 namespace SteamP2PFriends.MultiObserver
 {
     /// <summary>
-    /// U3 read-only adapter for the M0 shadow ledger. No game state, loaded flag, RPC, or
-    /// authorization decision is mutated here.
+    /// U3 capture and control-plane bridge for the M0 shadow ledger and domain seams. It does
+    /// not directly mutate native game state, loaded flags, RPCs, or authorization decisions.
     /// </summary>
     internal static class MultiObserverShadowCoordinator
     {
@@ -55,6 +56,8 @@ namespace SteamP2PFriends.MultiObserver
             new Dictionary<string, string>(StringComparer.Ordinal);
         private static readonly ShadowShutdownGate ShutdownGate = new ShadowShutdownGate();
         private static readonly ShadowFaultBackoff FaultBackoff = new ShadowFaultBackoff();
+        private static ResourceProductionControlSeam ResourceProduction;
+        private static readonly HashSet<ulong> ResourceObservers = new HashSet<ulong>();
 
         private static ulong _nextConnectionToken;
         private static float _nextReconcileAt;
@@ -68,6 +71,19 @@ namespace SteamP2PFriends.MultiObserver
         internal static int ObserverCount => Ledger.ObserverCount;
 
         internal static int GetZombieDemandCount(byte bound) => Ledger.GetZombieDemand(BoundKey.FromNative(bound));
+
+        internal static void ConfigureResourceProduction(ResourceDomainAdapter adapter)
+        {
+            if (adapter == null) throw new ArgumentNullException(nameof(adapter));
+            ResourceProduction = new ResourceProductionControlSeam(
+                adapter,
+                adapter,
+                ResourceRegionLifecycleAdapter.GetGeneration,
+                checked((byte)Regions.WORLD_SIZE),
+                checked((byte)LevelGround.RESOURCE_REGIONS),
+                ResourceRegionLifecycleAdapter.DefaultHysteresisSeconds);
+            ResourceObservers.Clear();
+        }
 
         internal static void Initialize()
         {
@@ -104,9 +120,6 @@ namespace SteamP2PFriends.MultiObserver
                 return;
             }
 
-            if (now < _nextReconcileAt) return;
-            _nextReconcileAt = now + ReconcileIntervalSeconds;
-
             string currentSessionId = HostManager.CurrentSessionId;
             if (string.IsNullOrEmpty(currentSessionId)
                 || string.IsNullOrEmpty(_hostSessionId)
@@ -125,12 +138,25 @@ namespace SteamP2PFriends.MultiObserver
             {
                 Connections.Clear();
                 LastMismatch.Clear();
+                ResourceObservers.Clear();
+                if (ResourceProduction != null)
+                {
+                    ResourceProduction.BeginSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch));
+                }
                 _eventLogCount = 0;
                 _summaryLogCount = 0;
                 _faultLogCount = 0;
                 _nextSummaryAt = now;
-                SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
+                    SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
             }
+
+            ResourceProduction?.AdvanceTime(Time.deltaTime);
+
+            if (now < _nextReconcileAt)
+            {
+                return;
+            }
+            _nextReconcileAt = now + ReconcileIntervalSeconds;
 
             CaptureResult capture = CaptureSamples();
             if (!capture.IsComplete)
@@ -146,6 +172,8 @@ namespace SteamP2PFriends.MultiObserver
                     capture.Samples,
                     Regions.WORLD_SIZE,
                     ItemManager.ITEM_REGIONS);
+            ReconcileResourceProduction(capture.Samples);
+            ResourceProduction?.Flush(0f);
             foreach (ShadowTransition transition in transitions)
             {
                 SafeEvent(
@@ -532,12 +560,15 @@ namespace SteamP2PFriends.MultiObserver
         private static void EndSessionIfNeeded(string reason)
         {
             if (!Ledger.EndSession()) return;
+            ResourceProduction?.EndSession();
+            ResourceObservers.Clear();
             SafeInfo($"session-end nextEpoch={Ledger.SessionEpoch} reason={reason}");
         }
 
         private static void ResetManagedState(bool resetLogQuotas)
         {
             Connections.Clear();
+            ResourceObservers.Clear();
             LastMismatch.Clear();
             if (resetLogQuotas)
             {
@@ -547,6 +578,36 @@ namespace SteamP2PFriends.MultiObserver
             }
             _nextReconcileAt = 0f;
             _nextSummaryAt = 0f;
+        }
+
+        private static void ReconcileResourceProduction(IReadOnlyList<ObserverShadowSample> samples)
+        {
+            if (ResourceProduction == null) return;
+
+            var seen = new HashSet<ulong>();
+            foreach (ObserverShadowSample sample in samples)
+            {
+                if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
+                    || !sample.GameplayAuthorized || !seen.Add(sample.ObserverId))
+                    continue;
+
+                ResourceProduction.UpdateObserver(
+                    sample.ObserverId,
+                    sample.ConnectionToken,
+                    sample.ItemRegionX,
+                    sample.ItemRegionY);
+            }
+
+            var removed = new List<ulong>();
+            foreach (ulong observerId in ResourceObservers)
+            {
+                if (!seen.Contains(observerId)) removed.Add(observerId);
+            }
+            foreach (ulong observerId in removed)
+                ResourceProduction.RemoveObserver(observerId);
+
+            ResourceObservers.Clear();
+            foreach (ulong observerId in seen) ResourceObservers.Add(observerId);
         }
 
         private static void SafeMismatch(string key, string detail)

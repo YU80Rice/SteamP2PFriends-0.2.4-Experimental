@@ -123,6 +123,7 @@
     <Compile Include="Adapters\Item\Patches\\ItemManagerP0B6RegenerateOnLevelLoadedPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
+    <Compile Include="Adapters\Resource\ResourceProductionControlSeam.cs" />
     <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceSnapshotAdapter.cs" />
     <Compile Include="Adapters\Resource\Patches\\LevelGroundRemoteTreeCollisionPatch.cs" />

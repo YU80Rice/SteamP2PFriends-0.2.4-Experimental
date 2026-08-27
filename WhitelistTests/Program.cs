@@ -14,7 +14,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 192 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 201 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -151,6 +151,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6S04 ResourceReconnectToken", ResourceSnapshotAdapterTests.Test_M6S04_ReconnectInvalidatesOldSnapshotToken, ref total, ref passed, ref failed);
             RunTest("M6S05 ResourceOverlapping", ResourceSnapshotAdapterTests.Test_M6S05_OverlappingObserversHaveIndependentSnapshots, ref total, ref passed, ref failed);
             RunTest("M6S06 ResourceDisconnectClean", ResourceSnapshotAdapterTests.Test_M6S06_DisconnectCleansObserver, ref total, ref passed, ref failed);
+            RunTest("M6S07 ResourceStaleDisconnect", ResourceSnapshotAdapterTests.Test_M6S07_StaleDisconnectDoesNotClearReconnectedObserver, ref total, ref passed, ref failed);
 
             RunTest("M6H01 HarvestDeadGen", ResourceHarvestReplicationTests.Test_M6H01_ResourceDeadAdvancesGeneration, ref total, ref passed, ref failed);
             RunTest("M6H02 HarvestMultiDead", ResourceHarvestReplicationTests.Test_M6H02_MultipleResourcesDeadTrackedIndependently, ref total, ref passed, ref failed);
@@ -160,6 +161,17 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6H06 HarvestReconnect", ResourceHarvestReplicationTests.Test_M6H06_ReconnectGetsUpdatedGeneration, ref total, ref passed, ref failed);
             RunTest("M6H07 HarvestIsolation", ResourceHarvestReplicationTests.Test_M6H07_DifferentRegionsHarvestIsolated, ref total, ref passed, ref failed);
             RunTest("M6H08 HarvestSessionReset", ResourceHarvestReplicationTests.Test_M6H08_SessionResetClearsDeadResources, ref total, ref passed, ref failed);
+
+            RunTest("M6P01 ResourceUnionAcquire", ResourceProductionControlSeamTests.Test_M6P01_ObserverUnionAcquiresOnce, ref total, ref passed, ref failed);
+            RunTest("M6P02 ResourceReleaseHysteresis", ResourceProductionControlSeamTests.Test_M6P02_LastObserverSchedulesTwoSecondRelease, ref total, ref passed, ref failed);
+            RunTest("M6P03 ResourceReentry", ResourceProductionControlSeamTests.Test_M6P03_ReentryCancelsReleaseWithoutSecondAcquire, ref total, ref passed, ref failed);
+            RunTest("M6P04 ResourceReconnectReset", ResourceProductionControlSeamTests.Test_M6P04_ReconnectAndSessionResetInvalidateState, ref total, ref passed, ref failed);
+            RunTest("M6P05 ResourceGenerationFlow", ResourceProductionControlSeamTests.Test_M6P05_RegionGenerationFlowsIntoSnapshotAndRelease, ref total, ref passed, ref failed);
+            RunTest("M6P06 ResourceSameFrameReentry", ResourceProductionControlSeamTests.Test_M6P06_AdvanceBeforeFlushAllowsSameFrameReentry, ref total, ref passed, ref failed);
+            RunTest("M6P07 ResourceRealAdapterSeam", ResourceProductionControlSeamTests.Test_M6P07_RealResourceAdapterHighLevelSeam, ref total, ref passed, ref failed);
+            RunTest("M6P08 ResourceStaleGeneration", ResourceProductionControlSeamTests.Test_M6P08_StaleRegionGenerationDelaysRelease, ref total, ref passed, ref failed);
+
+            RunTest("M6R09 ResourceSessionEnd", ResourceRegionLifecycleAdapterTests.Test_M6R09_EndSessionClearsResourceState, ref total, ref passed, ref failed);
 
             RunTest("M7B01 BarricadeAcquire", BarricadeRegionLifecycleAdapterTests.Test_M7B01_FirstAcquireCreatesGeneration, ref total, ref passed, ref failed);
             RunTest("M7B02 BarricadePlace", BarricadeRegionLifecycleAdapterTests.Test_M7B02_PlaceBarricadeAdvancesGeneration, ref total, ref passed, ref failed);
@@ -237,6 +249,8 @@ namespace SteamP2PFriends.WhitelistTests
             Console.WriteLine("\n=== Evidence Class: StaticIL ===");
             RunTest("ID StaticIL", IdentityStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("Resource/Collision StaticIL", ResourceCollisionOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
+            RunTest("Resource Production Control StaticIL", ResourceProductionControlStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
             RunTest("Item/Zombie StaticIL", ItemZombieOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
