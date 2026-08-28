@@ -59,16 +59,22 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         {
             if (isActive)
             {
+                ResourceObservability.Info("[Host]", "CollisionActivation", "-", 0UL, 0UL, 0U,
+                    ResourceObservability.NativePath(false), false, "skipped", "reason=already-active");
                 return; // 原版已要求激活，无需覆盖
             }
 
             if (!HostManager.IsP2PHostMode || !HostManager.ShouldProcessClientHostListen())
             {
+                ResourceObservability.Info("[Shared]", "CollisionActivation", "-", 0UL, 0UL, 0U,
+                    ResourceObservability.NativePath(false), false, "skipped", "reason=not-p2p-listen-host");
                 return;
             }
 
             if (__instance == null)
             {
+                ResourceObservability.Error("[Shared]", "CollisionActivation", "-", 0UL, 0UL, 0U,
+                    "Fallback", false, "failed", "reason=spawnpoint-null");
                 return;
             }
 
@@ -76,15 +82,37 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             {
                 if (Regions.tryGetCoordinate(__instance.point, out byte x, out byte y))
                 {
-                    if (ResourceRegionLifecycleAdapter.IsRegionActive(x, y) || LevelObjectRemoteCollisionPatch.IsRegionCovered(x, y))
+                    bool covered = ResourceRegionLifecycleAdapter.IsRegionActive(x, y)
+                        || LevelObjectRemoteCollisionPatch.IsRegionCovered(x, y);
+                    bool spiActive = MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive;
+                    if (covered)
                     {
                         isActive = true; // 远端观察者在此区域，保持树木/矿石碰撞体激活
+                        ResourceObservability.Info("[Host]", "CollisionActivation", $"({x},{y})",
+                            MultiObserver.MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
+                            ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
+                            ResourceObservability.NativePath(spiActive), spiActive, "success", "covered=true");
+                    }
+                    else
+                    {
+                        ResourceObservability.Info("[Host]", "CollisionActivation", $"({x},{y})",
+                            MultiObserver.MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
+                            ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
+                            ResourceObservability.NativePath(spiActive), spiActive, "skipped", "reason=no-remote-demand");
                     }
                 }
+                else
+                {
+                    ResourceObservability.Warn("[Host]", "CollisionActivation", "-", 0UL, 0UL, 0U,
+                        "Fallback", MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive,
+                        "rejected", "reason=region-coordinate-unavailable");
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略空间转换瞬态异常
+                ResourceObservability.Error("[Shared]", "CollisionActivation", "-", 0UL, 0UL, 0U,
+                    "Fallback", MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive,
+                    "failed", "exception=" + ex.GetType().Name);
             }
         }
     }

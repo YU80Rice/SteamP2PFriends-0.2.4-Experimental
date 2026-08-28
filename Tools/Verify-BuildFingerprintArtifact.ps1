@@ -61,11 +61,17 @@ if ($ExpectedCaseId) {
         $casePattern = '(^|\s)caseId=' + [regex]::Escape($ExpectedCaseId) + '(\s|$)'
         $hashPattern = '(^|\s)dllSha256=' + [regex]::Escape($hash) + '(\s|$)'
         $versionPattern = '(^|\s)version=' + [regex]::Escape($version) + '(\s|$)'
+        $assemblyVersionPattern = '(^|\s)assemblyVersion=' + [regex]::Escape($assemblyVersion) + '(\s|$)'
+        $fileVersionPattern = '(^|\s)fileVersion=' + [regex]::Escape($fileVersion) + '(\s|$)'
+        $mvidPattern = '(^|\s)mvid=' + [regex]::Escape($mvid) + '(\s|$)'
         $guidPattern = '(^|\s)pluginGuid=' + [regex]::Escape($pluginGuid) + '(\s|$)'
         foreach ($line in ($log -split '\r?\n')) {
             if ($line -match $casePattern -and
                 $line -match $hashPattern -and
                 $line -match $versionPattern -and
+                $line -match $assemblyVersionPattern -and
+                $line -match $fileVersionPattern -and
+                $line -match $mvidPattern -and
                 $line -match $guidPattern) {
                 $logMatchesFingerprint = $true
                 break

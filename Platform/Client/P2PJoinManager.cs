@@ -1,4 +1,5 @@
 using SDG.Unturned;
+using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.Shared.Enums;
@@ -566,6 +567,7 @@ namespace SteamP2PFriends.Client
         private static void OnClientConnected()
         {
             ThreadUtil.assertIsGameThread();
+            ResourceSnapshotAdapter.BeginLocalConnection();
             RoleLogger.Info(DynamicRole(),
                 $"[Diag] onClientConnected 触发 state={_state} target={_targetSteamId} " +
                 $"isConnected={Provider.isConnected} isServer={Provider.isServer}");
@@ -583,6 +585,10 @@ namespace SteamP2PFriends.Client
 
         private static void OnClientDisconnected()
         {
+            ResourceObservability.Info("[Guest]", "ConnectionEnd", "-",
+                ResourceSnapshotAdapter.CurrentSessionEpoch,
+                ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
+                "Native", false, "success", "source=Provider.onClientDisconnected");
             // Provider.onClientDisconnected is the authoritative session boundary. Clear the
             // quarantine view here because UI ticks may be suspended during menu teardown.
             try { P2PQuarantineClientView.Destroy(); }

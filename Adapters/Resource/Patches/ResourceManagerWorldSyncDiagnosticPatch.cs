@@ -3,6 +3,7 @@ using SDG.Unturned;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Core.Patches;
+using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.Shared;
 using System;
 using System.Reflection;
@@ -113,6 +114,9 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             RoleLogger.Info("[Shared]",
                 $"[WorldSyncDiag/Resource] RegisterManual 结果: onRegionUpdated.Pre={r1} SendResources_Write.Pre={r2} " +
                 $"ReceiveResources.Pre={r3} ReceiveResources.Post={r4} all={all}");
+            ResourceObservability.Info("[Shared]", "WorldSyncRegistration", "-", 0UL, 0UL, 0U,
+                all ? "Native" : "Fallback", false, all ? "success" : "failed",
+                $"onRegionUpdated={r1} sendResourcesWrite={r2} receiveResourcesPre={r3} receiveResourcesPost={r4}");
             return all;
         }
 
@@ -176,7 +180,12 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         {
             try
             {
-                if (step != 3) return;
+                if (step != 3)
+                {
+                    ResourceObservability.Info("[Host]", "RegionEntry", $"({new_x},{new_y})", 0UL, 0UL, 0U,
+                        "Native", false, "skipped", "reason=step-not-3 step=" + step);
+                    return;
+                }
 
                 ulong steamId = 0UL;
                 try { steamId = player?.channel?.owner?.playerID?.steamID.m_SteamID ?? 0UL; } catch { }
@@ -189,19 +198,31 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                 if (!WorldSyncDiagnosticCore.TryAcquirePlayerQuota(steamId, "Resource.onRegionUpdated.step3",
                     WorldSyncDiagnosticCore.PerPlayerPointLimit, out int count))
                 {
+                ResourceObservability.QuotaSuppressed(
+                        "[Host]", "RegionEntry", $"({new_x},{new_y})",
+                        MultiObserverShadowCoordinator.ResourceSessionEpoch,
+                        MultiObserverShadowCoordinator.GetResourceConnectionGeneration(steamId),
+                        ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(new_x, new_y)),
+                        ResourceObservability.NativePath(MultiObserverShadowCoordinator.IsResourceProductionActive),
+                        MultiObserverShadowCoordinator.IsResourceProductionActive,
+                        "Resource.onRegionUpdated.step3");
                     return;
                 }
 
-                RoleLogger.Info("[Host]",
-                    $"{PointPrefix} onRegionUpdated #{count}/{WorldSyncDiagnosticCore.PerPlayerPointLimit} " +
-                    $"step=3 player={maskedId} region=({new_x},{new_y}) " +
-                    $"isDedicated={isDedicated} checkSafe={checkSafe} " +
-                    $"isResourcesLoaded={isResourcesLoadedStr} " +
-                    $"(vanilla: SendResources 仅在 isDedicated=true 时调用)");
+                bool spiActive = MultiObserverShadowCoordinator.IsResourceProductionActive;
+                ResourceObservability.Info(
+                    "[Host]", "RegionEntry", $"({new_x},{new_y})",
+                    MultiObserverShadowCoordinator.ResourceSessionEpoch,
+                    MultiObserverShadowCoordinator.GetResourceConnectionGeneration(steamId),
+                    ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(new_x, new_y)),
+                    ResourceObservability.NativePath(spiActive), spiActive, "observed",
+                    $"count={count} player={maskedId} isDedicated={isDedicated} checkSafe={checkSafe} " +
+                    $"isResourcesLoaded={isResourcesLoadedStr} nativeEntry=true");
             }
             catch (System.Exception ex)
             {
-                try { RoleLogger.Error("[Shared]", $"{PointPrefix} onRegionUpdated Prefix 异常: {ex.Message}"); } catch { }
+                ResourceObservability.Error("[Shared]", "RegionEntry", "-", 0UL, 0UL, 0U,
+                    "Fallback", false, "failed", "exception=" + ex.GetType().Name);
             }
         }
 
@@ -215,17 +236,28 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             {
                 if (!WorldSyncDiagnosticCore.TryAcquireQuota("Resource.SendResources_Write", out int count))
                 {
+                    ResourceObservability.QuotaSuppressed(
+                        "[Host]", "SnapshotWrite", $"({x},{y})",
+                        MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
+                        ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
+                        ResourceObservability.NativePath(MultiObserverShadowCoordinator.IsResourceProductionActive),
+                        MultiObserverShadowCoordinator.IsResourceProductionActive,
+                        "Resource.SendResources_Write");
                     return;
                 }
 
-                RoleLogger.Info("[Host]",
-                    $"{PointPrefix} SendResources_Write #{count}/{WorldSyncDiagnosticCore.PerPointLimit} " +
-                    $"region=({x},{y}) isDedicated={Dedicator.IsDedicatedServer} " +
-                    $"(真实发送写入入口已调用)");
+                bool spiActive = MultiObserverShadowCoordinator.IsResourceProductionActive;
+                ResourceObservability.Info("[Host]", "SnapshotWrite", $"({x},{y})",
+                    MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
+                    ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
+                    spiActive ? "SPI" : "Fallback", spiActive, "observed",
+                    $"count={count} isDedicated={Dedicator.IsDedicatedServer} nativeEntry=true");
             }
             catch (System.Exception ex)
             {
-                try { RoleLogger.Error("[Shared]", $"{PointPrefix} SendResources_Write Prefix 异常: {ex.Message}"); } catch { }
+                ResourceObservability.Error("[Shared]", "SnapshotWrite", "-", 0UL, 0UL, 0U,
+                    "Fallback", MultiObserverShadowCoordinator.IsResourceProductionActive,
+                    "failed", "exception=" + ex.GetType().Name);
             }
         }
 
@@ -242,16 +274,21 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                 // 在 Prefix 中仅记录调用事件，Postfix 中读取 regions 状态变化
                 if (!WorldSyncDiagnosticCore.TryAcquireQuota("Resource.ReceiveResources", out int count))
                 {
+                    ResourceObservability.QuotaSuppressed("[Guest]", "SnapshotReceive", "-",
+                        ResourceSnapshotAdapter.CurrentSessionEpoch, ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
+                        "Native", false, "Resource.ReceiveResources");
                     return;
                 }
 
-                RoleLogger.Info("[Client]",
-                    $"{PointPrefix} ReceiveResources #{count}/{WorldSyncDiagnosticCore.PerPointLimit} " +
-                    $"spiSnapshotReceiveCount={receiveCount} (初始区域资源包 - 客机收到)");
+                ResourceObservability.Info("[Guest]", "SnapshotReceive", "-",
+                    ResourceSnapshotAdapter.CurrentSessionEpoch, ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
+                    "Native", false, "observed",
+                    $"count={count} nativeReceiveCount={receiveCount} generationDecision=not-exposed");
             }
             catch (System.Exception ex)
             {
-                try { RoleLogger.Error("[Shared]", $"{PointPrefix} ReceiveResources Prefix 异常: {ex.Message}"); } catch { }
+                ResourceObservability.Error("[Shared]", "SnapshotReceive", "-", 0UL, 0UL, 0U,
+                    "Fallback", false, "failed", "exception=" + ex.GetType().Name);
             }
         }
 
@@ -263,19 +300,23 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             {
                 if (!WorldSyncDiagnosticCore.TryAcquireQuota("Resource.ReceiveResources.Postfix", out int count))
                 {
+                    ResourceObservability.QuotaSuppressed("[Guest]", "SnapshotReceivePostfix", "-",
+                        ResourceSnapshotAdapter.CurrentSessionEpoch, ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
+                        "Native", false, "Resource.ReceiveResources.Postfix");
                     return;
                 }
 
                 int networkedCount = CountNetworkedResourceRegions();
 
-                RoleLogger.Info("[Client]",
-                    $"{PointPrefix} ReceiveResources.Postfix #{count}/{WorldSyncDiagnosticCore.PerPointLimit} " +
-                    $"totalNetworkedRegions={networkedCount} " +
-                    $"(客机已 networked 的资源区域总数)");
+                ResourceObservability.Info("[Guest]", "SnapshotReceivePostfix", "-",
+                    ResourceSnapshotAdapter.CurrentSessionEpoch, ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
+                    "Native", false, networkedCount >= 0 ? "success" : "failed",
+                    $"count={count} totalNetworkedRegions={networkedCount} generationDecision=not-exposed");
             }
             catch (System.Exception ex)
             {
-                try { RoleLogger.Error("[Shared]", $"{PointPrefix} ReceiveResources Postfix 异常: {ex.Message}"); } catch { }
+                ResourceObservability.Error("[Shared]", "SnapshotReceivePostfix", "-", 0UL, 0UL, 0U,
+                    "Fallback", false, "failed", "exception=" + ex.GetType().Name);
             }
         }
 

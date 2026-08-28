@@ -104,6 +104,21 @@ namespace SteamP2PFriends.WhitelistTests
                 HasAssemblyMetadata(testAssembly, "SteamP2PFriendsPluginGuid", TestBuildMetadata.PluginGuid);
         }
 
+        internal static bool Test_VerifierRequiresFullLogIdentity()
+        {
+            string scriptPath = Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Tools", "Verify-BuildFingerprintArtifact.ps1"));
+            if (!File.Exists(scriptPath)) return false;
+
+            string script = File.ReadAllText(scriptPath);
+            return script.IndexOf("mvidPattern", StringComparison.Ordinal) >= 0
+                && script.IndexOf("assemblyVersionPattern", StringComparison.Ordinal) >= 0
+                && script.IndexOf("fileVersionPattern", StringComparison.Ordinal) >= 0
+                && script.IndexOf("$mvidPattern", StringComparison.Ordinal) >= 0
+                && script.IndexOf("$assemblyVersionPattern", StringComparison.Ordinal) >= 0
+                && script.IndexOf("$fileVersionPattern", StringComparison.Ordinal) >= 0;
+        }
+
         private static bool HasAssemblyMetadata(Assembly assembly, string key, string expectedValue)
         {
             return assembly.GetCustomAttributes(typeof(AssemblyMetadataAttribute), false)

@@ -100,6 +100,17 @@ namespace SteamP2PFriends.MultiObserver.Spatial
             }
         }
 
+        public void RestoreRegions(ulong observerId, ulong connectionToken, IEnumerable<RegionKey> regions)
+        {
+            if (regions == null) throw new ArgumentNullException(nameof(regions));
+            lock (_sync)
+            {
+                var state = new ObserverSpatialState { ConnectionToken = connectionToken };
+                foreach (RegionKey region in regions) state.ActiveRegions.Add(region);
+                _observers[observerId] = state;
+            }
+        }
+
         public HashSet<BoundKey> GetActiveBounds(ulong observerId)
         {
             lock (_sync)

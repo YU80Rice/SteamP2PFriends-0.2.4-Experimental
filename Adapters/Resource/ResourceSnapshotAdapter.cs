@@ -6,6 +6,29 @@ using System.Collections.Generic;
 
 namespace SteamP2PFriends.Adapters.Resource
 {
+    public readonly struct ResourceDeltaReceiveObservation
+    {
+        public ResourceDeltaReceiveObservation(ulong sessionEpoch, ulong connectionGeneration,
+            uint regionGeneration, uint deltaSequence, bool decisionAvailable, bool accepted, bool stale)
+        {
+            SessionEpoch = sessionEpoch;
+            ConnectionGeneration = connectionGeneration;
+            RegionGeneration = regionGeneration;
+            DeltaSequence = deltaSequence;
+            DecisionAvailable = decisionAvailable;
+            Accepted = accepted;
+            Stale = stale;
+        }
+
+        public ulong SessionEpoch { get; }
+        public ulong ConnectionGeneration { get; }
+        public uint RegionGeneration { get; }
+        public uint DeltaSequence { get; }
+        public bool DecisionAvailable { get; }
+        public bool Accepted { get; }
+        public bool Stale { get; }
+    }
+
     public readonly struct ResourceSnapshotRecord
     {
         public ResourceSnapshotRecord(ulong sessionEpoch, ulong connectionToken, RegionKey regionKey, uint regionGeneration, uint deltaSequence)
@@ -39,6 +62,17 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public ulong SessionEpoch { get; private set; } = 1UL;
         public int TrackedSnapshotCount => _snapshots.Count;
+
+        public uint GetLatestDeltaSequence(RegionKey regionKey)
+        {
+            uint latest = 0U;
+            foreach (var pair in _snapshots)
+            {
+                if (pair.Key.RegionKey == regionKey && pair.Value.DeltaSequence > latest)
+                    latest = pair.Value.DeltaSequence;
+            }
+            return latest;
+        }
 
         public void ResetSession(ulong epoch)
         {
@@ -230,6 +264,15 @@ namespace SteamP2PFriends.Adapters.Resource
             return NativeDeltaReceiveCount;
         }
 
+        public ResourceDeltaReceiveObservation RecordNativeDeltaReceive(
+            RegionKey regionKey, ulong connectionGeneration)
+        {
+            uint deltaSequence = checked((uint)RecordNativeDeltaReceive());
+            return new ResourceDeltaReceiveObservation(
+                SessionEpoch, connectionGeneration, GetRegionGeneration(regionKey),
+                deltaSequence, decisionAvailable: false, accepted: false, stale: false);
+        }
+
         public int RecordNativeDelta(RegionKey regionKey, uint regionGeneration)
         {
             NativeDeltaCount++;
@@ -305,6 +348,32 @@ namespace SteamP2PFriends.Adapters.Resource
         public static int NativeDeltaReceiveCount
         {
             get { lock (SyncLock) return Ledger.NativeDeltaReceiveCount; }
+        }
+
+        public static ulong CurrentSessionEpoch
+        {
+            get { lock (SyncLock) return Ledger.SessionEpoch; }
+        }
+
+        public static ulong LocalConnectionGeneration { get; private set; }
+
+        public static bool BeginLocalConnection()
+        {
+            lock (SyncLock)
+            {
+                if (LocalConnectionGeneration == ulong.MaxValue)
+                {
+                    ResourceObservability.Error("[Guest]", "ConnectionGeneration", "-",
+                        Ledger.SessionEpoch, LocalConnectionGeneration, 0U,
+                        "Fallback", false, "failed",
+                        "reason=connection-generation-overflow failClosed=true");
+                    return false;
+                }
+
+                LocalConnectionGeneration++;
+                if (LocalConnectionGeneration == 0UL) LocalConnectionGeneration = 1UL;
+                return true;
+            }
         }
 
         public static int StaleDeltaRejectCount
@@ -390,6 +459,23 @@ namespace SteamP2PFriends.Adapters.Resource
             lock (SyncLock)
             {
                 return Ledger.RecordNativeDeltaReceive();
+            }
+        }
+
+        public static ResourceDeltaReceiveObservation RecordNativeDeltaReceive(
+            RegionKey regionKey, ulong connectionGeneration)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.RecordNativeDeltaReceive(regionKey, connectionGeneration);
+            }
+        }
+
+        public static uint GetLatestDeltaSequence(RegionKey regionKey)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.GetLatestDeltaSequence(regionKey);
             }
         }
 

@@ -173,6 +173,14 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6P06 ResourceSameFrameReentry", ResourceProductionControlSeamTests.Test_M6P06_AdvanceBeforeFlushAllowsSameFrameReentry, ref total, ref passed, ref failed);
             RunTest("M6P07 ResourceRealAdapterSeam", ResourceProductionControlSeamTests.Test_M6P07_RealResourceAdapterHighLevelSeam, ref total, ref passed, ref failed);
             RunTest("M6P08 ResourceStaleGeneration", ResourceProductionControlSeamTests.Test_M6P08_StaleRegionGenerationDelaysRelease, ref total, ref passed, ref failed);
+            RunTest("M6P09 ResourceReleaseRetry", ResourceProductionControlSeamTests.Test_M6P09_ReleaseFailureRetainsRetryableState, ref total, ref passed, ref failed);
+            RunTest("M6P11 ResourceReplicationEnterRollback", ResourceProductionControlSeamTests.Test_M6P11_ReplicationEnterFailureDoesNotCommitDemand, ref total, ref passed, ref failed);
+            RunTest("M6P12 ResourceReplicationExitRollback", ResourceProductionControlSeamTests.Test_M6P12_ReplicationExitFailureRetainsDemand, ref total, ref passed, ref failed);
+            RunTest("M6P13 ResourceMultiRegionEnterCompensation", ResourceProductionControlSeamTests.Test_M6P13_MultiRegionEnterFailureCompensates, ref total, ref passed, ref failed);
+            RunTest("M6P14 ResourceMultiRegionExitCompensation", ResourceProductionControlSeamTests.Test_M6P14_MultiRegionExitFailureCompensates, ref total, ref passed, ref failed);
+            RunTest("M6O01 ResourceObservabilityFields", ResourceObservabilityTests.Test_M6O01_FormatsRequiredResourceFields, ref total, ref passed, ref failed);
+            RunTest("M6O02 ResourceFallbackExplicit", ResourceObservabilityTests.Test_M6O02_FallbackAndSkippedAreExplicit, ref total, ref passed, ref failed);
+            RunTest("M6O03 ResourceReceiveDecisionBoundary", ResourceObservabilityTests.Test_M6O03_NativeReceiveDoesNotInventAcceptance, ref total, ref passed, ref failed);
 
             RunTest("M6R09 ResourceSessionEnd", ResourceRegionLifecycleAdapterTests.Test_M6R09_EndSessionClearsResourceState, ref total, ref passed, ref failed);
 
@@ -256,6 +264,10 @@ namespace SteamP2PFriends.WhitelistTests
                 ref total, ref passed, ref failed);
             RunTest("Resource Authority Retirement StaticIL", ResourceAuthorityRetirementStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
+            RunTest("Resource Harvest Registration StaticIL", ResourceHarvestRegistrationStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Harvest Four Hook State", ResourceHarvestRegistrationStaticILContractTests.Test_FourHookRegistrationStateIsExplicit,
+                ref total, ref passed, ref failed);
             RunTest("Item/Zombie StaticIL", ItemZombieOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
@@ -292,6 +304,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("BuildArtifact Case-ID Fallback", BuildArtifactEvidenceTests.Test_InvalidCaseIdFallsBackToBuildMetadata,
                 ref total, ref passed, ref failed);
             RunTest("BuildArtifact Test Metadata", BuildArtifactEvidenceTests.Test_TestAssemblyConsumesVersionMetadata,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Full Log Identity", BuildArtifactEvidenceTests.Test_VerifierRequiresFullLogIdentity,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.Runtime;

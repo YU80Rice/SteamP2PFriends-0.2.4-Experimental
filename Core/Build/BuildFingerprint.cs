@@ -90,6 +90,14 @@ namespace SteamP2PFriends.Core.Build
             };
         }
 
+        internal static string GetCaseIdForLogging()
+        {
+            string caseId;
+            string source;
+            ResolveCaseId(out caseId, out source);
+            return caseId;
+        }
+
         private static string SafeGetLocation(Assembly assembly)
         {
             try { return assembly == null ? null : assembly.Location; }

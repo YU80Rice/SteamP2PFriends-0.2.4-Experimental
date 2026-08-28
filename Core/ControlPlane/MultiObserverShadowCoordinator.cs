@@ -70,6 +70,17 @@ namespace SteamP2PFriends.MultiObserver
         internal static ulong SessionEpoch => Ledger.SessionEpoch;
         internal static int ObserverCount => Ledger.ObserverCount;
 
+        internal static bool IsResourceProductionActive => ResourceProduction != null && ResourceProduction.IsSessionActive;
+        internal static ulong ResourceSessionEpoch => ResourceProduction == null ? 0UL : ResourceProduction.SessionEpoch.Value;
+
+        internal static ulong GetResourceConnectionGeneration(ulong observerId)
+        {
+            ulong generation;
+            return ResourceProduction != null && ResourceProduction.TryGetConnectionGeneration(observerId, out generation)
+                ? generation
+                : 0UL;
+        }
+
         internal static int GetZombieDemandCount(byte bound) => Ledger.GetZombieDemand(BoundKey.FromNative(bound));
 
         internal static void ConfigureResourceProduction(ResourceDomainAdapter adapter)
@@ -586,7 +597,13 @@ namespace SteamP2PFriends.MultiObserver
 
         private static void ReconcileResourceProduction(IReadOnlyList<ObserverShadowSample> samples)
         {
-            if (ResourceProduction == null) return;
+            if (ResourceProduction == null)
+            {
+                ResourceObservability.NoticeOnce("resource-production-unavailable", "[Host]",
+                    "ResourceProduction", "-", Ledger.SessionEpoch, 0UL, 0U,
+                    "Fallback", false, "skipped", "reason=production-control-seam-unavailable");
+                return;
+            }
 
             var seen = new HashSet<ulong>();
             foreach (ObserverShadowSample sample in samples)

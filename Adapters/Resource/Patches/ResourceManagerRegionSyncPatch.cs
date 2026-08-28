@@ -456,16 +456,27 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         {
             int trackedObservers = ResourceSnapshotAdapter.RecordNativeSnapshotWrite(new RegionKey(x, y));
             int count = ++_writeLogCount;
-            if (count > WriteLogLimit) return;
+            if (count > WriteLogLimit)
+            {
+                ResourceObservability.QuotaSuppressed("[Host]", "SnapshotWrite", $"({x},{y})", 0UL, 0UL,
+                    ResourceSnapshotAdapter.GetRegionGeneration(new RegionKey(x, y)),
+                    ResourceObservability.NativePath(MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive),
+                    MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive,
+                    "ResourceRegionSync.SendResources_Write");
+                return;
+            }
 
             string escPrefix = SteamP2PFriends.Host.HostManager.EscPauseDetectorEnabled
                 ? $"escPaused={SteamP2PFriends.Host.HostManager.IsEscPausedCurrent} "
                 : "";
 
-            RoleLogger.Info("[Host]",
-                $"[ListenRegionSync/Resource] write #{count}/{WriteLogLimit} " +
-                $"{escPrefix}step=3 region=({x},{y}) spiSnapshotObservers={trackedObservers} " +
-                "leaseAuthority=ResourceProductionControlSeam stateEncoder=ResourceManager.SendResources_Write");
+            bool spiActive = MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive;
+            ResourceObservability.Info("[Host]", "SnapshotWrite", $"({x},{y})",
+                MultiObserver.MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
+                ResourceSnapshotAdapter.GetRegionGeneration(new RegionKey(x, y)),
+                "Native", spiActive, "success",
+                $"writeCount={count} trackedObservers={trackedObservers} {escPrefix} " +
+                "nativeEntry=true stateEncoder=ResourceManager.SendResources_Write");
         }
 
         public static void OnClientDisconnected()

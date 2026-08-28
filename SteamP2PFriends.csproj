@@ -126,6 +126,7 @@
     <Compile Include="Adapters\Resource\ResourceProductionControlSeam.cs" />
     <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceSnapshotAdapter.cs" />
+    <Compile Include="Adapters\Resource\ResourceObservability.cs" />
     <Compile Include="Adapters\Resource\Patches\\LevelGroundRemoteTreeCollisionPatch.cs" />
     <Compile Include="Adapters\Resource\Patches\\ResourceManagerHarvestReplicationPatch.cs" />
     <Compile Include="Adapters\Resource\Patches\\ResourceManagerRegionSyncPatch.cs" />
