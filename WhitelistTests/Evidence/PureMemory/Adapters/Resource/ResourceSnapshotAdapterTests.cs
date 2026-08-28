@@ -159,5 +159,30 @@ namespace SteamP2PFriends.WhitelistTests
                 && ledger.NativeDeltaReceiveCount == 2
                 && ledger.NativeDeltaCount == 3;
         }
+
+        public static bool Test_M6S09_OldBaselineCannotOverwriteNewerBaseline()
+        {
+            var ledger = new ResourceSnapshotReplicationLedger();
+            ledger.ResetSession(1UL);
+
+            ulong steamId = 76561198000000001UL;
+            RegionKey regionKey = new RegionKey(21, 22);
+            ledger.EnqueueInitialSnapshot(steamId, 101UL, regionKey, 1U);
+            ledger.UpdateRegionGeneration(regionKey, 3U);
+
+            bool currentAccepted = ledger.EnqueueInitialSnapshot(steamId, 101UL, regionKey, 3U);
+            bool oldRejected = !ledger.EnqueueInitialSnapshot(steamId, 101UL, regionKey, 2U);
+            bool preserved = ledger.TryGetSnapshot(steamId, regionKey, out ResourceSnapshotRecord snapshot)
+                && snapshot.RegionGeneration == 3U
+                && snapshot.DeltaSequence == 1U;
+
+            return currentAccepted && oldRejected && preserved;
+        }
+
+        public static bool Test_M6S10_RegionGenerationOverflowFailsClosed()
+        {
+            bool advanced = ResourceGenerationRules.TryAdvance(uint.MaxValue, out uint next);
+            return !advanced && next == uint.MaxValue;
+        }
     }
 }

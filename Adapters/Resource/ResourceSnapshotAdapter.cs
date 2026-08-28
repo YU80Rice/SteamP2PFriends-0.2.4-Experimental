@@ -74,19 +74,33 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             if (steamId == 0UL || connectionToken == 0UL) return false;
 
-            _connectionTokens[steamId] = connectionToken;
+            if (_connectionTokens.TryGetValue(steamId, out ulong currentConnectionToken)
+                && connectionToken < currentConnectionToken)
+            {
+                return false;
+            }
+
             var key = (steamId, regionKey);
+
+            if (_regionGenerations.TryGetValue(regionKey, out uint latestGeneration)
+                && regionGeneration < latestGeneration)
+            {
+                return false;
+            }
 
             if (_snapshots.TryGetValue(key, out ResourceSnapshotRecord existing))
             {
                 if (existing.SessionEpoch == SessionEpoch &&
-                    existing.ConnectionToken == connectionToken &&
-                    existing.RegionGeneration == regionGeneration)
+                    existing.ConnectionToken == connectionToken)
                 {
-                    return false;
+                    if (regionGeneration <= existing.RegionGeneration)
+                    {
+                        return false;
+                    }
                 }
             }
 
+            _connectionTokens[steamId] = connectionToken;
             _snapshots[key] = new ResourceSnapshotRecord(
                 SessionEpoch,
                 connectionToken,

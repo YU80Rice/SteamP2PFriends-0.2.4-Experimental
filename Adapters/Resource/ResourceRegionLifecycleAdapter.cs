@@ -7,6 +7,21 @@ using System.Collections.Generic;
 
 namespace SteamP2PFriends.Adapters.Resource
 {
+    public static class ResourceGenerationRules
+    {
+        public static bool TryAdvance(uint current, out uint next)
+        {
+            if (current == uint.MaxValue)
+            {
+                next = current;
+                return false;
+            }
+
+            next = current + 1U;
+            return next != 0U;
+        }
+    }
+
     public readonly struct ResourceReleaseLease
     {
         public ResourceReleaseLease(ulong sessionEpoch, RegionKey regionKey, uint regionGeneration, float deadline)
@@ -62,11 +77,9 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public uint CommitAcquire(RegionKey regionKey)
         {
+            uint next = NextGeneration(GetGeneration(regionKey));
             CancelRelease(regionKey);
             _activeRegions.Add(regionKey);
-            uint next = GetGeneration(regionKey);
-            next = next == uint.MaxValue ? 1U : next + 1U;
-            if (next == 0U) next = 1U;
             _generations[regionKey] = next;
             return next;
         }
@@ -99,10 +112,9 @@ namespace SteamP2PFriends.Adapters.Resource
             if (GetGeneration(regionKey) != expectedGeneration)
                 return false;
 
+            uint next = NextGeneration(expectedGeneration);
             _releases.Remove(regionKey);
             _activeRegions.Remove(regionKey);
-            uint next = expectedGeneration == uint.MaxValue ? 1U : expectedGeneration + 1U;
-            if (next == 0U) next = 1U;
             _generations[regionKey] = next;
             committedGeneration = next;
             return true;
@@ -117,10 +129,9 @@ namespace SteamP2PFriends.Adapters.Resource
             if (GetGeneration(regionKey) != expectedGeneration)
                 return false;
 
+            uint next = NextGeneration(expectedGeneration);
             _releases.Remove(regionKey);
             _activeRegions.Remove(regionKey);
-            uint next = expectedGeneration == uint.MaxValue ? 1U : expectedGeneration + 1U;
-            if (next == 0U) next = 1U;
             _generations[regionKey] = next;
             committedGeneration = next;
             return true;
@@ -134,6 +145,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public uint RecordResourceDead(RegionKey regionKey, ushort index)
         {
+            uint next = NextGeneration(GetGeneration(regionKey));
             if (!_deadResources.TryGetValue(regionKey, out var set))
             {
                 set = new HashSet<ushort>();
@@ -141,23 +153,18 @@ namespace SteamP2PFriends.Adapters.Resource
             }
 
             set.Add(index);
-            uint next = GetGeneration(regionKey);
-            next = next == uint.MaxValue ? 1U : next + 1U;
-            if (next == 0U) next = 1U;
             _generations[regionKey] = next;
             return next;
         }
 
         public uint RecordResourceAlive(RegionKey regionKey, ushort index)
         {
+            uint next = NextGeneration(GetGeneration(regionKey));
             if (_deadResources.TryGetValue(regionKey, out var set))
             {
                 set.Remove(index);
             }
 
-            uint next = GetGeneration(regionKey);
-            next = next == uint.MaxValue ? 1U : next + 1U;
-            if (next == 0U) next = 1U;
             _generations[regionKey] = next;
             return next;
         }
@@ -174,6 +181,16 @@ namespace SteamP2PFriends.Adapters.Resource
                 return new HashSet<ushort>(set);
             }
             return new HashSet<ushort>();
+        }
+
+        private static uint NextGeneration(uint current)
+        {
+            if (!ResourceGenerationRules.TryAdvance(current, out uint next))
+            {
+                throw new InvalidOperationException(
+                    "Resource RegionGeneration exhausted; begin a new session before advancing the region.");
+            }
+            return next;
         }
     }
 
