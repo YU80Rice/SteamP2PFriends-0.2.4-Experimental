@@ -60,6 +60,9 @@ namespace SteamP2PFriends.WhitelistTests
                     "ServerSetResourceDead_Postfix", BindingFlags.Static | BindingFlags.Public),
                     "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeDelta") == 1
                 && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch")?.GetMethod(
+                    "ServerSetResourceAlive_Postfix", BindingFlags.Static | BindingFlags.Public),
+                    "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeDelta") == 1
+                && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch")?.GetMethod(
                     "ReceiveResourceDead_Postfix", BindingFlags.Static | BindingFlags.Public),
                     "SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch", "RecordClientDelta") == 1
                 && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch")?.GetMethod(
