@@ -128,6 +128,8 @@ namespace SteamP2PFriends.WhitelistTests
 
             int snapshotObservers = ledger.RecordNativeSnapshotWrite(regionKey);
             int receiveCount = ledger.RecordNativeSnapshotReceive();
+            int firstDeltaReceive = ledger.RecordNativeDeltaReceive();
+            int secondDeltaReceive = ledger.RecordNativeDeltaReceive();
 
             int acceptedDeltaCount = ledger.RecordNativeDelta(regionKey, 1U);
             int staleDeltaCount = ledger.RecordNativeDelta(regionKey, 0U);
@@ -144,6 +146,8 @@ namespace SteamP2PFriends.WhitelistTests
 
             return snapshotObservers == 1
                 && receiveCount == 1
+                && firstDeltaReceive == 1
+                && secondDeltaReceive == 2
                 && staleDeltaCount == 0
                 && staleRejected
                 && generationRemainsMonotonic
@@ -152,6 +156,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && acceptedGenerationAdvanced
                 && ledger.NativeSnapshotWriteCount == 1
                 && ledger.NativeSnapshotReceiveCount == 1
+                && ledger.NativeDeltaReceiveCount == 2
                 && ledger.NativeDeltaCount == 3;
         }
     }

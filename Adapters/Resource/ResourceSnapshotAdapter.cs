@@ -34,6 +34,7 @@ namespace SteamP2PFriends.Adapters.Resource
         public int NativeSnapshotWriteCount { get; private set; }
         public int NativeSnapshotReceiveCount { get; private set; }
         public int NativeDeltaCount { get; private set; }
+        public int NativeDeltaReceiveCount { get; private set; }
         public int StaleDeltaRejectCount { get; private set; }
 
         public ulong SessionEpoch { get; private set; } = 1UL;
@@ -48,6 +49,7 @@ namespace SteamP2PFriends.Adapters.Resource
             NativeSnapshotWriteCount = 0;
             NativeSnapshotReceiveCount = 0;
             NativeDeltaCount = 0;
+            NativeDeltaReceiveCount = 0;
             StaleDeltaRejectCount = 0;
         }
 
@@ -208,6 +210,12 @@ namespace SteamP2PFriends.Adapters.Resource
             return NativeSnapshotReceiveCount;
         }
 
+        public int RecordNativeDeltaReceive()
+        {
+            NativeDeltaReceiveCount++;
+            return NativeDeltaReceiveCount;
+        }
+
         public int RecordNativeDelta(RegionKey regionKey, uint regionGeneration)
         {
             NativeDeltaCount++;
@@ -278,6 +286,11 @@ namespace SteamP2PFriends.Adapters.Resource
         public static int NativeDeltaCount
         {
             get { lock (SyncLock) return Ledger.NativeDeltaCount; }
+        }
+
+        public static int NativeDeltaReceiveCount
+        {
+            get { lock (SyncLock) return Ledger.NativeDeltaReceiveCount; }
         }
 
         public static int StaleDeltaRejectCount
@@ -355,6 +368,14 @@ namespace SteamP2PFriends.Adapters.Resource
             lock (SyncLock)
             {
                 return Ledger.RecordNativeSnapshotReceive();
+            }
+        }
+
+        public static int RecordNativeDeltaReceive()
+        {
+            lock (SyncLock)
+            {
+                return Ledger.RecordNativeDeltaReceive();
             }
         }
 
