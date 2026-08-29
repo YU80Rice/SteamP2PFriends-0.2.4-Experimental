@@ -11,7 +11,9 @@ namespace SteamP2PFriends.Adapters.Resource
     /// 资源领域适配器统一 SPI 实现 (ResourceDomainAdapter)
     /// 统一管理树木、矿石物理碰撞与采伐状态同步。
     /// </summary>
-    public sealed class ResourceDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter
+    public sealed class ResourceDomainAdapter : ILifecycleDomainAdapter, IStateReplicationAdapter,
+        IReversibleObserverDisconnectAdapter, IReversibleRegionLifecycleAdapter,
+        IReversibleObserverReplicationAdapter
     {
         public DomainId DomainId => DomainIds.Resource;
         public string DisplayName => "Resource";
@@ -29,12 +31,48 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void OnSessionEnd()
         {
-            ResourceObservability.Info("[Host]", "SessionEnd", "-",
-                ResourceRegionLifecycleAdapter.CurrentSessionEpoch, 0UL, 0U, "SPI", true, "success");
-            ResourceRegionLifecycleAdapter.EndSession();
-            ResourceRegionLifecycleAdapter.SetRegistrationReady(false);
-            ResourceSnapshotAdapter.ResetSession(ResourceRegionLifecycleAdapter.CurrentSessionEpoch);
+            ulong sessionEpoch = ResourceRegionLifecycleAdapter.CurrentSessionEpoch;
+            Exception cleanupFailure = null;
+            try
+            {
+                ResourceRegionLifecycleAdapter.EndSession();
+            }
+            catch (Exception ex)
+            {
+                cleanupFailure = ex;
+                ResourceObservability.Error("[Host]", "SessionEnd", "-", sessionEpoch, 0UL, 0U,
+                    "Fallback", true, "failed", "reason=resource-lifecycle-end-failed exception=" + ex.GetType().Name);
+            }
+
+            try
+            {
+                ResourceRegionLifecycleAdapter.SetRegistrationReady(false);
+            }
+            catch (Exception ex)
+            {
+                if (cleanupFailure == null) cleanupFailure = ex;
+                ResourceObservability.Error("[Host]", "SessionEnd", "-", sessionEpoch, 0UL, 0U,
+                    "Fallback", true, "failed", "reason=registration-close-failed exception=" + ex.GetType().Name);
+            }
+
+            try
+            {
+                ResourceSnapshotAdapter.ResetSession(sessionEpoch);
+            }
+            catch (Exception ex)
+            {
+                if (cleanupFailure == null) cleanupFailure = ex;
+                ResourceObservability.Error("[Host]", "SessionEnd", "-", sessionEpoch, 0UL, 0U,
+                    "Fallback", true, "failed", "reason=snapshot-reset-failed exception=" + ex.GetType().Name);
+            }
+
+            if (cleanupFailure == null)
+            {
+                ResourceObservability.Info("[Host]", "SessionEnd", "-", sessionEpoch, 0UL, 0U,
+                    "SPI", true, "success", "cleanup=complete");
+            }
             ResourceObservability.ResetSession();
+            if (cleanupFailure != null) throw cleanupFailure;
         }
 
         public void OnAcquire(LeaseTicket ticket)
@@ -44,12 +82,23 @@ namespace SteamP2PFriends.Adapters.Resource
                 ResourceObservability.Warn("[Host]", "LeaseAcquire", ticket.RegionKey.ToString(),
                     ticket.SessionEpoch.Value, 0UL, ticket.RegionGeneration.Value, "Fallback", false,
                     "rejected", "reason=invalid-ticket");
-                return;
+                throw new InvalidOperationException("Resource acquire ticket is invalid.");
             }
 
             try
             {
-                uint generation = ResourceRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+                if (!ResourceRegionLifecycleAdapter.TryCommitAcquire(
+                    ticket.RegionKey,
+                    ticket.SessionEpoch.Value,
+                    ticket.RegionGeneration.Value,
+                    out uint generation,
+                    out string rejectionReason))
+                {
+                    ResourceObservability.Warn("[Host]", "LeaseAcquire", ticket.RegionKey.ToString(),
+                        ticket.SessionEpoch.Value, 0UL, ticket.RegionGeneration.Value, "Fallback", true,
+                        "rejected", "reason=" + rejectionReason);
+                    throw new ResourceAcquireRejectedException(rejectionReason);
+                }
                 ResourceObservability.Info("[Host]", "LeaseAcquire", ticket.RegionKey.ToString(),
                     ticket.SessionEpoch.Value, 0UL, generation, "SPI", true, "success",
                     "demand=" + ticket.ActiveDemandCount);
@@ -70,7 +119,7 @@ namespace SteamP2PFriends.Adapters.Resource
                 ResourceObservability.Warn("[Host]", "LeaseRelease", ticket.RegionKey.ToString(),
                     ticket.SessionEpoch.Value, 0UL, ticket.RegionGeneration.Value, "Fallback", false,
                     "rejected", "reason=invalid-ticket");
-                return;
+                throw new ResourceReleaseRejectedException("invalid-ticket");
             }
 
             try
@@ -79,18 +128,22 @@ namespace SteamP2PFriends.Adapters.Resource
                     ticket.RegionKey,
                     ticket.SessionEpoch.Value,
                     ticket.RegionGeneration.Value,
-                    out _);
+                    out _,
+                    out string rejectionReason);
                 ResourceObservability.Info("[Host]", "LeaseRelease", ticket.RegionKey.ToString(),
                     ticket.SessionEpoch.Value, 0UL, ticket.RegionGeneration.Value, "SPI", true,
-                    committed ? "success" : "rejected", "committed=" + committed);
+                    committed ? "success" : "rejected", "committed=" + committed +
+                    " reason=" + rejectionReason);
                 if (!committed)
-                    throw new InvalidOperationException("Resource release rejected by generation or session gate.");
+                    throw new ResourceReleaseRejectedException(rejectionReason);
             }
             catch (Exception ex)
             {
                 ResourceObservability.Error("[Host]", "LeaseRelease", ticket.RegionKey.ToString(),
                     ticket.SessionEpoch.Value, 0UL, ticket.RegionGeneration.Value, "Fallback", true,
-                    "failed", "exception=" + ex.GetType().Name);
+                    "failed", "reason=" + (ex is ResourceReleaseRejectedException rejected
+                        ? rejected.Reason : "external-release-failed") +
+                    " exception=" + ex.GetType().Name);
                 throw;
             }
         }
@@ -106,7 +159,8 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             bool removed = ResourceSnapshotAdapter.OnObserverDisconnect(observerId, connectionToken);
             ResourceObservability.Info("[Host]", "ObserverDisconnect", "-", 0UL, connectionToken, 0U,
-                "SPI", true, removed ? "success" : "rejected", "observer=" + observerId);
+                "SPI", true, removed ? "success" : "rejected", "observer=" + observerId +
+                " reason=" + (removed ? "none" : "stale-or-already-cleared"));
         }
 
         public void OnObserverEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
@@ -116,6 +170,8 @@ namespace SteamP2PFriends.Adapters.Resource
             ResourceObservability.Info("[Host]", "SnapshotEnqueue", regionKey.ToString(),
                 ResourceRegionLifecycleAdapter.CurrentSessionEpoch, connectionToken, gen, "SPI", true,
                 queued ? "success" : "rejected", "observer=" + observerId);
+            if (!queued)
+                throw new InvalidOperationException("Resource snapshot enqueue rejected by generation gate.");
         }
 
         public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
@@ -125,6 +181,8 @@ namespace SteamP2PFriends.Adapters.Resource
                 ResourceRegionLifecycleAdapter.CurrentSessionEpoch, connectionToken,
                 ResourceRegionLifecycleAdapter.GetGeneration(regionKey), "SPI", true,
                 removed ? "success" : "rejected", "observer=" + observerId);
+            if (!removed)
+                throw new InvalidOperationException("Resource snapshot removal rejected by connection generation gate.");
         }
 
         public void OnReplicationTick(float deltaTime)
@@ -148,6 +206,44 @@ namespace SteamP2PFriends.Adapters.Resource
         public void ResetReplication(uint sessionEpoch)
         {
             ResourceSnapshotAdapter.ResetSession(sessionEpoch);
+        }
+
+        public object CaptureObserverDisconnectState(ulong observerId, ulong connectionToken)
+        {
+            return ResourceSnapshotAdapter.CaptureObserverState(observerId);
+        }
+
+        public void RestoreObserverDisconnectState(
+            ulong observerId,
+            ulong connectionToken,
+            object state)
+        {
+            ResourceSnapshotAdapter.RestoreObserverState(observerId, state);
+        }
+
+        public object CaptureRegionState(RegionKey regionKey)
+        {
+            return ResourceRegionLifecycleAdapter.CaptureRegionState(regionKey);
+        }
+
+        public void RestoreRegionState(RegionKey regionKey, object state)
+        {
+            ResourceRegionLifecycleAdapter.RestoreRegionState(
+                regionKey, state as ResourceRegionLifecycleState
+                    ?? throw new ArgumentException("Invalid Resource region lifecycle state.", nameof(state)));
+        }
+
+        public object CaptureObserverReplicationState(ulong observerId, ulong connectionToken)
+        {
+            return ResourceSnapshotAdapter.CaptureObserverState(observerId);
+        }
+
+        public void RestoreObserverReplicationState(
+            ulong observerId,
+            ulong connectionToken,
+            object state)
+        {
+            ResourceSnapshotAdapter.RestoreObserverState(observerId, state);
         }
     }
 }

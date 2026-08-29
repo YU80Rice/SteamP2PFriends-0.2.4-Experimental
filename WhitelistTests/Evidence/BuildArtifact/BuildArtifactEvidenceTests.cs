@@ -119,6 +119,48 @@ namespace SteamP2PFriends.WhitelistTests
                 && script.IndexOf("$fileVersionPattern", StringComparison.Ordinal) >= 0;
         }
 
+        internal static bool Test_VerifierRejectsIncompleteLogIdentity()
+        {
+            string scriptPath = Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Tools", "Verify-BuildFingerprintArtifact.ps1"));
+            string artifactPath = typeof(SteamP2PFriendsPlugin).Assembly.Location;
+            if (!File.Exists(scriptPath) || !File.Exists(artifactPath)) return false;
+
+            string logPath = Path.Combine(Path.GetTempPath(), "spf-incomplete-" + Guid.NewGuid().ToString("N") + ".log");
+            try
+            {
+                File.WriteAllText(logPath, "caseId=" + PluginBuildMetadata.DefaultCaseId + " version=" + PluginBuildMetadata.Version);
+                string arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
+                    QuotePowerShell(scriptPath) +
+                    " -Path " + QuotePowerShell(artifactPath) +
+                    " -ExpectedCaseId " + QuotePowerShell(PluginBuildMetadata.DefaultCaseId) +
+                    " -LogPath " + QuotePowerShell(logPath);
+                var startInfo = new ProcessStartInfo("powershell.exe", arguments)
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (process == null) return false;
+                    process.WaitForExit(15000);
+                    return process.HasExited && process.ExitCode != 0;
+                }
+            }
+            finally
+            {
+                try { if (File.Exists(logPath)) File.Delete(logPath); }
+                catch { }
+            }
+        }
+
+        private static string QuotePowerShell(string value)
+        {
+            return "'" + value.Replace("'", "''") + "'";
+        }
+
         private static bool HasAssemblyMetadata(Assembly assembly, string key, string expectedValue)
         {
             return assembly.GetCustomAttributes(typeof(AssemblyMetadataAttribute), false)

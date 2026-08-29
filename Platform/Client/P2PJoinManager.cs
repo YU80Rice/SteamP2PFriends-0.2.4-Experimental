@@ -567,7 +567,20 @@ namespace SteamP2PFriends.Client
         private static void OnClientConnected()
         {
             ThreadUtil.assertIsGameThread();
-            ResourceSnapshotAdapter.BeginLocalConnection();
+            bool resourceConnectionReady = ResourceSnapshotAdapter.BeginLocalConnection();
+            if (!resourceConnectionReady)
+            {
+                RoleLogger.Error(DynamicRole(),
+                    "[Diag] Resource connection generation unavailable; client connection is fail-closed");
+                SetState(EJoinState.Failed, "resource-connection-generation-overflow");
+                if (Provider.isConnected)
+                {
+                    RoleLogger.Error(DynamicRole(),
+                        "[Diag] Resource generation fail-closed requires controlled Provider.disconnect");
+                    RequestDisconnect();
+                }
+                return;
+            }
             RoleLogger.Info(DynamicRole(),
                 $"[Diag] onClientConnected 触发 state={_state} target={_targetSteamId} " +
                 $"isConnected={Provider.isConnected} isServer={Provider.isServer}");

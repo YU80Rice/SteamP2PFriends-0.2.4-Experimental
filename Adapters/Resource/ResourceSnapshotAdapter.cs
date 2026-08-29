@@ -47,6 +47,26 @@ namespace SteamP2PFriends.Adapters.Resource
         public uint DeltaSequence { get; }
     }
 
+    /// <summary>
+    /// 观察者复制账本的可逆断连快照。
+    /// </summary>
+    public sealed class ResourceObserverReplicationState
+    {
+        internal ResourceObserverReplicationState(
+            bool hasConnectionToken,
+            ulong connectionToken,
+            ResourceSnapshotRecord[] snapshots)
+        {
+            HasConnectionToken = hasConnectionToken;
+            ConnectionToken = connectionToken;
+            Snapshots = snapshots ?? new ResourceSnapshotRecord[0];
+        }
+
+        public bool HasConnectionToken { get; }
+        public ulong ConnectionToken { get; }
+        public IReadOnlyList<ResourceSnapshotRecord> Snapshots { get; }
+    }
+
     public sealed class ResourceSnapshotReplicationLedger
     {
         private readonly Dictionary<(ulong SteamId, RegionKey RegionKey), ResourceSnapshotRecord> _snapshots =
@@ -89,13 +109,21 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void UpdateRegionGeneration(RegionKey regionKey, uint generation)
         {
+            TryUpdateRegionGeneration(regionKey, generation, out _);
+        }
+
+        public bool TryUpdateRegionGeneration(RegionKey regionKey, uint generation, out string reason)
+        {
             if (_regionGenerations.TryGetValue(regionKey, out uint current)
                 && generation < current)
             {
-                return;
+                reason = "stale-region-generation";
+                return false;
             }
 
             _regionGenerations[regionKey] = generation;
+            reason = "none";
+            return true;
         }
 
         public uint GetRegionGeneration(RegionKey regionKey) =>
@@ -237,6 +265,35 @@ namespace SteamP2PFriends.Adapters.Resource
             return true;
         }
 
+        public ResourceObserverReplicationState CaptureObserverState(ulong steamId)
+        {
+            bool hasToken = _connectionTokens.TryGetValue(steamId, out ulong token);
+            var snapshots = new List<ResourceSnapshotRecord>();
+            foreach (KeyValuePair<(ulong SteamId, RegionKey RegionKey), ResourceSnapshotRecord> pair in _snapshots)
+            {
+                if (pair.Key.SteamId == steamId) snapshots.Add(pair.Value);
+            }
+            return new ResourceObserverReplicationState(hasToken, token, snapshots.ToArray());
+        }
+
+        public void RestoreObserverState(ulong steamId, ResourceObserverReplicationState state)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+
+            _connectionTokens.Remove(steamId);
+            var keysToRemove = new List<(ulong SteamId, RegionKey RegionKey)>();
+            foreach (var key in _snapshots.Keys)
+            {
+                if (key.SteamId == steamId) keysToRemove.Add(key);
+            }
+            foreach (var key in keysToRemove) _snapshots.Remove(key);
+
+            if (!state.HasConnectionToken) return;
+            _connectionTokens[steamId] = state.ConnectionToken;
+            foreach (ResourceSnapshotRecord snapshot in state.Snapshots)
+                _snapshots[(steamId, snapshot.RegionKey)] = snapshot;
+        }
+
         public int RecordNativeSnapshotWrite(RegionKey regionKey)
         {
             NativeSnapshotWriteCount++;
@@ -372,6 +429,9 @@ namespace SteamP2PFriends.Adapters.Resource
 
                 LocalConnectionGeneration++;
                 if (LocalConnectionGeneration == 0UL) LocalConnectionGeneration = 1UL;
+                ResourceObservability.Info("[Guest]", "ConnectionGeneration", "-",
+                    Ledger.SessionEpoch, LocalConnectionGeneration, 0U, "Native", false,
+                    "success", "source=Provider.onClientConnected");
                 return true;
             }
         }
@@ -391,10 +451,16 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static bool EnqueueInitialSnapshot(ulong steamId, ulong connectionToken, RegionKey regionKey, uint regionGeneration)
         {
+            bool accepted;
             lock (SyncLock)
             {
-                return Ledger.EnqueueInitialSnapshot(steamId, connectionToken, regionKey, regionGeneration);
+                accepted = Ledger.EnqueueInitialSnapshot(steamId, connectionToken, regionKey, regionGeneration);
             }
+            if (!accepted)
+                ResourceObservability.Warn("[Host]", "SnapshotEnqueue", regionKey.ToString(),
+                    CurrentSessionEpoch, connectionToken, regionGeneration, "Fallback", true,
+                    "rejected", "reason=invalid-or-stale-snapshot-baseline observer=" + steamId);
+            return accepted;
         }
 
         public static bool TryGetSnapshot(ulong steamId, RegionKey regionKey, out ResourceSnapshotRecord snapshot)
@@ -407,34 +473,74 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static uint AdvanceDeltaSequence(ulong steamId, RegionKey regionKey)
         {
+            uint next;
             lock (SyncLock)
             {
-                return Ledger.AdvanceDeltaSequence(steamId, regionKey);
+                next = Ledger.AdvanceDeltaSequence(steamId, regionKey);
             }
+            if (next == 0U)
+                ResourceObservability.Warn("[Host]", "DeltaSequence", regionKey.ToString(),
+                    CurrentSessionEpoch, 0UL, GetRegionGeneration(regionKey), "Fallback", true,
+                    "rejected", "reason=missing-or-stale-snapshot-baseline observer=" + steamId);
+            return next;
         }
 
         public static bool TryAdvanceDeltaSequence(
             ulong steamId, ulong connectionToken, RegionKey regionKey, out uint nextSequence)
         {
+            bool accepted;
             lock (SyncLock)
             {
-                return Ledger.TryAdvanceDeltaSequence(steamId, connectionToken, regionKey, out nextSequence);
+                accepted = Ledger.TryAdvanceDeltaSequence(steamId, connectionToken, regionKey, out nextSequence);
             }
+            if (!accepted)
+                ResourceObservability.Warn("[Guest]", "DeltaSequence", regionKey.ToString(),
+                    CurrentSessionEpoch, connectionToken, GetRegionGeneration(regionKey), "Fallback", false,
+                    "rejected", "reason=connection-or-region-generation-mismatch observer=" + steamId);
+            return accepted;
         }
 
         public static bool RemoveSnapshot(ulong steamId, ulong connectionToken, RegionKey regionKey)
         {
+            bool removed;
             lock (SyncLock)
             {
-                return Ledger.RemoveSnapshot(steamId, connectionToken, regionKey);
+                removed = Ledger.RemoveSnapshot(steamId, connectionToken, regionKey);
             }
+            if (!removed)
+                ResourceObservability.Warn("[Host]", "SnapshotRemove", regionKey.ToString(),
+                    CurrentSessionEpoch, connectionToken, GetRegionGeneration(regionKey), "Fallback", true,
+                    "rejected", "reason=connection-generation-mismatch-or-missing-snapshot observer=" + steamId);
+            return removed;
         }
 
         public static bool OnObserverDisconnect(ulong steamId, ulong connectionToken)
         {
+            bool removed;
             lock (SyncLock)
             {
-                return Ledger.OnObserverDisconnect(steamId, connectionToken);
+                removed = Ledger.OnObserverDisconnect(steamId, connectionToken);
+            }
+            if (!removed)
+                ResourceObservability.Warn("[Guest]", "ObserverDisconnect", "-",
+                    CurrentSessionEpoch, connectionToken, 0U, "Fallback", false,
+                    "rejected", "reason=connection-generation-mismatch observer=" + steamId);
+            return removed;
+        }
+
+        public static ResourceObserverReplicationState CaptureObserverState(ulong steamId)
+        {
+            lock (SyncLock)
+            {
+                return Ledger.CaptureObserverState(steamId);
+            }
+        }
+
+        public static void RestoreObserverState(ulong steamId, object state)
+        {
+            lock (SyncLock)
+            {
+                Ledger.RestoreObserverState(steamId, state as ResourceObserverReplicationState);
             }
         }
 
@@ -465,9 +571,19 @@ namespace SteamP2PFriends.Adapters.Resource
         public static ResourceDeltaReceiveObservation RecordNativeDeltaReceive(
             RegionKey regionKey, ulong connectionGeneration)
         {
-            lock (SyncLock)
+            try
             {
-                return Ledger.RecordNativeDeltaReceive(regionKey, connectionGeneration);
+                lock (SyncLock)
+                {
+                    return Ledger.RecordNativeDeltaReceive(regionKey, connectionGeneration);
+                }
+            }
+            catch (Exception ex)
+            {
+                ResourceObservability.Error("[Guest]", "DeltaReceive", regionKey.ToString(),
+                    CurrentSessionEpoch, connectionGeneration, GetRegionGeneration(regionKey),
+                    "Fallback", false, "failed", "reason=delta-sequence-overflow exception=" + ex.GetType().Name);
+                throw;
             }
         }
 
@@ -481,23 +597,48 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public static int RecordNativeDelta(RegionKey regionKey, uint regionGeneration)
         {
+            int accepted;
+            bool staleRejectedThisCall;
             lock (SyncLock)
             {
-                return Ledger.RecordNativeDelta(regionKey, regionGeneration);
+                int staleRejectsBefore = Ledger.StaleDeltaRejectCount;
+                accepted = Ledger.RecordNativeDelta(regionKey, regionGeneration);
+                staleRejectedThisCall = Ledger.StaleDeltaRejectCount > staleRejectsBefore;
             }
+            if (staleRejectedThisCall)
+                ResourceObservability.Warn("[Host]", "DeltaWrite", regionKey.ToString(),
+                    CurrentSessionEpoch, 0UL, regionGeneration, "Fallback", true,
+                    "rejected", "reason=stale-region-generation");
+            return accepted;
         }
 
         public static void OnReplicationTick(float deltaTime)
         {
-            if (deltaTime < 0f) throw new ArgumentOutOfRangeException(nameof(deltaTime));
+            if (deltaTime < 0f)
+            {
+                ResourceObservability.Error("[Host]", "ReplicationTick", "-",
+                    CurrentSessionEpoch, 0UL, 0U, "Fallback", true, "failed",
+                    "reason=negative-delta-time");
+                throw new ArgumentOutOfRangeException(nameof(deltaTime));
+            }
+
+            ResourceObservability.Info("[Host]", "ReplicationTick", "-",
+                CurrentSessionEpoch, 0UL, 0U, "SPI", true, "observed",
+                "implementation=ledger-only nativeTransport=ResourceManager");
         }
 
         public static void UpdateRegionGeneration(RegionKey regionKey, uint generation)
         {
+            bool accepted;
+            string reason;
             lock (SyncLock)
             {
-                Ledger.UpdateRegionGeneration(regionKey, generation);
+                accepted = Ledger.TryUpdateRegionGeneration(regionKey, generation, out reason);
             }
+            if (!accepted)
+                ResourceObservability.Warn("[Shared]", "RegionGeneration", regionKey.ToString(),
+                    CurrentSessionEpoch, 0UL, generation, "Fallback", true,
+                    "rejected", "reason=" + reason);
         }
 
         public static uint GetRegionGeneration(RegionKey regionKey)

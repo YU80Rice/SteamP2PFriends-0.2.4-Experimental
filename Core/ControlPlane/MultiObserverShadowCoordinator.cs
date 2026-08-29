@@ -345,11 +345,19 @@ namespace SteamP2PFriends.MultiObserver
             {
                 foreach (ValidatedObserver observer in validated)
                 {
-                    ulong connectionToken = GetStagedConnectionToken(
+                    if (!TryGetStagedConnectionToken(
                         observer.ObserverId,
                         observer.SteamPlayer,
                         stagedConnections,
-                        ref stagedNextToken);
+                        ref stagedNextToken,
+                        out ulong connectionToken,
+                        out string tokenFailure))
+                    {
+                        ResourceObservability.Error("[Host]", "ConnectionGeneration", "-",
+                            Ledger.SessionEpoch, 0UL, 0U, "Fallback", true, "failed",
+                            "reason=" + tokenFailure + " failClosed=true observer=" + Mask(observer.ObserverId));
+                        return Incomplete(result, "connection-generation-rejected:" + tokenFailure);
+                    }
                     CountNativeLoadedItemRegions(
                         observer.Movement,
                         out int nativeLoadedItems,
@@ -470,23 +478,41 @@ namespace SteamP2PFriends.MultiObserver
             foreach (string key in staleZombieKeys) ClearMismatch(key);
         }
 
-        private static ulong GetStagedConnectionToken(
+        internal static bool TryAllocateConnectionGeneration(ref ulong next, out ulong token)
+        {
+            token = 0UL;
+            if (next == ulong.MaxValue) return false;
+            next++;
+            if (next == 0UL) return false;
+            token = next;
+            return true;
+        }
+
+        private static bool TryGetStagedConnectionToken(
             ulong observerId,
             SteamPlayer steamPlayer,
             Dictionary<ulong, ConnectionIdentity> stagedConnections,
-            ref ulong stagedNextToken)
+            ref ulong stagedNextToken,
+            out ulong token,
+            out string failure)
         {
+            token = 0UL;
+            failure = "none";
             object transport = steamPlayer.transportConnection;
             if (Connections.TryGetValue(observerId, out ConnectionIdentity identity)
                 && ReferenceEquals(identity.SteamPlayerReference, steamPlayer)
                 && ReferenceEquals(identity.TransportReference, transport))
             {
                 stagedConnections[observerId] = identity;
-                return identity.Token;
+                token = identity.Token;
+                return true;
             }
 
-            stagedNextToken = stagedNextToken == ulong.MaxValue ? 1UL : stagedNextToken + 1UL;
-            if (stagedNextToken == 0UL) stagedNextToken = 1UL;
+            if (!TryAllocateConnectionGeneration(ref stagedNextToken, out token))
+            {
+                failure = "connection-generation-overflow";
+                return false;
+            }
             identity = new ConnectionIdentity
             {
                 SteamPlayerReference = steamPlayer,
@@ -494,7 +520,7 @@ namespace SteamP2PFriends.MultiObserver
                 Token = stagedNextToken
             };
             stagedConnections[observerId] = identity;
-            return identity.Token;
+            return true;
         }
 
         private static void CountNativeLoadedItemRegions(
@@ -575,9 +601,19 @@ namespace SteamP2PFriends.MultiObserver
         private static void EndSessionIfNeeded(string reason)
         {
             if (!Ledger.EndSession()) return;
-            ResourceProduction?.EndSession();
-            ResourceObservers.Clear();
-            SafeInfo($"session-end nextEpoch={Ledger.SessionEpoch} reason={reason}");
+            try
+            {
+                ResourceProduction?.EndSession();
+            }
+            catch (Exception ex)
+            {
+                SafeWarn($"session-end resource cleanup failed type={ex.GetType().Name}; managed state cleared fail-closed");
+            }
+            finally
+            {
+                ResourceObservers.Clear();
+                SafeInfo($"session-end nextEpoch={Ledger.SessionEpoch} reason={reason}");
+            }
         }
 
         private static void ResetManagedState(bool resetLogQuotas)

@@ -38,4 +38,19 @@ namespace SteamP2PFriends.MultiObserver.SPI
         /// </summary>
         void ResetReplication(uint sessionEpoch);
     }
+
+    /// <summary>
+    /// 可逆的观察者复制状态边界。
+    /// 复制调用可能在抛异常前已经写入或删除部分快照，因此补偿必须恢复真实快照，
+    /// 不能只调用相反方向的方法猜测状态。
+    /// </summary>
+    public interface IReversibleObserverReplicationAdapter
+    {
+        object CaptureObserverReplicationState(ulong observerId, ulong connectionToken);
+
+        void RestoreObserverReplicationState(
+            ulong observerId,
+            ulong connectionToken,
+            object state);
+    }
 }

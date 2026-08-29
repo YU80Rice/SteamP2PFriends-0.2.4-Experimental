@@ -27,6 +27,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
         private readonly SpatialObserverIndex _spatialIndex = new SpatialObserverIndex();
         private readonly ILifecycleDomainAdapter _lifecycle;
+        private readonly IReversibleRegionLifecycleAdapter _reversibleLifecycle;
         private readonly IStateReplicationAdapter _replication;
         private readonly Func<RegionKey, uint> _generationReader;
         private readonly byte _worldSize;
@@ -54,6 +55,10 @@ namespace SteamP2PFriends.Adapters.Resource
             float hysteresisSeconds)
         {
             _lifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
+            _reversibleLifecycle = lifecycle as IReversibleRegionLifecycleAdapter
+                ?? throw new ArgumentException(
+                    "Resource lifecycle adapter must provide a reversible region state seam.",
+                    nameof(lifecycle));
             _replication = replication ?? throw new ArgumentNullException(nameof(replication));
             _generationReader = generationReader ?? throw new ArgumentNullException(nameof(generationReader));
             if (worldSize == 0) throw new ArgumentOutOfRangeException(nameof(worldSize));
@@ -81,6 +86,12 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public void BeginSession(SessionEpoch sessionEpoch)
         {
+            if (_repairRequired)
+            {
+                ResourceObservability.Error("[Host]", "SessionBegin", "-", sessionEpoch.Value, 0UL, 0U,
+                    "Fallback", true, "rejected", "reason=repair-required failClosed=true");
+                throw new InvalidOperationException("Resource production seam requires repair before a new session.");
+            }
             if (_sessionActive && _sessionEpoch == sessionEpoch)
             {
                 ResourceObservability.NoticeOnce("session-already-active", "[Host]", "SessionBegin", "-",
@@ -91,20 +102,39 @@ namespace SteamP2PFriends.Adapters.Resource
             if (_sessionActive)
                 EndSession();
 
-            _spatialIndex.Clear();
-            _demand.Clear();
-            _leases.Clear();
-            _pendingReleases.Clear();
-            _observers.Clear();
-            _connectionTokens.Clear();
-            _observerCount = 0;
-            ReentryCount = 0;
-            _clock = 0f;
+            uint adapterEpoch = ToAdapterEpoch(sessionEpoch);
+            ClearManagedSessionState();
+            try
+            {
+                _lifecycle.OnSessionBegin(adapterEpoch);
+                _replication.ResetReplication(adapterEpoch);
+            }
+            catch (Exception ex)
+            {
+                try { _lifecycle.OnSessionEnd(); }
+                catch (Exception cleanupEx)
+                {
+                    ResourceObservability.Error("[Shared]", "SessionBeginCleanup", "-",
+                        sessionEpoch.Value, 0UL, 0U, "Fallback", false, "failed",
+                        "reason=lifecycle-cleanup-failed exception=" + cleanupEx.GetType().Name);
+                }
+                try { _replication.ResetReplication(adapterEpoch); }
+                catch (Exception cleanupEx)
+                {
+                    ResourceObservability.Error("[Shared]", "SessionBeginCleanup", "-",
+                        sessionEpoch.Value, 0UL, 0U, "Fallback", false, "failed",
+                        "reason=replication-cleanup-failed exception=" + cleanupEx.GetType().Name);
+                }
+                ClearManagedSessionState();
+                ResourceObservability.Error("[Shared]", "SessionBegin", "-",
+                    sessionEpoch.Value, 0UL, 0U, "Fallback", false, "failed",
+                    "reason=external-session-initialization-failed failClosed=true exception=" + ex.GetType().Name);
+                throw;
+            }
+
             _sessionEpoch = sessionEpoch;
             _sessionActive = true;
             _repairRequired = false;
-            _lifecycle.OnSessionBegin(ToAdapterEpoch(sessionEpoch));
-            _replication.ResetReplication(ToAdapterEpoch(sessionEpoch));
         }
 
         public void EndSession()
@@ -116,8 +146,38 @@ namespace SteamP2PFriends.Adapters.Resource
                 return;
             }
 
-            _lifecycle.OnSessionEnd();
-            _replication.ResetReplication(ToAdapterEpoch(_sessionEpoch));
+            Exception cleanupFailure = null;
+            try
+            {
+                _lifecycle.OnSessionEnd();
+            }
+            catch (Exception ex)
+            {
+                cleanupFailure = ex;
+                ResourceObservability.Error("[Host]", "SessionEnd", "-", _sessionEpoch.Value,
+                    0UL, 0U, "Fallback", true, "failed",
+                    "reason=lifecycle-session-end-failed state-cleanup-required exception=" + ex.GetType().Name);
+            }
+
+            try
+            {
+                _replication.ResetReplication(ToAdapterEpoch(_sessionEpoch));
+            }
+            catch (Exception ex)
+            {
+                if (cleanupFailure == null) cleanupFailure = ex;
+                ResourceObservability.Error("[Host]", "SessionEnd", "-", _sessionEpoch.Value,
+                    0UL, 0U, "Fallback", true, "failed",
+                    "reason=replication-reset-failed state-cleanup-required exception=" + ex.GetType().Name);
+            }
+
+            ClearManagedSessionState();
+            _repairRequired = cleanupFailure != null;
+            if (cleanupFailure != null) throw cleanupFailure;
+        }
+
+        private void ClearManagedSessionState()
+        {
             _spatialIndex.Clear();
             _demand.Clear();
             _leases.Clear();
@@ -126,6 +186,8 @@ namespace SteamP2PFriends.Adapters.Resource
             _connectionTokens.Clear();
             _observerCount = 0;
             ReentryCount = 0;
+            _clock = 0f;
+            _sessionEpoch = default(SessionEpoch);
             _sessionActive = false;
             _repairRequired = false;
         }
@@ -152,6 +214,7 @@ namespace SteamP2PFriends.Adapters.Resource
 
             bool hadObserver = _observers.Contains(observerId);
             bool hadConnection = _connectionTokens.TryGetValue(observerId, out ulong previousConnectionToken);
+            bool connectionChanged = hadConnection && previousConnectionToken != connectionToken;
             HashSet<RegionKey> previousRegions = _spatialIndex.GetActiveRegions(observerId);
             Dictionary<RegionKey, int> previousDemand = new Dictionary<RegionKey, int>(_demand);
             Dictionary<RegionKey, RegionGeneration> previousLeases = new Dictionary<RegionKey, RegionGeneration>(_leases);
@@ -161,15 +224,18 @@ namespace SteamP2PFriends.Adapters.Resource
             var compensations = new List<Action>();
             try
             {
+                CaptureDisconnectCompensation(
+                    observerId, previousConnectionToken, hadConnection && connectionChanged, compensations);
                 _observers.Add(observerId);
-                bool connectionChanged = hadConnection && previousConnectionToken != connectionToken;
                 SpatialRelevanceDiff diff = _spatialIndex.UpdateGrid2D(
                     observerId, connectionToken, centerX, centerY, _radius, _worldSize);
                 ulong exitedConnectionToken = connectionChanged ? previousConnectionToken : connectionToken;
                 ProcessExited(observerId, exitedConnectionToken, diff.ExitedRegions, compensations);
                 ProcessEntered(observerId, connectionToken, diff.EnteredRegions, compensations);
                 if (connectionChanged)
+                {
                     _lifecycle.OnObserverDisconnect(observerId, previousConnectionToken);
+                }
                 _connectionTokens[observerId] = connectionToken;
                 return diff;
             }
@@ -199,11 +265,21 @@ namespace SteamP2PFriends.Adapters.Resource
             var compensations = new List<Action>();
             try
             {
+            CaptureDisconnectCompensation(observerId, previousConnectionToken, hadConnection, compensations);
             SpatialRelevanceDiff diff = _spatialIndex.RemoveObserver(observerId);
             if (diff.HasChanges)
                 ProcessExited(observerId, diff.ConnectionToken, diff.ExitedRegions, compensations);
             if (_connectionTokens.TryGetValue(observerId, out ulong connectionToken))
             {
+                IReversibleObserverDisconnectAdapter reversible =
+                    _lifecycle as IReversibleObserverDisconnectAdapter;
+                object disconnectState = null;
+                if (reversible != null)
+                {
+                    disconnectState = reversible.CaptureObserverDisconnectState(observerId, connectionToken);
+                    compensations.Add(() => reversible.RestoreObserverDisconnectState(
+                        observerId, connectionToken, disconnectState));
+                }
                 _lifecycle.OnObserverDisconnect(observerId, connectionToken);
                 _connectionTokens.Remove(observerId);
                 _observers.Remove(observerId);
@@ -237,7 +313,28 @@ namespace SteamP2PFriends.Adapters.Resource
 
             var leaseKeys = new List<RegionKey>(_leases.Keys);
             foreach (RegionKey region in leaseKeys)
-                _leases[region] = ReadGeneration(region, _leases[region]);
+            {
+                try
+                {
+                    RegionGeneration stored = _leases[region];
+                    RegionGeneration current = ReadGeneration(region);
+                    if (current.Value < stored.Value)
+                    {
+                        ResourceObservability.Warn("[Host]", "GenerationRead", region.ToString(),
+                            _sessionEpoch.Value, 0UL, stored.Value, "Fallback", true, "rejected",
+                            "reason=generation-regressed state-retained=true current=" + current.Value +
+                            " stored=" + stored.Value);
+                        continue;
+                    }
+                    _leases[region] = current;
+                }
+                catch (Exception ex)
+                {
+                    ResourceObservability.Error("[Host]", "GenerationRead", region.ToString(),
+                        _sessionEpoch.Value, 0UL, _leases[region].Value, "Fallback", true, "failed",
+                        "reason=generation-reader-failed retryable=true state-retained=true exception=" + ex.GetType().Name);
+                }
+            }
         }
 
         public void Flush(float deltaTime)
@@ -266,7 +363,30 @@ namespace SteamP2PFriends.Adapters.Resource
                         "reason=session-generation-mismatch retryable=true pendingReleaseRetained=true");
                     continue;
                 }
-                RegionGeneration current = ReadGeneration(pending.RegionKey, pending.RegionGeneration);
+                RegionGeneration current;
+                try
+                {
+                    current = ReadGeneration(pending.RegionKey);
+                }
+                catch (Exception ex)
+                {
+                    currentPending.Deadline = _clock + Math.Max(_hysteresisSeconds, 0.1f);
+                    ResourceObservability.Error("[Host]", "LeaseReleaseFailed", pending.RegionKey.ToString(),
+                        pending.SessionEpoch.Value, 0UL, pending.RegionGeneration.Value, "Fallback", true,
+                        "failed", "reason=generation-reader-failed retryable=true pendingReleaseRetained=true " +
+                        "exception=" + ex.GetType().Name);
+                    continue;
+                }
+                if (current.Value < pending.RegionGeneration.Value)
+                {
+                    currentPending.Deadline = _clock + Math.Max(_hysteresisSeconds, 0.1f);
+                    ResourceObservability.Warn("[Host]", "LeaseRelease", pending.RegionKey.ToString(),
+                        pending.SessionEpoch.Value, 0UL, pending.RegionGeneration.Value,
+                        "Fallback", true, "rejected",
+                        "reason=generation-regressed retryable=true state-retained=true current=" +
+                        current.Value + " stored=" + pending.RegionGeneration.Value);
+                    continue;
+                }
                 if (current != pending.RegionGeneration)
                 {
                     currentPending.RegionGeneration = current;
@@ -289,9 +409,14 @@ namespace SteamP2PFriends.Adapters.Resource
                     true,
                     "attempt",
                     "authority=ResourceProductionControlSeam");
+                object releaseState = null;
                 try
                 {
-                    _lifecycle.OnRelease(CreateTicket(pending.RegionKey, pending.RegionGeneration, 0));
+                    releaseState = _reversibleLifecycle.CaptureRegionState(pending.RegionKey);
+                    LeaseTicket releaseTicket = CreateTicket(pending.RegionKey, pending.RegionGeneration, 0);
+                    if (!releaseTicket.Valid)
+                        throw new ResourceReleaseRejectedException("invalid-ticket");
+                    _lifecycle.OnRelease(releaseTicket);
                     _pendingReleases.Remove(pending.RegionKey);
                     _leases.Remove(pending.RegionKey);
                     ResourceObservability.Info(
@@ -306,20 +431,30 @@ namespace SteamP2PFriends.Adapters.Resource
                         "success",
                         "authority=ResourceProductionControlSeam");
                 }
+                catch (ResourceReleaseRejectedException ex)
+                {
+                    currentPending.Deadline = _clock + Math.Max(_hysteresisSeconds, 0.1f);
+                    bool restored = TryRestoreRegionState(
+                        pending.RegionKey, releaseState);
+                    ResourceObservability.Error(
+                        "[Host]", "LeaseReleaseFailed", pending.RegionKey.ToString(),
+                        pending.SessionEpoch.Value, 0UL, pending.RegionGeneration.Value,
+                        "Fallback", true, "failed",
+                        "reason=" + ex.Reason + " retryable=true pendingReleaseRetained=true " +
+                        "compensationSucceeded=" + restored);
+                }
                 catch (Exception ex)
                 {
                     currentPending.Deadline = _clock + Math.Max(_hysteresisSeconds, 0.1f);
+                    bool compensationSucceeded = TryRestoreRegionState(
+                        pending.RegionKey, releaseState);
                     ResourceObservability.Error(
-                        "[Host]",
-                        "LeaseReleaseFailed",
-                        pending.RegionKey.ToString(),
-                        pending.SessionEpoch.Value,
-                        0UL,
-                        pending.RegionGeneration.Value,
-                        "Fallback",
-                        true,
-                        "failed",
-                        "retryable=true exception=" + ex.GetType().Name);
+                        "[Host]", "LeaseReleaseFailed", pending.RegionKey.ToString(),
+                        pending.SessionEpoch.Value, 0UL, pending.RegionGeneration.Value,
+                        "Fallback", true, "failed",
+                        "reason=external-release-may-have-side-effect retryable=true " +
+                        "pendingReleaseRetained=true compensationSucceeded=" + compensationSucceeded +
+                        " exception=" + ex.GetType().Name);
                 }
             }
 
@@ -370,13 +505,23 @@ namespace SteamP2PFriends.Adapters.Resource
             {
                 try
                 {
-                    _replication.OnObserverExited(observerId, connectionToken, region);
+                    IReversibleObserverReplicationAdapter reversibleReplication =
+                        _replication as IReversibleObserverReplicationAdapter;
+                    object replicationState = reversibleReplication == null
+                        ? null
+                        : reversibleReplication.CaptureObserverReplicationState(observerId, connectionToken);
+                    if (reversibleReplication != null)
+                    {
+                        compensations.Add(() => reversibleReplication.RestoreObserverReplicationState(
+                            observerId, connectionToken, replicationState));
+                    }
                     compensations.Add(() => _replication.OnObserverEntered(observerId, connectionToken, region));
+                    _replication.OnObserverExited(observerId, connectionToken, region);
                 }
                 catch (Exception ex)
                 {
                     ResourceObservability.Error("[Host]", "SnapshotRemove", region.ToString(),
-                        _sessionEpoch.Value, connectionToken, ReadGeneration(region, default).Value,
+                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
                         "Fallback", true, "failed", "observer=" + observerId + " exception=" + ex.GetType().Name);
                     throw;
                 }
@@ -384,11 +529,22 @@ namespace SteamP2PFriends.Adapters.Resource
                 int next = DecrementDemand(region);
                 if (next == 0 && _leases.ContainsKey(region))
                 {
+                    RegionGeneration storedGeneration = _leases[region];
+                    RegionGeneration observedGeneration = ReadGeneration(region);
+                    RegionGeneration pendingGeneration = observedGeneration.Value < storedGeneration.Value
+                        ? storedGeneration : observedGeneration;
+                    if (observedGeneration.Value < storedGeneration.Value)
+                    {
+                        ResourceObservability.Warn("[Host]", "LeaseReleaseScheduled", region.ToString(),
+                            _sessionEpoch.Value, connectionToken, storedGeneration.Value, "Fallback", true,
+                            "rejected", "reason=generation-regressed state-retained=true current=" +
+                            observedGeneration.Value + " stored=" + storedGeneration.Value);
+                    }
                     _pendingReleases[region] = new PendingRelease
                     {
                         SessionEpoch = _sessionEpoch,
                         RegionKey = region,
-                        RegionGeneration = ReadGeneration(region, _leases[region]),
+                        RegionGeneration = pendingGeneration,
                         Deadline = _clock + _hysteresisSeconds
                     };
                     ResourceObservability.Info("[Host]", "LeaseReleaseScheduled", region.ToString(),
@@ -408,36 +564,63 @@ namespace SteamP2PFriends.Adapters.Resource
                 bool hasPendingRelease = _pendingReleases.ContainsKey(region);
                 if (previous == 0 && !hasLease)
                 {
-                    RegionGeneration beforeAcquire = ReadGeneration(region, default);
+                    RegionGeneration beforeAcquire;
+                    string acquireFailureReason = "acquire-failed";
                     try
                     {
-                        _lifecycle.OnAcquire(CreateTicket(region, beforeAcquire, 1));
-                        RegionGeneration acquiredGeneration = ReadGeneration(region, beforeAcquire);
+                        acquireFailureReason = "generation-reader-failed-before-acquire";
+                        beforeAcquire = ReadGeneration(region);
+                        LeaseTicket acquireTicket = CreateTicket(region, beforeAcquire, 1);
+                        if (!acquireTicket.Valid)
+                        {
+                            acquireFailureReason = "invalid-ticket";
+                            throw new InvalidOperationException("Resource acquire ticket is invalid.");
+                        }
+                        acquireFailureReason = "region-snapshot-failed";
+                        object acquireState = _reversibleLifecycle.CaptureRegionState(region);
+                        compensations.Add(() => _reversibleLifecycle.RestoreRegionState(region, acquireState));
+                        acquireFailureReason = "acquire-failed";
+                        _lifecycle.OnAcquire(acquireTicket);
+                        acquireFailureReason = "generation-reader-failed-after-acquire";
+                        RegionGeneration acquiredGeneration = ReadGeneration(region);
+                        if (acquiredGeneration.Value < beforeAcquire.Value)
+                        {
+                            acquireFailureReason = "generation-regressed-after-acquire";
+                            throw new ResourceAcquireRejectedException(acquireFailureReason);
+                        }
                         _leases[region] = acquiredGeneration;
-                        compensations.Add(() => _lifecycle.OnRelease(CreateTicket(region, acquiredGeneration, 0)));
                     }
                     catch (Exception ex)
                     {
                         ResourceObservability.Error("[Host]", "LeaseAcquire", region.ToString(),
-                            _sessionEpoch.Value, connectionToken, beforeAcquire.Value, "Fallback", true,
-                            "failed", "exception=" + ex.GetType().Name);
+                            _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value, "Fallback", true,
+                            "failed", "reason=" + acquireFailureReason + " exception=" + ex.GetType().Name);
                         throw;
                     }
                 }
 
                 try
                 {
+                    IReversibleObserverReplicationAdapter reversibleReplication =
+                        _replication as IReversibleObserverReplicationAdapter;
+                    object replicationState = reversibleReplication == null
+                        ? null
+                        : reversibleReplication.CaptureObserverReplicationState(observerId, connectionToken);
+                    if (reversibleReplication != null)
+                    {
+                        compensations.Add(() => reversibleReplication.RestoreObserverReplicationState(
+                            observerId, connectionToken, replicationState));
+                    }
+                    compensations.Add(() => _replication.OnObserverExited(observerId, connectionToken, region));
                     _replication.OnObserverEntered(observerId, connectionToken, region);
                 }
                 catch (Exception ex)
                 {
                     ResourceObservability.Error("[Host]", "SnapshotEnqueue", region.ToString(),
-                        _sessionEpoch.Value, connectionToken, ReadGeneration(region, default).Value,
+                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
                         "Fallback", true, "failed", "observer=" + observerId + " exception=" + ex.GetType().Name);
                     throw;
                 }
-
-                compensations.Add(() => _replication.OnObserverExited(observerId, connectionToken, region));
 
                 _demand[region] = previous + 1;
                 if (previous == 0 && hasPendingRelease)
@@ -446,7 +629,7 @@ namespace SteamP2PFriends.Adapters.Resource
                     ReentryCount++;
                     ResourceObservability.Info("[Host]", "LeaseReentry", region.ToString(),
                         _sessionEpoch.Value, connectionToken,
-                        ReadGeneration(region, default).Value, "SPI", true, "success",
+                        ReadGeneration(region).Value, "SPI", true, "success",
                         "hysteresisCancelled=true");
                 }
             }
@@ -503,6 +686,45 @@ namespace SteamP2PFriends.Adapters.Resource
             return clean;
         }
 
+        private void CaptureDisconnectCompensation(
+            ulong observerId,
+            ulong connectionToken,
+            bool shouldCapture,
+            List<Action> compensations)
+        {
+            if (!shouldCapture) return;
+
+            IReversibleObserverDisconnectAdapter reversible =
+                _lifecycle as IReversibleObserverDisconnectAdapter;
+            if (reversible == null) return;
+
+            // 捕获必须发生在任何 ProcessExited/ProcessEntered 或断连调用之前，
+            // 且使用即将退出的旧 token，保证重连失败时能恢复真实旧快照。
+            object disconnectState = reversible.CaptureObserverDisconnectState(observerId, connectionToken);
+            compensations.Add(() => reversible.RestoreObserverDisconnectState(
+                observerId, connectionToken, disconnectState));
+        }
+
+        private bool TryRestoreRegionState(
+            RegionKey regionKey,
+            object state)
+        {
+            try
+            {
+                _reversibleLifecycle.RestoreRegionState(regionKey, state);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _repairRequired = true;
+                ResourceObservability.Error("[Host]", "LeaseReleaseCompensation", regionKey.ToString(),
+                    _sessionEpoch.Value, 0UL, GetStoredGeneration(regionKey).Value,
+                    "Fallback", true, "failed",
+                    "reason=region-state-restore-failed failClosed=true exception=" + ex.GetType().Name);
+                return false;
+            }
+        }
+
         private void RestoreState(ulong observerId, bool hadObserver, bool hadConnection,
             ulong previousConnectionToken, HashSet<RegionKey> previousRegions,
             Dictionary<RegionKey, int> previousDemand,
@@ -535,10 +757,16 @@ namespace SteamP2PFriends.Adapters.Resource
                 true);
         }
 
-        private RegionGeneration ReadGeneration(RegionKey region, RegionGeneration fallback)
+        private RegionGeneration ReadGeneration(RegionKey region)
         {
-            uint value = _generationReader(region);
-            return value == 0U ? fallback : RegionGeneration.FromNative(value);
+            return RegionGeneration.FromNative(_generationReader(region));
+        }
+
+        private RegionGeneration GetStoredGeneration(RegionKey region)
+        {
+            return _leases.TryGetValue(region, out RegionGeneration generation)
+                ? generation
+                : default(RegionGeneration);
         }
 
         private static uint ToAdapterEpoch(SessionEpoch epoch)

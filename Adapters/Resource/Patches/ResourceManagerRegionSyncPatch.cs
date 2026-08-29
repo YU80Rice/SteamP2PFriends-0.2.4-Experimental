@@ -454,14 +454,16 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         [HarmonyPatch(typeof(ResourceManager), SendResourcesWriteMethodName)]
         public static void SendResources_Write_Prefix(byte x, byte y)
         {
+            bool spiActive = MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive;
+            ResourceObservationPath path = ResourceObservability.NativePath(spiActive);
             int trackedObservers = ResourceSnapshotAdapter.RecordNativeSnapshotWrite(new RegionKey(x, y));
             int count = ++_writeLogCount;
             if (count > WriteLogLimit)
             {
                 ResourceObservability.QuotaSuppressed("[Host]", "SnapshotWrite", $"({x},{y})", 0UL, 0UL,
                     ResourceSnapshotAdapter.GetRegionGeneration(new RegionKey(x, y)),
-                    ResourceObservability.NativePath(MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive),
-                    MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive,
+                    path,
+                    spiActive,
                     "ResourceRegionSync.SendResources_Write");
                 return;
             }
@@ -470,13 +472,12 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                 ? $"escPaused={SteamP2PFriends.Host.HostManager.IsEscPausedCurrent} "
                 : "";
 
-            bool spiActive = MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive;
             ResourceObservability.Info("[Host]", "SnapshotWrite", $"({x},{y})",
                 MultiObserver.MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
                 ResourceSnapshotAdapter.GetRegionGeneration(new RegionKey(x, y)),
-                "Native", spiActive, "success",
+                path, spiActive, "observed",
                 $"writeCount={count} trackedObservers={trackedObservers} {escPrefix} " +
-                "nativeEntry=true stateEncoder=ResourceManager.SendResources_Write");
+                "nativeEntry=true nativeWriteCompletion=not-observable stateEncoder=ResourceManager.SendResources_Write");
         }
 
         public static void OnClientDisconnected()

@@ -53,4 +53,31 @@ namespace SteamP2PFriends.MultiObserver.SPI
         /// </summary>
         void OnObserverDisconnect(ulong observerId, ulong connectionToken);
     }
+
+    /// <summary>
+    /// 可逆的观察者断连边界。
+    /// 当外部领域适配器可能在抛异常前已经清理部分状态时，控制面先捕获快照，
+    /// 失败事务可通过该接口恢复到调用前的观察者状态。
+    /// </summary>
+    public interface IReversibleObserverDisconnectAdapter
+    {
+        object CaptureObserverDisconnectState(ulong observerId, ulong connectionToken);
+
+        void RestoreObserverDisconnectState(
+            ulong observerId,
+            ulong connectionToken,
+            object state);
+    }
+
+    /// <summary>
+    /// 可逆的领域区域生命周期边界。
+    /// 当 Acquire/Release 可能在抛异常前已经改变外部状态时，控制面使用真实快照
+    /// 恢复调用前状态，不能用旧 generation 猜测补偿。
+    /// </summary>
+    public interface IReversibleRegionLifecycleAdapter
+    {
+        object CaptureRegionState(RegionKey regionKey);
+
+        void RestoreRegionState(RegionKey regionKey, object state);
+    }
 }

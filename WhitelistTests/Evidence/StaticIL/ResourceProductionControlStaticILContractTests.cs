@@ -1,4 +1,7 @@
 using SteamP2PFriends.Adapters.Resource;
+using SteamP2PFriends.Client;
+using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.Core.Identity;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -25,7 +28,12 @@ namespace SteamP2PFriends.WhitelistTests
                 type.FullName == "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator");
             Type lifecycle = assembly.GetTypes().SingleOrDefault(type =>
                 type.FullName == "SteamP2PFriends.Adapters.Resource.ResourceRegionLifecycleAdapter");
-            MethodInfo onRelease = adapter?.GetMethod("OnRelease");
+            Type nativeState = assembly.GetTypes().SingleOrDefault(type =>
+                type.FullName == "SteamP2PFriends.Adapters.Resource.ResourceNativeRegionState");
+            Type regionSync = assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch");
+            Type worldSync = assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerWorldSyncDiagnosticPatch");
+            MethodInfo onRelease = adapter?.GetMethod("OnRelease", BindingFlags.Instance | BindingFlags.Public,
+                null, new[] { typeof(SteamP2PFriends.MultiObserver.SPI.LeaseTicket) }, null);
             MethodInfo configure = coordinator?.GetMethod("ConfigureResourceProduction",
                 BindingFlags.Static | BindingFlags.NonPublic);
 
@@ -33,6 +41,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && adapter != null
                 && coordinator != null
                 && lifecycle != null
+                && nativeState != null
                 && seam.GetMethod("UpdateObserver") != null
                 && seam.GetMethod("RemoveObserver") != null
                 && seam.GetMethod("Tick") != null
@@ -43,16 +52,25 @@ namespace SteamP2PFriends.WhitelistTests
                 && configure != null
                 && coordinator.GetMethod("ReconcileResourceProduction",
                     BindingFlags.Static | BindingFlags.NonPublic) != null
-                && lifecycle.GetMethod("CommitRelease",
-                    BindingFlags.Static | BindingFlags.Public) != null
-                && adapter.GetMethod("OnRelease") != null
+                && lifecycle.GetMethod("CommitRelease", BindingFlags.Static | BindingFlags.Public,
+                    null, new[] { typeof(SteamP2PFriends.Core.Identity.RegionKey), typeof(ulong), typeof(uint),
+                        typeof(uint).MakeByRefType() }, null) != null
+                && onRelease != null
                 && CountMethodCalls(onRelease, lifecycle.FullName, "CommitRelease") == 1
                 && CountMethodCalls(onRelease, lifecycle.FullName, "OnObserverRelease") == 0
+                && CountMethodCalls(adapter?.GetMethod("OnAcquire", BindingFlags.Instance | BindingFlags.Public),
+                    lifecycle.FullName, "TryCommitAcquire") == 1
+                && CountMethodCalls(adapter?.GetMethod("OnAcquire", BindingFlags.Instance | BindingFlags.Public),
+                    lifecycle.FullName, "OnObserverAcquire") == 0
                 && adapter.GetMethod("OnObserverExited") != null
                 && CountMethodCalls(configure, seam.FullName, ".ctor") == 1
                 && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch")?.GetMethod(
                     "SendResources_Write_Prefix", BindingFlags.Static | BindingFlags.Public),
                     "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeSnapshotWrite") == 1
+                && regionSync?.GetMethod("SendResources_Write_Prefix", BindingFlags.Static | BindingFlags.Public) != null
+                && worldSync?.GetMethod("SendResources_Write_Prefix", BindingFlags.Static | BindingFlags.Public) == null
+                && CountMethodCalls(regionSync.GetMethod("SendResources_Write_Prefix", BindingFlags.Static | BindingFlags.Public),
+                    "SteamP2PFriends.Adapters.Resource.ResourceObservability", "NativePath") == 1
                 && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerWorldSyncDiagnosticPatch")?.GetMethod(
                     "ReceiveResources_Prefix", BindingFlags.Static | BindingFlags.Public),
                     "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeSnapshotReceive") == 1
@@ -71,9 +89,124 @@ namespace SteamP2PFriends.WhitelistTests
                 && CountMethodCalls(assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerHarvestReplicationPatch")?.GetMethod(
                     "RecordClientDelta", BindingFlags.Static | BindingFlags.NonPublic),
                     "SteamP2PFriends.Adapters.Resource.ResourceSnapshotAdapter", "RecordNativeDeltaReceive") == 1
+                && lifecycle.GetMethod("CaptureNativeRegionState", BindingFlags.Static | BindingFlags.NonPublic) != null
+                && lifecycle.GetMethod("RestoreNativeRegionState", BindingFlags.Static | BindingFlags.NonPublic) != null
+                && nativeState.GetProperty("IsNetworked") != null
+                && nativeState.GetProperty("RespawnResourceIndex") != null
+                && nativeState.GetProperty("ResourceCount") != null
+                && nativeState.GetProperty("DeadResourceIndices") != null
+                && CountMethodCalls(lifecycle.GetMethod("CaptureRegionState", BindingFlags.Static | BindingFlags.Public),
+                    lifecycle.FullName, "CaptureNativeRegionState") == 1
+                && CountMethodCalls(lifecycle.GetMethod("RestoreRegionState", BindingFlags.Static | BindingFlags.Public),
+                    lifecycle.FullName, "RestoreNativeRegionState") == 1
                 && CountAssemblyMethodCalls(assembly, lifecycle.FullName, "OnObserverRelease") == 0
                 && assembly.GetTypes().Count(type =>
                     type.FullName == "SteamP2PFriends.Adapters.Resource.ResourceProductionControlSeam") == 1;
+        }
+
+        internal static bool Test_NativeSnapshotNullResourceListFailsClosed()
+        {
+            MethodInfo capture = typeof(ResourceRegionLifecycleAdapter).GetMethod(
+                "CaptureNativeRegionState", BindingFlags.Static | BindingFlags.NonPublic);
+            return ContainsStringLiteral(capture, "native-resource-trees-unavailable");
+        }
+
+        internal static bool Test_NativeRestoreValidatesBeforeApplyAndCanRollback()
+        {
+            MethodInfo restore = typeof(ResourceRegionLifecycleAdapter).GetMethod(
+                "RestoreNativeRegionState", BindingFlags.Static | BindingFlags.NonPublic);
+            return typeof(ResourceRegionLifecycleAdapter).GetMethod(
+                    "ValidateNativeRegionState", BindingFlags.Static | BindingFlags.NonPublic) != null
+                && typeof(ResourceRegionLifecycleAdapter).GetMethod(
+                    "ApplyNativeRegionState", BindingFlags.Static | BindingFlags.NonPublic) != null
+                && FindCallOffset(restore, "ValidateNativeRegionState") >= 0
+                && FindCallOffset(restore, "ApplyNativeRegionState") > FindCallOffset(restore, "ValidateNativeRegionState")
+                && CountMethodCalls(restore, typeof(ResourceRegionLifecycleAdapter).FullName,
+                    "ApplyNativeRegionState") >= 2;
+        }
+
+        private static int FindCallOffset(MethodInfo method, string name)
+        {
+            if (method == null) return -1;
+            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il == null) return -1;
+            for (int offset = 0; offset + 4 < il.Length; offset++)
+            {
+                int token = BitConverter.ToInt32(il, offset);
+                try
+                {
+                    MethodBase called = method.Module.ResolveMethod(token);
+                    if (called != null && string.Equals(called.Name, name, StringComparison.Ordinal))
+                        return offset;
+                }
+                catch { }
+            }
+            return -1;
+        }
+
+        internal static bool Test_GenerationReadDoesNotUseFallbackGuess()
+        {
+            Type seam = typeof(ResourceProductionControlSeam);
+            MethodInfo[] readers = seam.GetMethods(BindingFlags.Static | BindingFlags.Instance |
+                BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(method => method.Name == "ReadGeneration")
+                .ToArray();
+
+            return readers.Length == 1
+                && readers[0].GetParameters().Length == 1
+                && readers[0].GetParameters()[0].ParameterType == typeof(RegionKey);
+        }
+
+        internal static bool Test_FailureClassificationDoesNotParseExceptionText()
+        {
+            MethodInfo entered = typeof(ResourceProductionControlSeam).GetMethod(
+                "ProcessEntered", BindingFlags.Instance | BindingFlags.NonPublic);
+            return entered != null
+                && CountMethodCalls(entered, "System.Exception", "get_Message") == 0;
+        }
+
+        internal static bool Test_ClientConnectionGenerationFailureRequestsTeardown()
+        {
+            MethodInfo connected = typeof(P2PJoinManager).GetMethod(
+                "OnClientConnected", BindingFlags.Static | BindingFlags.NonPublic);
+            return connected != null
+                && CountMethodCalls(connected, typeof(P2PJoinManager).FullName, "RequestDisconnect") == 1;
+        }
+
+        internal static bool Test_CoordinatorSessionEndClearsAfterResourceFailure()
+        {
+            MethodInfo endSession = typeof(MultiObserverShadowCoordinator).GetMethod(
+                "EndSessionIfNeeded", BindingFlags.Static | BindingFlags.NonPublic);
+            if (endSession == null || endSession.GetMethodBody() == null) return false;
+
+            bool hasFinally = endSession.GetMethodBody().ExceptionHandlingClauses
+                .Any(clause => clause.Flags == ExceptionHandlingClauseOptions.Finally);
+            return hasFinally
+                && CountMethodCalls(endSession, typeof(MultiObserverShadowCoordinator).FullName, "SafeWarn") >= 1
+                && CountMethodCalls(endSession, typeof(MultiObserverShadowCoordinator).FullName, "SafeInfo") >= 1;
+        }
+
+        internal static bool Test_ResourceDomainEndLogsSuccessAfterCleanup()
+        {
+            MethodInfo endSession = typeof(ResourceDomainAdapter).GetMethod(
+                "OnSessionEnd", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo lifecycleEnd = typeof(ResourceRegionLifecycleAdapter).GetMethod(
+                "EndSession", BindingFlags.Static | BindingFlags.Public);
+            return endSession != null && lifecycleEnd != null
+                && CountMethodCalls(endSession, typeof(ResourceRegionLifecycleAdapter).FullName, "EndSession") == 1
+                && CountMethodCalls(endSession, typeof(ResourceRegionLifecycleAdapter).FullName, "SetRegistrationReady") >= 1
+                && CountMethodCalls(endSession, typeof(ResourceSnapshotAdapter).FullName, "ResetSession") == 1
+                && FindCallOffset(endSession, "EndSession") < FindCallOffset(endSession, "Info");
+        }
+
+        internal static bool Test_DeltaWriteUsesPerCallRejectDelta()
+        {
+            MethodInfo method = typeof(ResourceSnapshotAdapter).GetMethod(
+                "RecordNativeDelta", BindingFlags.Static | BindingFlags.Public,
+                null, new[] { typeof(RegionKey), typeof(uint) }, null);
+            return method != null
+                && CountMethodCalls(method, typeof(ResourceSnapshotReplicationLedger).FullName,
+                    "get_StaleDeltaRejectCount") >= 2;
         }
 
         private static int CountMethodCalls(MethodInfo method, string declaringTypeName, string methodName)
@@ -131,6 +264,25 @@ namespace SteamP2PFriends.WhitelistTests
                 }
             }
             return count;
+        }
+
+        private static bool ContainsStringLiteral(MethodInfo method, string expected)
+        {
+            if (method == null || expected == null) return false;
+            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il == null) return false;
+            for (int offset = 0; offset + 4 < il.Length; offset++)
+            {
+                if (il[offset] != OpCodes.Ldstr.Value) continue;
+                int token = BitConverter.ToInt32(il, offset + 1);
+                try
+                {
+                    if (string.Equals(method.Module.ResolveString(token), expected, StringComparison.Ordinal))
+                        return true;
+                }
+                catch { }
+            }
+            return false;
         }
 
         private static int GetOperandSize(OperandType operandType, byte[] il, int offset)

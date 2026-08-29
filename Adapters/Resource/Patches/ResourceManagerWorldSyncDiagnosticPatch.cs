@@ -45,35 +45,30 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             typeof(byte),
             typeof(bool).MakeByRefType()
         };
-        private static readonly System.Type[] VanillaSendResourcesWriteParamTypes =
-        {
-            typeof(SDG.NetPak.NetPakWriter),
-            typeof(byte), typeof(byte)
-        };
         private static readonly System.Type[] VanillaReceiveResourcesParamTypes =
         {
             typeof(SDG.Unturned.ClientInvocationContext).MakeByRefType()
         };
 
         public static bool OnRegionUpdatedPrefixRegistered { get; private set; }
-        public static bool SendResourcesWritePrefixRegistered { get; private set; }
         public static bool ReceiveResourcesPrefixRegistered { get; private set; }
         public static bool ReceiveResourcesPostfixRegistered { get; private set; }
         public static bool AllRegistrationsSucceeded =>
-            OnRegionUpdatedPrefixRegistered && SendResourcesWritePrefixRegistered
-            && ReceiveResourcesPrefixRegistered && ReceiveResourcesPostfixRegistered;
+            OnRegionUpdatedPrefixRegistered && ReceiveResourcesPrefixRegistered
+            && ReceiveResourcesPostfixRegistered;
 
         /// <summary>
-        /// 4 个 hook 精确、幂等的 identity-based 手动登记。
+        /// 3 个 hook 精确、幂等的 identity-based 手动登记；SendResources_Write
+        /// 由 ResourceManagerRegionSyncPatch 唯一拥有。
         ///
         /// </summary>
         public static bool RegisterManual(Harmony harmony)
         {
-            RoleLogger.Info("[Shared]", "[WorldSyncDiag/Resource] === 手动登记 4 个 hook（P0-R1～R8 identity-based 幂等）===");
+            RoleLogger.Info("[Shared]", "[WorldSyncDiag/Resource] === 手动登记 3 个 hook（P0-R1～R8 identity-based 幂等）===");
 
             var patchType = typeof(ResourceManagerWorldSyncDiagnosticPatch);
 
-            bool r1, r2, r3, r4;
+            bool r1, r3, r4;
             try
             {
                 r1 = WorldSyncDiagnosticCore.RegisterIdentityPatch(
@@ -82,15 +77,8 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                     HarmonyPatchType.Prefix, "Resource.onRegionUpdated.Pre");
             }
             catch (System.Exception ex) { RoleLogger.Error("[Shared]", $"[WorldSyncDiag/Resource] onRegionUpdated.Pre 登记异常: {ex}"); r1 = false; }
-
-            try
-            {
-                r2 = WorldSyncDiagnosticCore.RegisterIdentityPatch(
-                    harmony, typeof(ResourceManager), "SendResources_Write", VanillaSendResourcesWriteParamTypes,
-                    AccessTools.Method(patchType, "SendResources_Write_Prefix"),
-                    HarmonyPatchType.Prefix, "Resource.SendResources_Write.Pre");
-            }
-            catch (System.Exception ex) { RoleLogger.Error("[Shared]", $"[WorldSyncDiag/Resource] SendResources_Write.Pre 登记异常: {ex}"); r2 = false; }
+            LogRegistrationResult("Resource.onRegionUpdated.Pre", r1,
+                "target=ResourceManager.onRegionUpdated patch=OnRegionUpdated_Prefix");
 
             try
             {
@@ -100,6 +88,8 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                     HarmonyPatchType.Prefix, "Resource.ReceiveResources.Pre");
             }
             catch (System.Exception ex) { RoleLogger.Error("[Shared]", $"[WorldSyncDiag/Resource] ReceiveResources.Pre 登记异常: {ex}"); r3 = false; }
+            LogRegistrationResult("Resource.ReceiveResources.Pre", r3,
+                "target=ResourceManager.ReceiveResources patch=ReceiveResources_Prefix");
 
             try
             {
@@ -109,19 +99,23 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                     HarmonyPatchType.Postfix, "Resource.ReceiveResources.Post");
             }
             catch (System.Exception ex) { RoleLogger.Error("[Shared]", $"[WorldSyncDiag/Resource] ReceiveResources.Post 登记异常: {ex}"); r4 = false; }
+            LogRegistrationResult("Resource.ReceiveResources.Post", r4,
+                "target=ResourceManager.ReceiveResources patch=ReceiveResources_Postfix");
 
-            bool all = r1 && r2 && r3 && r4;
+            bool all = r1 && r3 && r4;
             RoleLogger.Info("[Shared]",
-                $"[WorldSyncDiag/Resource] RegisterManual 结果: onRegionUpdated.Pre={r1} SendResources_Write.Pre={r2} " +
+                $"[WorldSyncDiag/Resource] RegisterManual 结果: onRegionUpdated.Pre={r1} " +
                 $"ReceiveResources.Pre={r3} ReceiveResources.Post={r4} all={all}");
             ResourceObservability.Info("[Shared]", "WorldSyncRegistration", "-", 0UL, 0UL, 0U,
                 all ? "Native" : "Fallback", false, all ? "success" : "failed",
-                $"onRegionUpdated={r1} sendResourcesWrite={r2} receiveResourcesPre={r3} receiveResourcesPost={r4}");
+                $"onRegionUpdated={r1} receiveResourcesPre={r3} receiveResourcesPost={r4} " +
+                "sendResourcesWrite=owned-by-ResourceRegionSync");
             return all;
         }
 
         /// <summary>
-        /// 与 RegisterManual 使用同一套 Type[]。
+            /// 与 RegisterManual 使用同一套 Type[]；SendResources_Write 的验证归属
+            /// 在 ResourceManagerRegionSyncPatch。
         /// </summary>
         public static bool VerifyRegistration()
         {
@@ -130,39 +124,42 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                 var patchType = typeof(ResourceManagerWorldSyncDiagnosticPatch);
 
                 MethodInfo onRegionUpdatedPre = AccessTools.Method(patchType, "OnRegionUpdated_Prefix");
-                MethodInfo sendResourcesWritePre = AccessTools.Method(patchType, "SendResources_Write_Prefix");
                 MethodInfo receiveResourcesPre = AccessTools.Method(patchType, "ReceiveResources_Prefix");
                 MethodInfo receiveResourcesPost = AccessTools.Method(patchType, "ReceiveResources_Postfix");
 
                 OnRegionUpdatedPrefixRegistered = WorldSyncDiagnosticCore.IsPatchRegistered(
                     typeof(ResourceManager), "onRegionUpdated", onRegionUpdatedPre, HarmonyPatchType.Prefix, VanillaOnRegionUpdatedParamTypes);
-                SendResourcesWritePrefixRegistered = WorldSyncDiagnosticCore.IsPatchRegistered(
-                    typeof(ResourceManager), "SendResources_Write", sendResourcesWritePre, HarmonyPatchType.Prefix, VanillaSendResourcesWriteParamTypes);
                 ReceiveResourcesPrefixRegistered = WorldSyncDiagnosticCore.IsPatchRegistered(
                     typeof(ResourceManager), "ReceiveResources", receiveResourcesPre, HarmonyPatchType.Prefix, VanillaReceiveResourcesParamTypes);
                 ReceiveResourcesPostfixRegistered = WorldSyncDiagnosticCore.IsPatchRegistered(
                     typeof(ResourceManager), "ReceiveResources", receiveResourcesPost, HarmonyPatchType.Postfix, VanillaReceiveResourcesParamTypes);
+
+                LogRegistrationResult("Resource.onRegionUpdated.Pre", OnRegionUpdatedPrefixRegistered,
+                    "verification=true target=ResourceManager.onRegionUpdated patch=OnRegionUpdated_Prefix");
+                LogRegistrationResult("Resource.ReceiveResources.Pre", ReceiveResourcesPrefixRegistered,
+                    "verification=true target=ResourceManager.ReceiveResources patch=ReceiveResources_Prefix");
+                LogRegistrationResult("Resource.ReceiveResources.Post", ReceiveResourcesPostfixRegistered,
+                    "verification=true target=ResourceManager.ReceiveResources patch=ReceiveResources_Postfix");
 
                 if (!AllRegistrationsSucceeded)
                 {
                     RoleLogger.Error("[Shared]",
                         $"[WorldSyncDiag/Resource] !!! 注册验证失败: " +
                         $"onRegionUpdated.Pre={OnRegionUpdatedPrefixRegistered} " +
-                        $"SendResources_Write.Pre={SendResourcesWritePrefixRegistered} " +
                         $"ReceiveResources.Pre={ReceiveResourcesPrefixRegistered} " +
                         $"ReceiveResources.Post={ReceiveResourcesPostfixRegistered} " +
                         $"(owner={SteamP2PFriendsPlugin.HARMONY_ID}, identity-based, 共用 VanillaXxxParamTypes)");
                     return false;
                 }
 
-                RoleLogger.Info("[Shared]",
-                    $"[WorldSyncDiag/Resource] OK 4 个 hook 均已注册 (owner={SteamP2PFriendsPlugin.HARMONY_ID}, identity-based, 共用 VanillaXxxParamTypes)");
+            RoleLogger.Info("[Shared]",
+                $"[WorldSyncDiag/Resource] OK 3 个 hook 均已注册 (owner={SteamP2PFriendsPlugin.HARMONY_ID}, identity-based, SendResources_Write 由 ResourceRegionSync 唯一拥有)");
                 return true;
             }
             catch (System.Exception ex)
             {
                 RoleLogger.Error("[Shared]", $"[WorldSyncDiag/Resource] VerifyRegistration 异常: {ex.Message}");
-                OnRegionUpdatedPrefixRegistered = SendResourcesWritePrefixRegistered = false;
+                OnRegionUpdatedPrefixRegistered = false;
                 ReceiveResourcesPrefixRegistered = ReceiveResourcesPostfixRegistered = false;
                 return false;
             }
@@ -187,13 +184,31 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                     return;
                 }
 
-                ulong steamId = 0UL;
-                try { steamId = player?.channel?.owner?.playerID?.steamID.m_SteamID ?? 0UL; } catch { }
+                ulong steamId;
+                string steamIdReason;
+                bool steamIdRead = TryReadSteamId(player, out steamId, out steamIdReason);
                 string maskedId = WorldSyncDiagnosticCore.MaskSteamId(steamId);
 
                 bool isDedicated = Dedicator.IsDedicatedServer;
-                string isResourcesLoadedStr = ReadRegionResourcesLoaded(player, new_x, new_y);
-                bool checkSafe = ReadRegionsCheckSafe(new_x, new_y);
+                bool isResourcesLoaded;
+                string resourcesLoadedReason;
+                bool resourcesLoadedRead = TryReadRegionResourcesLoaded(
+                    player, new_x, new_y, out isResourcesLoaded, out resourcesLoadedReason);
+                bool checkSafe;
+                string checkSafeReason;
+                bool checkSafeRead = TryReadRegionsCheckSafe(new_x, new_y, out checkSafe, out checkSafeReason);
+                bool observationComplete = IsObservationComplete(
+                    steamIdRead, resourcesLoadedRead, checkSafeRead);
+
+                if (!observationComplete)
+                {
+                    LogIncompleteRegionObservation(
+                        new_x, new_y, steamIdRead, steamIdReason,
+                        resourcesLoadedRead, resourcesLoadedReason,
+                        checkSafeRead, checkSafeReason,
+                        steamId);
+                    return;
+                }
 
                 if (!WorldSyncDiagnosticCore.TryAcquirePlayerQuota(steamId, "Resource.onRegionUpdated.step3",
                     WorldSyncDiagnosticCore.PerPlayerPointLimit, out int count))
@@ -210,14 +225,18 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                 }
 
                 bool spiActive = MultiObserverShadowCoordinator.IsResourceProductionActive;
+                ResourceObservationPath path = ResourceObservability.NativePath(spiActive);
                 ResourceObservability.Info(
                     "[Host]", "RegionEntry", $"({new_x},{new_y})",
                     MultiObserverShadowCoordinator.ResourceSessionEpoch,
                     MultiObserverShadowCoordinator.GetResourceConnectionGeneration(steamId),
                     ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(new_x, new_y)),
-                    ResourceObservability.NativePath(spiActive), spiActive, "observed",
-                    $"count={count} player={maskedId} isDedicated={isDedicated} checkSafe={checkSafe} " +
-                    $"isResourcesLoaded={isResourcesLoadedStr} nativeEntry=true");
+                    path, spiActive, "observed",
+                    $"count={count} player={maskedId} isDedicated={isDedicated} " +
+                    $"checkSafe={(checkSafeRead ? checkSafe.ToString().ToLowerInvariant() : "unknown")} " +
+                    $"isResourcesLoaded={(resourcesLoadedRead ? isResourcesLoaded.ToString().ToLowerInvariant() : "unknown")} " +
+                    $"steamIdRead={steamIdRead} resourcesLoadedRead={resourcesLoadedRead} checkSafeRead={checkSafeRead} " +
+                    $"steamIdReason={steamIdReason} resourcesLoadedReason={resourcesLoadedReason} checkSafeReason={checkSafeReason} nativeEntry=true");
             }
             catch (System.Exception ex)
             {
@@ -226,42 +245,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             }
         }
 
-        // ============= 2. 发送入口：SendResources_Write（vanilla 私有静态） =============
-        // SendResources.Invoke 内部会调用 SendResources_Write 写入区域资源数据
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(ResourceManager), "SendResources_Write")]
-        public static void SendResources_Write_Prefix(byte x, byte y)
-        {
-            try
-            {
-                if (!WorldSyncDiagnosticCore.TryAcquireQuota("Resource.SendResources_Write", out int count))
-                {
-                    ResourceObservability.QuotaSuppressed(
-                        "[Host]", "SnapshotWrite", $"({x},{y})",
-                        MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
-                        ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
-                        ResourceObservability.NativePath(MultiObserverShadowCoordinator.IsResourceProductionActive),
-                        MultiObserverShadowCoordinator.IsResourceProductionActive,
-                        "Resource.SendResources_Write");
-                    return;
-                }
-
-                bool spiActive = MultiObserverShadowCoordinator.IsResourceProductionActive;
-                ResourceObservability.Info("[Host]", "SnapshotWrite", $"({x},{y})",
-                    MultiObserverShadowCoordinator.ResourceSessionEpoch, 0UL,
-                    ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
-                    spiActive ? "SPI" : "Fallback", spiActive, "observed",
-                    $"count={count} isDedicated={Dedicator.IsDedicatedServer} nativeEntry=true");
-            }
-            catch (System.Exception ex)
-            {
-                ResourceObservability.Error("[Shared]", "SnapshotWrite", "-", 0UL, 0UL, 0U,
-                    "Fallback", MultiObserverShadowCoordinator.IsResourceProductionActive,
-                    "failed", "exception=" + ex.GetType().Name);
-            }
-        }
-
-        // ============= 3. 客机 Receive 入口：ReceiveResources =============
+        // ============= 2. 客机 Receive 入口：ReceiveResources =============
         [HarmonyPrefix]
         [HarmonyPatch(typeof(ResourceManager), "ReceiveResources")]
         public static void ReceiveResources_Prefix(ref bool __state)
@@ -298,6 +282,20 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         {
             try
             {
+                int networkedCount;
+                string networkedReason;
+                bool networkedRead = TryCountNetworkedResourceRegions(out networkedCount, out networkedReason);
+                if (!networkedRead)
+                {
+                    ResourceObservability.Error("[Guest]", "SnapshotReceivePostfix", "-",
+                        ResourceSnapshotAdapter.CurrentSessionEpoch,
+                        ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
+                        "Fallback", false, "failed",
+                        "reason=native-region-observation-failed networkedReason=" + networkedReason +
+                        " quotaCheck=not-run failClosed=true");
+                    return;
+                }
+
                 if (!WorldSyncDiagnosticCore.TryAcquireQuota("Resource.ReceiveResources.Postfix", out int count))
                 {
                     ResourceObservability.QuotaSuppressed("[Guest]", "SnapshotReceivePostfix", "-",
@@ -306,12 +304,11 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                     return;
                 }
 
-                int networkedCount = CountNetworkedResourceRegions();
-
                 ResourceObservability.Info("[Guest]", "SnapshotReceivePostfix", "-",
                     ResourceSnapshotAdapter.CurrentSessionEpoch, ResourceSnapshotAdapter.LocalConnectionGeneration, 0U,
-                    "Native", false, networkedCount >= 0 ? "success" : "failed",
-                    $"count={count} totalNetworkedRegions={networkedCount} generationDecision=not-exposed");
+                    networkedRead ? "Native" : "Fallback", false, networkedRead ? "success" : "failed",
+                    $"count={count} totalNetworkedRegions={(networkedRead ? networkedCount.ToString() : "unknown")} " +
+                    $"networkedRead={networkedRead} networkedReason={networkedReason} generationDecision=not-exposed");
             }
             catch (System.Exception ex)
             {
@@ -324,17 +321,25 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
         /// 反射读取 ResourceManager.regions 字段并统计 isNetworked=true 的区域数。
         /// ResourceManager.regions 可能为 internal/private static，无法直接访问。
         /// </summary>
-        private static int CountNetworkedResourceRegions()
+        private static bool TryCountNetworkedResourceRegions(out int total, out string reason)
         {
+            total = 0;
             try
             {
                 var field = typeof(ResourceManager).GetField("regions",
                     BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
-                if (field == null) return -1;
+                if (field == null)
+                {
+                    reason = "regions-field-missing";
+                    return false;
+                }
                 var regions = field.GetValue(null) as Array;
-                if (regions == null) return -1;
+                if (regions == null || regions.Rank != 2)
+                {
+                    reason = "regions-array-unavailable";
+                    return false;
+                }
 
-                int total = 0;
                 int len0 = regions.GetLength(0);
                 int len1 = regions.GetLength(1);
                 for (int i = 0; i < len0; i++)
@@ -342,55 +347,150 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
                     for (int j = 0; j < len1; j++)
                     {
                         var region = regions.GetValue(i, j);
-                        if (region == null) continue;
+                        if (region == null)
+                        {
+                            reason = "native-region-null region=" + i + "," + j;
+                            total = 0;
+                            return false;
+                        }
                         var isNetworkedField = region.GetType().GetField("isNetworked",
                             BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-                        if (isNetworkedField != null && (bool)isNetworkedField.GetValue(region))
+                        if (isNetworkedField == null)
+                        {
+                            reason = "isNetworked-field-missing region=" + i + "," + j;
+                            total = 0;
+                            return false;
+                        }
+                        if ((bool)isNetworkedField.GetValue(region))
                         {
                             total++;
                         }
                     }
                 }
-                return total;
+                reason = "none";
+                return true;
             }
-            catch { return -1; }
+            catch (System.Exception ex)
+            {
+                total = 0;
+                reason = "read-failed:" + ex.GetType().Name;
+                return false;
+            }
         }
 
         // ============= 安全读取辅助 =============
 
-        private static string ReadRegionResourcesLoaded(Player player, byte x, byte y)
+        private static bool TryReadSteamId(Player player, out ulong steamId, out string reason)
         {
+            steamId = 0UL;
             try
             {
-                if (player == null) return "unknown(player=null)";
-                var movement = player.movement;
-                if (movement == null) return "unknown(movement=null)";
-
-                var field = typeof(PlayerMovement).GetField("_loadedRegions",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (field == null) return "unknown(_loadedRegions field not found)";
-
-                var loadedRegions = field.GetValue(movement) as LoadedRegion[,];
-                if (loadedRegions == null) return "unknown(loadedRegions=null)";
-
-                if (x < 0 || x >= loadedRegions.GetLength(0) || y < 0 || y >= loadedRegions.GetLength(1))
-                    return $"unknown(out_of_range x={x} y={y})";
-
-                var region = loadedRegions[x, y];
-                if (region == null) return "unknown(region=null)";
-
-                return region.isResourcesLoaded.ToString().ToLowerInvariant();
+                if (player == null) { reason = "player-null"; return false; }
+                if (player.channel == null) { reason = "channel-null"; return false; }
+                if (player.channel.owner == null) { reason = "owner-null"; return false; }
+                if (player.channel.owner.playerID == null) { reason = "player-id-null"; return false; }
+                steamId = player.channel.owner.playerID.steamID.m_SteamID;
+                if (steamId == 0UL) { reason = "steam-id-zero"; return false; }
+                reason = "none";
+                return true;
             }
             catch (System.Exception ex)
             {
-                return $"unknown(read-failed: {ex.GetType().Name})";
+                reason = "read-failed:" + ex.GetType().Name;
+                return false;
             }
         }
 
-        private static bool ReadRegionsCheckSafe(byte x, byte y)
+        private static bool TryReadRegionResourcesLoaded(
+            Player player, byte x, byte y, out bool value, out string reason)
         {
-            try { return Regions.checkSafe((int)x, (int)y); }
-            catch { return false; }
+            value = false;
+            try
+            {
+                if (player == null) { reason = "player-null"; return false; }
+                var movement = player.movement;
+                if (movement == null) { reason = "movement-null"; return false; }
+
+                var field = typeof(PlayerMovement).GetField("_loadedRegions",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field == null) { reason = "loaded-regions-field-missing"; return false; }
+
+                var loadedRegions = field.GetValue(movement) as LoadedRegion[,];
+                if (loadedRegions == null) { reason = "loaded-regions-null"; return false; }
+
+                if (x < 0 || x >= loadedRegions.GetLength(0) || y < 0 || y >= loadedRegions.GetLength(1))
+                {
+                    reason = $"loaded-regions-out-of-range x={x} y={y}";
+                    return false;
+                }
+
+                var region = loadedRegions[x, y];
+                if (region == null) { reason = "loaded-region-null"; return false; }
+
+                value = region.isResourcesLoaded;
+                reason = "none";
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                reason = "read-failed:" + ex.GetType().Name;
+                return false;
+            }
+        }
+
+        private static bool TryReadRegionsCheckSafe(byte x, byte y, out bool value, out string reason)
+        {
+            try
+            {
+                value = Regions.checkSafe((int)x, (int)y);
+                reason = "none";
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                value = false;
+                reason = "read-failed:" + ex.GetType().Name;
+                return false;
+            }
+        }
+
+        private static bool IsObservationComplete(
+            bool steamIdRead,
+            bool resourcesLoadedRead,
+            bool checkSafeRead)
+        {
+            return steamIdRead && resourcesLoadedRead && checkSafeRead;
+        }
+
+        private static void LogIncompleteRegionObservation(
+            byte x,
+            byte y,
+            bool steamIdRead,
+            string steamIdReason,
+            bool resourcesLoadedRead,
+            string resourcesLoadedReason,
+            bool checkSafeRead,
+            string checkSafeReason,
+            ulong steamId)
+        {
+            bool spiActive = MultiObserverShadowCoordinator.IsResourceProductionActive;
+            ResourceObservability.Error("[Host]", "RegionEntry", $"({x},{y})",
+                MultiObserverShadowCoordinator.ResourceSessionEpoch,
+                MultiObserverShadowCoordinator.GetResourceConnectionGeneration(steamId),
+                ResourceSnapshotAdapter.GetRegionGeneration(new Core.Identity.RegionKey(x, y)),
+                "Fallback", spiActive, "failed",
+                $"reason=observation-incomplete steamIdRead={steamIdRead} steamIdReason={steamIdReason} " +
+                $"resourcesLoadedRead={resourcesLoadedRead} resourcesLoadedReason={resourcesLoadedReason} " +
+                $"checkSafeRead={checkSafeRead} checkSafeReason={checkSafeReason} " +
+                "quotaCheck=not-run failClosed=true");
+        }
+
+        private static void LogRegistrationResult(string hook, bool succeeded, string detail)
+        {
+            ResourceObservability.Info("[Shared]", "WorldSyncHookRegistration", "-", 0UL, 0UL, 0U,
+                succeeded ? "Native" : "Fallback", false,
+                succeeded ? "success" : "failed",
+                "hook=" + hook + " owner=" + SteamP2PFriendsPlugin.HARMONY_ID + " " + detail);
         }
     }
 }

@@ -6,6 +6,88 @@ using System.Collections.Generic;
 namespace SteamP2PFriends.Adapters.Resource
 {
     /// <summary>
+    /// Resource 观测路径的受控值集合。禁止调用方用任意字符串伪造路径语义。
+    /// </summary>
+    internal readonly struct ResourceObservationPath : IEquatable<ResourceObservationPath>
+    {
+        private readonly string _value;
+
+        private ResourceObservationPath(string value) { _value = value; }
+
+        internal static readonly ResourceObservationPath SPI = new ResourceObservationPath("SPI");
+        internal static readonly ResourceObservationPath Native = new ResourceObservationPath("Native");
+        internal static readonly ResourceObservationPath Legacy = new ResourceObservationPath("Legacy");
+        internal static readonly ResourceObservationPath Fallback = new ResourceObservationPath("Fallback");
+        internal static readonly ResourceObservationPath Unknown = new ResourceObservationPath("Unknown");
+
+        internal static ResourceObservationPath From(string value)
+        {
+            switch (value)
+            {
+                case "SPI": return SPI;
+                case "Native": return Native;
+                case "Legacy": return Legacy;
+                case "Fallback": return Fallback;
+                case "Unknown": return Unknown;
+                default: throw new ArgumentOutOfRangeException(nameof(value), "Unknown Resource observation path.");
+            }
+        }
+
+        public bool Equals(ResourceObservationPath other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+        public override bool Equals(object obj) => obj is ResourceObservationPath other && Equals(other);
+        public override int GetHashCode() => _value == null ? 0 : _value.GetHashCode();
+        public override string ToString() => _value ?? "Unknown";
+        public static implicit operator ResourceObservationPath(string value) => From(value);
+    }
+
+    /// <summary>
+    /// Resource 观测结果的受控值集合。
+    /// </summary>
+    internal readonly struct ResourceObservationOutcome : IEquatable<ResourceObservationOutcome>
+    {
+        private readonly string _value;
+
+        private ResourceObservationOutcome(string value) { _value = value; }
+
+        internal static readonly ResourceObservationOutcome Success = new ResourceObservationOutcome("success");
+        internal static readonly ResourceObservationOutcome Failed = new ResourceObservationOutcome("failed");
+        internal static readonly ResourceObservationOutcome Skipped = new ResourceObservationOutcome("skipped");
+        internal static readonly ResourceObservationOutcome Rejected = new ResourceObservationOutcome("rejected");
+        internal static readonly ResourceObservationOutcome Deferred = new ResourceObservationOutcome("deferred");
+        internal static readonly ResourceObservationOutcome Attempt = new ResourceObservationOutcome("attempt");
+        internal static readonly ResourceObservationOutcome Scheduled = new ResourceObservationOutcome("scheduled");
+        internal static readonly ResourceObservationOutcome Observed = new ResourceObservationOutcome("observed");
+        internal static readonly ResourceObservationOutcome Suppressed = new ResourceObservationOutcome("suppressed");
+        internal static readonly ResourceObservationOutcome Accepted = new ResourceObservationOutcome("accepted");
+        internal static readonly ResourceObservationOutcome Unknown = new ResourceObservationOutcome("unknown");
+
+        internal static ResourceObservationOutcome From(string value)
+        {
+            switch (value)
+            {
+                case "success": return Success;
+                case "failed": return Failed;
+                case "skipped": return Skipped;
+                case "rejected": return Rejected;
+                case "deferred": return Deferred;
+                case "attempt": return Attempt;
+                case "scheduled": return Scheduled;
+                case "observed": return Observed;
+                case "suppressed": return Suppressed;
+                case "accepted": return Accepted;
+                case "unknown": return Unknown;
+                default: throw new ArgumentOutOfRangeException(nameof(value), "Unknown Resource observation outcome.");
+            }
+        }
+
+        public bool Equals(ResourceObservationOutcome other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+        public override bool Equals(object obj) => obj is ResourceObservationOutcome other && Equals(other);
+        public override int GetHashCode() => _value == null ? 0 : _value.GetHashCode();
+        public override string ToString() => _value ?? "unknown";
+        public static implicit operator ResourceObservationOutcome(string value) => From(value);
+    }
+
+    /// <summary>
     /// Resource 运行时证据的单一格式化出口。
     /// 所有路径都输出同一组字段，避免 SPI 未接线时与原生路径混淆。
     /// </summary>
@@ -31,7 +113,7 @@ namespace SteamP2PFriends.Adapters.Resource
             ulong sessionEpoch,
             ulong connectionGeneration,
             uint regionGeneration,
-            string path,
+            ResourceObservationPath path,
             bool spiActive,
             string point)
         {
@@ -40,7 +122,7 @@ namespace SteamP2PFriends.Adapters.Resource
             if (!firstNotice) return;
 
             Warn(role, eventName, region, sessionEpoch, connectionGeneration, regionGeneration,
-                path, spiActive, "suppressed", "reason=diagnostic-quota-exhausted point=" + point);
+                path, spiActive, ResourceObservationOutcome.Suppressed, "reason=diagnostic-quota-exhausted point=" + point);
         }
 
         internal static void NoticeOnce(
@@ -51,9 +133,9 @@ namespace SteamP2PFriends.Adapters.Resource
             ulong sessionEpoch,
             ulong connectionGeneration,
             uint regionGeneration,
-            string path,
+            ResourceObservationPath path,
             bool spiActive,
-            string outcome,
+            ResourceObservationOutcome outcome,
             string detail)
         {
             bool firstNotice;
@@ -71,26 +153,24 @@ namespace SteamP2PFriends.Adapters.Resource
             ulong sessionEpoch,
             ulong connectionGeneration,
             uint regionGeneration,
-            string path,
+            ResourceObservationPath path,
             bool spiActive,
-            string outcome,
+            ResourceObservationOutcome outcome,
             string detail = null)
         {
             string normalizedRole = NormalizeRole(role);
             string normalizedRegion = string.IsNullOrWhiteSpace(region) ? "-" : region;
-            string normalizedPath = string.IsNullOrWhiteSpace(path) ? "Unknown" : path;
-            string normalizedOutcome = string.IsNullOrWhiteSpace(outcome) ? "unknown" : outcome;
             string suffix = string.IsNullOrWhiteSpace(detail) ? string.Empty : " " + detail.Trim();
 
             return $"[ResourceObs] event={eventName ?? "Unknown"} " +
                 $"caseId={BuildFingerprint.GetCaseIdForLogging()} role={normalizedRole} domain=Resource " +
                 $"region={normalizedRegion} sessionEpoch={sessionEpoch} " +
                 $"connectionGeneration={connectionGeneration} regionGeneration={regionGeneration} " +
-                $"path={normalizedPath} spiActive={spiActive.ToString().ToLowerInvariant()} " +
-                $"shadowOnly=true outcome={normalizedOutcome}{suffix}";
+                $"path={path} spiActive={spiActive.ToString().ToLowerInvariant()} " +
+                $"shadowOnly=true outcome={outcome}{suffix}";
         }
 
-        internal static string NativePath(bool spiActive) => spiActive ? "Native" : "Legacy";
+        internal static ResourceObservationPath NativePath(bool spiActive) => spiActive ? ResourceObservationPath.Native : ResourceObservationPath.Legacy;
 
         internal static void Info(
             string role,
@@ -99,9 +179,9 @@ namespace SteamP2PFriends.Adapters.Resource
             ulong sessionEpoch,
             ulong connectionGeneration,
             uint regionGeneration,
-            string path,
+            ResourceObservationPath path,
             bool spiActive,
-            string outcome,
+            ResourceObservationOutcome outcome,
             string detail = null)
         {
             RoleLogger.Info(role, Format(role, eventName, region, sessionEpoch, connectionGeneration,
@@ -115,9 +195,9 @@ namespace SteamP2PFriends.Adapters.Resource
             ulong sessionEpoch,
             ulong connectionGeneration,
             uint regionGeneration,
-            string path,
+            ResourceObservationPath path,
             bool spiActive,
-            string outcome,
+            ResourceObservationOutcome outcome,
             string detail = null)
         {
             RoleLogger.Warn(role, Format(role, eventName, region, sessionEpoch, connectionGeneration,
@@ -131,9 +211,9 @@ namespace SteamP2PFriends.Adapters.Resource
             ulong sessionEpoch,
             ulong connectionGeneration,
             uint regionGeneration,
-            string path,
+            ResourceObservationPath path,
             bool spiActive,
-            string outcome,
+            ResourceObservationOutcome outcome,
             string detail = null)
         {
             RoleLogger.Error(role, Format(role, eventName, region, sessionEpoch, connectionGeneration,

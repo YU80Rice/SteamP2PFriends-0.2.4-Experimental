@@ -14,7 +14,7 @@ namespace SteamP2PFriends.WhitelistTests
         private static int Main(string[] args)
         {
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 201 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 255 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -53,6 +53,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M12 StaleLoaded", MultiObserverShadowTests.Test_M12_StaleLoadedCountIsPreserved, ref total, ref passed, ref failed);
             RunTest("M13 ObserverCapacity", MultiObserverShadowTests.Test_M13_ObserverCapacityFailsClosed, ref total, ref passed, ref failed);
             RunTest("M14 InvalidZombieBound", MultiObserverShadowTests.Test_M14_InvalidZombieBoundDoesNotCreateFunctionalDemand, ref total, ref passed, ref failed);
+            RunTest("M15 ConnectionGenerationOverflow", MultiObserverShadowTests.Test_M15_ConnectionGenerationOverflowFailsClosed, ref total, ref passed, ref failed);
             #endregion
 
             #region 3. Adapters: Item Domain Tests (21 Tests)
@@ -178,9 +179,36 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6P12 ResourceReplicationExitRollback", ResourceProductionControlSeamTests.Test_M6P12_ReplicationExitFailureRetainsDemand, ref total, ref passed, ref failed);
             RunTest("M6P13 ResourceMultiRegionEnterCompensation", ResourceProductionControlSeamTests.Test_M6P13_MultiRegionEnterFailureCompensates, ref total, ref passed, ref failed);
             RunTest("M6P14 ResourceMultiRegionExitCompensation", ResourceProductionControlSeamTests.Test_M6P14_MultiRegionExitFailureCompensates, ref total, ref passed, ref failed);
+            RunTest("M6P15 ResourceAcquireFailureCompensation", ResourceProductionControlSeamTests.Test_M6P15_AcquireFailureAfterSideEffectIsCompensated, ref total, ref passed, ref failed);
+            RunTest("M6P16 ResourceGenerationReaderFailure", ResourceProductionControlSeamTests.Test_M6P16_GenerationReaderFailureRetainsReleaseState, ref total, ref passed, ref failed);
+            RunTest("M6P17 ResourceDisconnectCompensation", ResourceProductionControlSeamTests.Test_M6P17_DisconnectFailureRestoresObserverState, ref total, ref passed, ref failed);
+            RunTest("M6P18 ResourceReleaseCompensation", ResourceProductionControlSeamTests.Test_M6P18_ReleaseFailureAfterSideEffectIsCompensated, ref total, ref passed, ref failed);
+            RunTest("M6P19 ResourceReleaseRejection", ResourceProductionControlSeamTests.Test_M6P19_ReleaseRejectionDoesNotRunCompensation, ref total, ref passed, ref failed);
+            RunTest("M6P20 ResourceSnapshotRestore", ResourceProductionControlSeamTests.Test_M6P20_DisconnectFailureRestoresSnapshotContent, ref total, ref passed, ref failed);
+            RunTest("M6P21 ResourceRegionRestore", ResourceProductionControlSeamTests.Test_M6P21_AcquireFailureRestoresExactRegionState, ref total, ref passed, ref failed);
+            RunTest("M6P22 ResourceSessionInitFailClosed", ResourceProductionControlSeamTests.Test_M6P22_SessionInitializationFailureStaysInactive, ref total, ref passed, ref failed);
+            RunTest("M6P23 ResourceReplicationRestore", ResourceProductionControlSeamTests.Test_M6P23_ReplicationFailureRestoresExactSnapshot, ref total, ref passed, ref failed);
+            RunTest("M6P24 ResourceGenerationRegressionRetained", ResourceProductionControlSeamTests.Test_M6P24_AdvanceTimeRetainsLeaseOnGenerationRegression, ref total, ref passed, ref failed);
+            RunTest("M6P25 ResourceReleaseGenerationRegressionRetained", ResourceProductionControlSeamTests.Test_M6P25_FlushRetainsPendingReleaseOnGenerationRegression, ref total, ref passed, ref failed);
+            RunTest("M6P26 ResourceSessionEndLifecycleFailure", ResourceProductionControlSeamTests.Test_M6P26_EndSessionClearsStateWhenLifecycleCleanupThrows, ref total, ref passed, ref failed);
+            RunTest("M6P27 ResourceSessionEndReplicationFailure", ResourceProductionControlSeamTests.Test_M6P27_EndSessionClearsStateWhenReplicationCleanupThrows, ref total, ref passed, ref failed);
+            RunTest("M6P28 ResourceAcquireGenerationRegression", ResourceProductionControlSeamTests.Test_M6P28_AcquireGenerationRegressionFailsClosed, ref total, ref passed, ref failed);
+            RunTest("M6P29 ResourceExitGenerationRegression", ResourceProductionControlSeamTests.Test_M6P29_ExitGenerationRegressionRetainsStoredLease, ref total, ref passed, ref failed);
+            RunTest("M6P30 ResourceRepairRequiredLock", ResourceProductionControlSeamTests.Test_M6P30_RepairRequiredRejectsNewSession, ref total, ref passed, ref failed);
             RunTest("M6O01 ResourceObservabilityFields", ResourceObservabilityTests.Test_M6O01_FormatsRequiredResourceFields, ref total, ref passed, ref failed);
             RunTest("M6O02 ResourceFallbackExplicit", ResourceObservabilityTests.Test_M6O02_FallbackAndSkippedAreExplicit, ref total, ref passed, ref failed);
             RunTest("M6O03 ResourceReceiveDecisionBoundary", ResourceObservabilityTests.Test_M6O03_NativeReceiveDoesNotInventAcceptance, ref total, ref passed, ref failed);
+            RunTest("M6O04 ResourceControlledObservationValues", ResourceObservabilityTests.Test_M6O04_PathAndOutcomeRejectUnknownValues, ref total, ref passed, ref failed);
+            RunTest("M6O05 WorldSyncReflectionReasons", ResourceObservabilityTests.Test_M6O05_WorldSyncReflectionFailuresHaveReasons, ref total, ref passed, ref failed);
+            RunTest("M6O06 WorldSyncNullRegionFailClosed", ResourceObservabilityTests.Test_M6O06_WorldSyncNullRegionFailsClosed, ref total, ref passed, ref failed);
+            RunTest("M6O07 ObservationBeforeQuota", ResourceObservabilityTests.Test_M6O07_IncompleteObservationPrecedesQuota, ref total, ref passed, ref failed);
+            RunTest("M6O08 ReceiveBeforeQuota", ResourceObservabilityTests.Test_M6O08_ReceiveCompletenessPrecedesQuota, ref total, ref passed, ref failed);
+            RunTest("M6O09 HarvestNativePostcondition", ResourceObservabilityTests.Test_M6O09_HarvestValidatesNativePostcondition, ref total, ref passed, ref failed);
+            RunTest("M6O10 HarvestRegistrationIdempotent", ResourceHarvestRegistrationStaticILContractTests.Test_BlackBoxRegistrationIsIdempotentAndUnique, ref total, ref passed, ref failed);
+            RunTest("M6O11 ConnectionOverflowTeardown", ResourceProductionControlStaticILContractTests.Test_ClientConnectionGenerationFailureRequestsTeardown, ref total, ref passed, ref failed);
+            RunTest("M6O12 SessionEndCleanupFinally", ResourceProductionControlStaticILContractTests.Test_CoordinatorSessionEndClearsAfterResourceFailure, ref total, ref passed, ref failed);
+            RunTest("M6O13 ResourceEndLogAfterCleanup", ResourceProductionControlStaticILContractTests.Test_ResourceDomainEndLogsSuccessAfterCleanup, ref total, ref passed, ref failed);
+            RunTest("M6O14 DeltaRejectPerCall", ResourceProductionControlStaticILContractTests.Test_DeltaWriteUsesPerCallRejectDelta, ref total, ref passed, ref failed);
 
             RunTest("M6R09 ResourceSessionEnd", ResourceRegionLifecycleAdapterTests.Test_M6R09_EndSessionClearsResourceState, ref total, ref passed, ref failed);
 
@@ -268,6 +296,22 @@ namespace SteamP2PFriends.WhitelistTests
                 ref total, ref passed, ref failed);
             RunTest("Resource Harvest Four Hook State", ResourceHarvestRegistrationStaticILContractTests.Test_FourHookRegistrationStateIsExplicit,
                 ref total, ref passed, ref failed);
+            RunTest("Resource Harvest Identity State", ResourceHarvestRegistrationStaticILContractTests.Test_BlackBoxRegistrationStateContainsIdentity,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Harvest Rollback State", ResourceHarvestRegistrationStaticILContractTests.Test_BlackBoxPartialFailureRollsBackAppliedAndFailedHook,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Harvest Unpatch Failure State", ResourceHarvestRegistrationStaticILContractTests.Test_UnpatchFailureIsNotReportedAsVerifiedClean,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Harvest Rollback Knowledge", ResourceHarvestRegistrationStaticILContractTests.Test_RollbackResidualKnowledgeIsExplicit,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Generation Reader No Guess", ResourceProductionControlStaticILContractTests.Test_GenerationReadDoesNotUseFallbackGuess,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Failure Classification", ResourceProductionControlStaticILContractTests.Test_FailureClassificationDoesNotParseExceptionText,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Native Snapshot Fail Closed", ResourceProductionControlStaticILContractTests.Test_NativeSnapshotNullResourceListFailsClosed,
+                ref total, ref passed, ref failed);
+            RunTest("Resource Native Restore Atomic", ResourceProductionControlStaticILContractTests.Test_NativeRestoreValidatesBeforeApplyAndCanRollback,
+                ref total, ref passed, ref failed);
             RunTest("Item/Zombie StaticIL", ItemZombieOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("T04 ModuleOwnershipStaticIL", ModuleOwnershipStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
@@ -306,6 +350,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("BuildArtifact Test Metadata", BuildArtifactEvidenceTests.Test_TestAssemblyConsumesVersionMetadata,
                 ref total, ref passed, ref failed);
             RunTest("BuildArtifact Full Log Identity", BuildArtifactEvidenceTests.Test_VerifierRequiresFullLogIdentity,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Rejects Incomplete Log", BuildArtifactEvidenceTests.Test_VerifierRejectsIncompleteLogIdentity,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.Runtime;

@@ -117,38 +117,20 @@ namespace SteamP2PFriends.WhitelistTests
                 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(99UL));
             RegionKey regionKey = new RegionKey(5, 6);
-            seam.UpdateObserver(777UL, 5001UL, regionKey.X, regionKey.Y);
+            bool rejectedWithoutNativeBoundary = false;
+            try
+            {
+                seam.UpdateObserver(777UL, 5001UL, regionKey.X, regionKey.Y);
+            }
+            catch (Exception)
+            {
+                rejectedWithoutNativeBoundary = true;
+            }
 
-            bool acquired = ResourceRegionLifecycleAdapter.IsRegionActive(regionKey.X, regionKey.Y);
-            bool snapshotQueued = ResourceSnapshotAdapter.AdvanceDeltaSequence(777UL, regionKey) == 2U;
-
-            seam.UpdateObserver(777UL, 5002UL, regionKey.X, regionKey.Y);
-            uint reconnectSequence = 0U;
-            bool reconnected = ResourceSnapshotAdapter.TryGetSnapshot(
-                777UL, regionKey, out ResourceSnapshotRecord reconnectSnapshot)
-                && reconnectSnapshot.ConnectionToken == 5002UL
-                && !ResourceSnapshotAdapter.TryAdvanceDeltaSequence(
-                    777UL, 5001UL, regionKey, out _)
-                && ResourceSnapshotAdapter.TryAdvanceDeltaSequence(
-                    777UL, 5002UL, regionKey, out reconnectSequence)
-                && reconnectSequence == 2U;
-
-            uint harvestGeneration = ResourceRegionLifecycleAdapter.RecordResourceDead(regionKey.X, regionKey.Y, 17);
-            ResourceSnapshotAdapter.UpdateRegionGeneration(regionKey, harvestGeneration);
-            bool staleIncrementRejected = ResourceSnapshotAdapter.AdvanceDeltaSequence(777UL, regionKey) == 0U;
-            bool resynced = ResourceSnapshotAdapter.EnqueueInitialSnapshot(
-                777UL, 5002UL, regionKey, harvestGeneration);
-            bool incrementalGeneration = resynced
-                && ResourceSnapshotAdapter.AdvanceDeltaSequence(777UL, regionKey) == 2U;
-
-            seam.RemoveObserver(777UL);
-            seam.Tick(2.0f);
-            bool released = !ResourceRegionLifecycleAdapter.IsRegionActive(regionKey.X, regionKey.Y);
-            seam.EndSession();
-            bool lifecycleCleared = !ResourceRegionLifecycleAdapter.IsRegionActive(regionKey.X, regionKey.Y)
-                && ResourceRegionLifecycleAdapter.GetGeneration(regionKey) == 0U;
-            return acquired && snapshotQueued && reconnected && staleIncrementRejected
-                && incrementalGeneration && released && lifecycleCleared;
+            return rejectedWithoutNativeBoundary
+                && !seam.IsLeased(regionKey)
+                && seam.GetDemand(regionKey) == 0
+                && seam.PendingReleaseCount == 0;
         }
 
         internal static bool Test_M6P08_StaleRegionGenerationDelaysRelease()
@@ -252,7 +234,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && seam.GetDemand(new RegionKey(10, 10)) == 0
                 && seam.ActiveLeaseCount == 0
                 && seam.PendingReleaseCount == 0
-                && fake.Replication.Exited.Count >= 1;
+                && fake.Replication.RestoreReplicationStateCalls >= 1;
         }
 
         internal static bool Test_M6P14_MultiRegionExitFailureCompensates()
@@ -273,7 +255,312 @@ namespace SteamP2PFriends.WhitelistTests
                 && seam.DemandRegionCount == 9
                 && seam.GetDemand(new RegionKey(10, 10)) == 1
                 && seam.ActiveLeaseCount == 9
-                && fake.Replication.Entered.Count > 9;
+                && fake.Replication.RestoreReplicationStateCalls >= 1;
+        }
+
+        internal static bool Test_M6P15_AcquireFailureAfterSideEffectIsCompensated()
+        {
+            var fake = new FakeResourceAdapters();
+            fake.Lifecycle.ThrowOnAcquireAfterSideEffect = true;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return threw
+                && seam.GetDemand(regionKey) == 0
+                && !seam.IsLeased(regionKey)
+                && seam.PendingReleaseCount == 0
+                && fake.Lifecycle.Releases.Count == 0
+                && fake.Lifecycle.RestoreRegionStateCalls == 1;
+        }
+
+        internal static bool Test_M6P16_GenerationReaderFailureRetainsReleaseState()
+        {
+            var fake = new FakeResourceAdapters();
+            bool failGenerationRead = false;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication,
+                _ =>
+                {
+                    if (failGenerationRead) throw new InvalidOperationException("generation reader unavailable");
+                    return fake.Generation;
+                },
+                64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            seam.RemoveObserver(100UL);
+            failGenerationRead = true;
+
+            bool didNotEscape = true;
+            try { seam.Tick(2.0f); }
+            catch { didNotEscape = false; }
+
+            return didNotEscape
+                && seam.PendingReleaseCount == 1
+                && seam.IsLeased(regionKey)
+                && fake.Lifecycle.Releases.Count == 0;
+        }
+
+        internal static bool Test_M6P17_DisconnectFailureRestoresObserverState()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            fake.Lifecycle.ThrowOnDisconnectAfterSideEffect = true;
+
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1002UL, regionKey.X, regionKey.Y); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return threw
+                && fake.Lifecycle.RestoreCalls == 1
+                && seam.ObserverCount == 1
+                && seam.GetDemand(regionKey) == 1
+                && seam.IsLeased(regionKey)
+                && seam.TryGetConnectionGeneration(100UL, out ulong token)
+                && token == 1001UL;
+        }
+
+        internal static bool Test_M6P18_ReleaseFailureAfterSideEffectIsCompensated()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            seam.RemoveObserver(100UL);
+            fake.Lifecycle.ThrowOnRelease = true;
+
+            seam.Tick(2.0f);
+
+            return seam.IsLeased(regionKey)
+                && seam.PendingReleaseCount == 1
+                && fake.Lifecycle.RestoreRegionStateCalls == 1
+                && fake.Lifecycle.Acquires.Count == 1;
+        }
+
+        internal static bool Test_M6P20_DisconnectFailureRestoresSnapshotContent()
+        {
+            var ledger = new ResourceSnapshotReplicationLedger();
+            RegionKey regionKey = new RegionKey(10, 10);
+            ledger.ResetSession(7UL);
+            if (!ledger.EnqueueInitialSnapshot(100UL, 1001UL, regionKey, 4U)) return false;
+            ResourceSnapshotRecord before = default(ResourceSnapshotRecord);
+            if (!ledger.TryGetSnapshot(100UL, regionKey, out before)) return false;
+
+            ResourceObserverReplicationState state = ledger.CaptureObserverState(100UL);
+            if (!ledger.OnObserverDisconnect(100UL, 1001UL)) return false;
+            ledger.RestoreObserverState(100UL, state);
+
+            return ledger.TryGetSnapshot(100UL, regionKey, out ResourceSnapshotRecord after)
+                && after.SessionEpoch == before.SessionEpoch
+                && after.ConnectionToken == before.ConnectionToken
+                && after.RegionGeneration == before.RegionGeneration
+                && after.DeltaSequence == before.DeltaSequence;
+        }
+
+        internal static bool Test_M6P21_AcquireFailureRestoresExactRegionState()
+        {
+            var fake = new FakeResourceAdapters();
+            fake.Lifecycle.ThrowOnAcquireAfterSideEffect = true;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            uint initialGeneration = fake.Generation;
+
+            try { seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y); }
+            catch (InvalidOperationException) { }
+
+            return fake.Generation == initialGeneration
+                && fake.Lifecycle.RestoreRegionStateCalls == 1
+                && fake.Lifecycle.Releases.Count == 0
+                && !seam.IsLeased(regionKey);
+        }
+
+        internal static bool Test_M6P22_SessionInitializationFailureStaysInactive()
+        {
+            var fake = new FakeResourceAdapters();
+            fake.Lifecycle.ThrowOnSessionBegin = true;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+
+            bool threw = false;
+            try { seam.BeginSession(new SessionEpoch(7UL)); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return threw && !seam.IsSessionActive && seam.ObserverCount == 0
+                && seam.ActiveLeaseCount == 0 && seam.PendingReleaseCount == 0;
+        }
+
+        internal static bool Test_M6P23_ReplicationFailureRestoresExactSnapshot()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+            fake.Replication.ThrowOnEntered = true;
+
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1001UL, 11, 11); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return threw
+                && fake.Replication.RestoreReplicationStateCalls >= 2
+                && fake.Replication.Entered.Count == 1
+                && fake.Replication.Entered[0].RegionKey == new RegionKey(10, 10);
+        }
+
+        internal static bool Test_M6P24_AdvanceTimeRetainsLeaseOnGenerationRegression()
+        {
+            var fake = new FakeResourceAdapters { Generation = 5U };
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            fake.Generation = 4U;
+
+            seam.AdvanceTime(0f);
+
+            return seam.TryGetLease(regionKey, out ResourceProductionLease lease)
+                && lease.RegionGeneration.Value == 5U;
+        }
+
+        internal static bool Test_M6P25_FlushRetainsPendingReleaseOnGenerationRegression()
+        {
+            var fake = new FakeResourceAdapters { Generation = 5U };
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            seam.RemoveObserver(100UL);
+            fake.Generation = 4U;
+
+            seam.Tick(2.0f);
+
+            return seam.TryGetLease(regionKey, out ResourceProductionLease lease)
+                && lease.RegionGeneration.Value == 5U
+                && seam.PendingReleaseCount == 1
+                && fake.Lifecycle.Releases.Count == 0;
+        }
+
+        internal static bool Test_M6P26_EndSessionClearsStateWhenLifecycleCleanupThrows()
+        {
+            var fake = new FakeResourceAdapters();
+            fake.Lifecycle.ThrowOnSessionEnd = true;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+
+            bool threw = false;
+            try { seam.EndSession(); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return threw && !seam.IsSessionActive && seam.ObserverCount == 0
+                && seam.ActiveLeaseCount == 0 && seam.PendingReleaseCount == 0
+                && seam.RepairRequired && fake.Replication.ResetCount >= 2;
+        }
+
+        internal static bool Test_M6P27_EndSessionClearsStateWhenReplicationCleanupThrows()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+            fake.Replication.ThrowOnReset = true;
+
+            bool threw = false;
+            try { seam.EndSession(); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return threw && !seam.IsSessionActive && seam.ObserverCount == 0
+                && seam.ActiveLeaseCount == 0 && seam.PendingReleaseCount == 0
+                && seam.RepairRequired && fake.Lifecycle.SessionEnds == 1;
+        }
+
+        internal static bool Test_M6P28_AcquireGenerationRegressionFailsClosed()
+        {
+            var fake = new FakeResourceAdapters { Generation = 5U };
+            int readCount = 0;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication,
+                _ => readCount++ == 0 ? 5U : 4U, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1001UL, 10, 10); }
+            catch (ResourceAcquireRejectedException) { threw = true; }
+
+            return threw && seam.GetDemand(new RegionKey(10, 10)) == 0
+                && !seam.IsLeased(new RegionKey(10, 10))
+                && fake.Lifecycle.RestoreRegionStateCalls == 1;
+        }
+
+        internal static bool Test_M6P29_ExitGenerationRegressionRetainsStoredLease()
+        {
+            var fake = new FakeResourceAdapters { Generation = 5U };
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            fake.Generation = 4U;
+            seam.RemoveObserver(100UL);
+
+            return seam.TryGetLease(regionKey, out ResourceProductionLease lease)
+                && lease.RegionGeneration.Value == 5U
+                && seam.PendingReleaseCount == 1;
+        }
+
+        internal static bool Test_M6P30_RepairRequiredRejectsNewSession()
+        {
+            var fake = new FakeResourceAdapters();
+            fake.Lifecycle.ThrowOnSessionEnd = true;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            bool endThrew = false;
+            try { seam.EndSession(); }
+            catch (InvalidOperationException) { endThrew = true; }
+
+            bool beginThrew = false;
+            try { seam.BeginSession(new SessionEpoch(8UL)); }
+            catch (InvalidOperationException) { beginThrew = true; }
+
+            return endThrew && beginThrew && seam.RepairRequired && !seam.IsSessionActive;
+        }
+
+        internal static bool Test_M6P19_ReleaseRejectionDoesNotRunCompensation()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            seam.RemoveObserver(100UL);
+            fake.Lifecycle.RejectRelease = true;
+
+            seam.Tick(2.0f);
+
+            return fake.Lifecycle.Acquires.Count == 1
+                && seam.PendingReleaseCount == 1
+                && seam.IsLeased(regionKey);
         }
 
         internal static bool Test_M6P05_RegionGenerationFlowsIntoSnapshotAndRelease()
@@ -298,34 +585,117 @@ namespace SteamP2PFriends.WhitelistTests
         private sealed class FakeResourceAdapters
         {
             internal uint Generation = 1U;
-            internal readonly FakeLifecycleAdapter Lifecycle = new FakeLifecycleAdapter();
+            internal readonly FakeLifecycleAdapter Lifecycle;
             internal readonly FakeReplicationAdapter Replication = new FakeReplicationAdapter();
+
+            internal FakeResourceAdapters()
+            {
+                Lifecycle = new FakeLifecycleAdapter(
+                    () => Generation,
+                    value => Generation = value);
+            }
         }
 
-        private sealed class FakeLifecycleAdapter : ILifecycleDomainAdapter
+        private sealed class FakeLifecycleAdapter : ILifecycleDomainAdapter,
+            IReversibleObserverDisconnectAdapter, IReversibleRegionLifecycleAdapter
         {
             internal readonly List<LeaseTicket> Acquires = new List<LeaseTicket>();
             internal readonly List<LeaseTicket> Releases = new List<LeaseTicket>();
             internal readonly List<DisconnectEvent> Disconnects = new List<DisconnectEvent>();
             internal int SessionEnds;
             internal bool ThrowOnRelease;
+            internal bool RejectRelease;
+            internal bool ThrowOnAcquireAfterSideEffect;
+            internal bool ThrowOnDisconnectAfterSideEffect;
+            internal bool ThrowOnSessionBegin;
+            internal bool ThrowOnSessionEnd;
+            internal int RestoreCalls;
+            internal int RestoreRegionStateCalls;
+            private readonly Func<uint> _readGeneration;
+            private readonly Action<uint> _writeGeneration;
+
+            internal FakeLifecycleAdapter(Func<uint> readGeneration, Action<uint> writeGeneration)
+            {
+                _readGeneration = readGeneration;
+                _writeGeneration = writeGeneration;
+            }
 
             public DomainId DomainId => DomainIds.Resource;
             public string DisplayName => "Resource";
             public string Capability => "test";
-            public void OnSessionBegin(uint sessionEpoch) { }
-            public void OnSessionEnd() { SessionEnds++; }
-            public void OnAcquire(LeaseTicket ticket) { Acquires.Add(ticket); }
+            public void OnSessionBegin(uint sessionEpoch)
+            {
+                if (ThrowOnSessionBegin) throw new InvalidOperationException("test session begin failure");
+            }
+            public void OnSessionEnd()
+            {
+                SessionEnds++;
+                if (ThrowOnSessionEnd) throw new InvalidOperationException("test session end failure");
+            }
+            public void OnAcquire(LeaseTicket ticket)
+            {
+                Acquires.Add(ticket);
+                if (ThrowOnAcquireAfterSideEffect)
+                {
+                    _writeGeneration(_readGeneration() + 1U);
+                    throw new InvalidOperationException("test acquire failure after side effect");
+                }
+            }
             public void OnRelease(LeaseTicket ticket)
             {
                 Releases.Add(ticket);
-                if (ThrowOnRelease) throw new InvalidOperationException("test release failure");
+                if (RejectRelease)
+                    throw new ResourceReleaseRejectedException("test-release-rejected");
+                if (ThrowOnRelease)
+                {
+                    _writeGeneration(_readGeneration() + 1U);
+                    throw new InvalidOperationException("test release failure");
+                }
             }
             public void OnTick(float deltaTime) { }
             public void OnObserverDisconnect(ulong observerId, ulong connectionToken)
             {
                 Disconnects.Add(new DisconnectEvent(observerId, connectionToken));
+                if (ThrowOnDisconnectAfterSideEffect)
+                    throw new InvalidOperationException("test disconnect failure after side effect");
             }
+
+            public object CaptureObserverDisconnectState(ulong observerId, ulong connectionToken)
+            {
+                return new object();
+            }
+
+            public void RestoreObserverDisconnectState(ulong observerId, ulong connectionToken, object state)
+            {
+                RestoreCalls++;
+            }
+
+            public object CaptureRegionState(RegionKey regionKey)
+            {
+                return new FakeRegionState(_readGeneration(), Acquires.Count, Releases.Count);
+            }
+
+            public void RestoreRegionState(RegionKey regionKey, object state)
+            {
+                FakeRegionState snapshot = state as FakeRegionState;
+                if (snapshot == null) throw new InvalidOperationException("missing region state");
+                _writeGeneration(snapshot.Generation);
+                RestoreRegionStateCalls++;
+            }
+        }
+
+        private sealed class FakeRegionState
+        {
+            internal FakeRegionState(uint generation, int acquireCount, int releaseCount)
+            {
+                Generation = generation;
+                AcquireCount = acquireCount;
+                ReleaseCount = releaseCount;
+            }
+
+            internal uint Generation { get; }
+            internal int AcquireCount { get; }
+            internal int ReleaseCount { get; }
         }
 
         private readonly struct DisconnectEvent
@@ -340,15 +710,18 @@ namespace SteamP2PFriends.WhitelistTests
             internal ulong ConnectionToken { get; }
         }
 
-        private sealed class FakeReplicationAdapter : IStateReplicationAdapter
+        private sealed class FakeReplicationAdapter : IStateReplicationAdapter,
+            IReversibleObserverReplicationAdapter
         {
             internal readonly List<ReplicationEvent> Entered = new List<ReplicationEvent>();
             internal readonly List<ReplicationEvent> Exited = new List<ReplicationEvent>();
             internal int ResetCount;
             internal bool ThrowOnEntered;
             internal bool ThrowOnExited;
+            internal bool ThrowOnReset;
             internal int ThrowOnEnteredAfter = -1;
             internal int ThrowOnExitedAfter = -1;
+            internal int RestoreReplicationStateCalls;
 
             public DomainId DomainId => DomainIds.Resource;
             public string DisplayName => "Resource";
@@ -365,7 +738,44 @@ namespace SteamP2PFriends.WhitelistTests
                     throw new InvalidOperationException("test replication exit failure");
             }
             public void OnReplicationTick(float deltaTime) { }
-            public void ResetReplication(uint sessionEpoch) { ResetCount++; }
+            public void ResetReplication(uint sessionEpoch)
+            {
+                ResetCount++;
+                if (ThrowOnReset) throw new InvalidOperationException("test replication reset failure");
+            }
+
+            public object CaptureObserverReplicationState(ulong observerId, ulong connectionToken)
+            {
+                return new FakeReplicationState(
+                    new List<ReplicationEvent>(Entered),
+                    new List<ReplicationEvent>(Exited));
+            }
+
+            public void RestoreObserverReplicationState(
+                ulong observerId, ulong connectionToken, object state)
+            {
+                FakeReplicationState snapshot = state as FakeReplicationState;
+                if (snapshot == null) throw new InvalidOperationException("missing replication state");
+                Entered.Clear();
+                Entered.AddRange(snapshot.Entered);
+                Exited.Clear();
+                Exited.AddRange(snapshot.Exited);
+                RestoreReplicationStateCalls++;
+            }
+        }
+
+        private sealed class FakeReplicationState
+        {
+            internal FakeReplicationState(
+                List<ReplicationEvent> entered,
+                List<ReplicationEvent> exited)
+            {
+                Entered = entered;
+                Exited = exited;
+            }
+
+            internal List<ReplicationEvent> Entered { get; }
+            internal List<ReplicationEvent> Exited { get; }
         }
 
         private readonly struct ReplicationEvent

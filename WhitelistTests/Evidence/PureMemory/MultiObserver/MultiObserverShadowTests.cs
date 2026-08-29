@@ -242,6 +242,15 @@ namespace SteamP2PFriends.WhitelistTests
                 && ledger.ZombieDemandBoundCount == 0;
         }
 
+        internal static bool Test_M15_ConnectionGenerationOverflowFailsClosed()
+        {
+            ulong next = ulong.MaxValue;
+            return !MultiObserverShadowCoordinator.TryAllocateConnectionGeneration(
+                ref next, out ulong token)
+                && token == 0UL
+                && next == ulong.MaxValue;
+        }
+
         private static MultiObserverShadowLedger NewSession()
         {
             var ledger = new MultiObserverShadowLedger();
