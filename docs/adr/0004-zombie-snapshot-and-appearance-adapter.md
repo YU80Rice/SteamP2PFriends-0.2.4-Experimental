@@ -1,4 +1,4 @@
-# ADR 0004: 僵尸状态快照与外观同步适配器 (Zombie Snapshot & Appearance Adapter)
+# 0004: 僵尸状态快照与外观同步适配器 (Zombie Snapshot & Appearance Adapter)
 
 - **状态**：Accepted (已验收并冻结)
 - **日期**：2026-08-25

@@ -1,4 +1,4 @@
-# ADR 0005: 控制平面与数据平面分离及统一空间索引架构 (Control/Data Plane & Spatial Index)
+# 0005: 控制平面与数据平面分离及统一空间索引架构 (Control/Data Plane & Spatial Index)
 
 - **状态**：Accepted (已确立)
 - **日期**：2026-08-25

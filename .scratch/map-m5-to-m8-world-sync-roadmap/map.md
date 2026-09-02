@@ -12,7 +12,7 @@
 
 ## Decisions so far
 
-- [Step 1 ~ Step 5 顶层架构重构完成](file:///D:/Agent-%E5%B7%A5%E4%BD%9C%E7%9B%AE%E5%BD%95/DevelopMyUNMultiplayerModAndModloader/SteamP2PFriends-0.2.4-Experimental/.scratch/map-top-level-architecture-blueprint/map.md): 完成了 5 大核心重构步骤，建立 SPI 契约、控制面/数据面分离、Plugin.cs 瘦身至 267 行及领域镜像测试套件（118/118 PASS）。
+- [Step 1 ~ Step 5 顶层架构重构完成](../map-top-level-architecture-blueprint/map.md): 完成了 5 大核心重构步骤，建立 SPI 契约、控制面/数据面分离、Plugin.cs 瘦身至 267 行及领域镜像测试套件（118/118 PASS）。
 
 ## Frontier (Takeable Tickets)
 

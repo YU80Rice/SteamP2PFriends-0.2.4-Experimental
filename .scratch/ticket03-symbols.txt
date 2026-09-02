@@ -1,0 +1,491 @@
+MultiObserver\SPI\LeaseTicket.cs:12:        public readonly int RegionKey;
+MultiObserver\SPI\LeaseTicket.cs:27:            RegionKey = regionKey;
+MultiObserver\SPI\LeaseTicket.cs:37:                && RegionKey == other.RegionKey
+MultiObserver\SPI\LeaseTicket.cs:51:                hash = (hash * 397) ^ RegionKey;
+MultiObserver\SPI\LeaseTicket.cs:62:            return $"LeaseTicket[{DomainName} key={RegionKey} epoch={SessionEpoch} gen={RegionGeneration} demand={ActiveDemandCount}]";
+WhitelistTests\MultiObserver\SpatialObserverIndexTests.cs:27:        internal static bool Test_SPI02_Bound1DDiffCalculation()
+WhitelistTests\MultiObserver\SpatialObserverIndexTests.cs:31:            SpatialRelevanceDiff diff1 = index.UpdateBound1D(1, 101, 7);
+WhitelistTests\MultiObserver\SpatialObserverIndexTests.cs:36:            SpatialRelevanceDiff diff2 = index.UpdateBound1D(1, 101, 10);
+WhitelistTests\MultiObserver\SpatialObserverIndexTests.cs:42:            SpatialRelevanceDiff diff3 = index.UpdateBound1D(1, 101, byte.MaxValue);
+WhitelistTests\Core\LoggingPolicyTests.cs:53:        internal static bool Test_LegacyLabelsAreRemovedAtOutputBoundary()
+WhitelistTests\Program.cs:22:            RunTest("LOG3 Labels", LoggingPolicyTests.Test_LegacyLabelsAreRemovedAtOutputBoundary, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:29:            RunTest("SPI02 Bound1DDiff", SpatialObserverIndexTests.Test_SPI02_Bound1DDiffCalculation, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:36:            RunTest("M05 EdgeRelevance", MultiObserverShadowTests.Test_M05_EdgeRelevanceIsBounded, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:42:            RunTest("M11 FaultBackoff", MultiObserverShadowTests.Test_M11_ShutdownGateAndFaultBackoffAreBounded, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:45:            RunTest("M14 InvalidZombieBound", MultiObserverShadowTests.Test_M14_InvalidZombieBoundDoesNotCreateFunctionalDemand, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:75:            RunTest("M3Z01 FirstAcquire", ZombieRegionLifecycleAdapterTests.Test_M3Z01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:76:            RunTest("M3Z02 GenerationCommit", ZombieRegionLifecycleAdapterTests.Test_M3Z02_RepeatedAcquireAdvancesOnlyOnRealCommit, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:77:            RunTest("M3Z03 ReleaseHysteresis", ZombieRegionLifecycleAdapterTests.Test_M3Z03_ReleaseUsesHysteresis, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:78:            RunTest("M3Z04 DemandCancelsRelease", ZombieRegionLifecycleAdapterTests.Test_M3Z04_DemandCancelsRelease, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:79:            RunTest("M3Z05 StaleSession", ZombieRegionLifecycleAdapterTests.Test_M3Z05_StaleSessionCannotRelease, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:80:            RunTest("M3Z06 StaleGeneration", ZombieRegionLifecycleAdapterTests.Test_M3Z06_StaleRegionGenerationCannotRelease, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:81:            RunTest("M3Z07 DemandMismatch", ZombieRegionLifecycleAdapterTests.Test_M3Z07_NativeDemandIsComparedWithoutRewrite, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:82:            RunTest("M3Z08 QuarantineRecovery", ZombieRegionLifecycleAdapterTests.Test_M3Z08_MismatchRecoveryClearsQuarantine, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:83:            RunTest("M3Z09 BoundIsolation", ZombieRegionLifecycleAdapterTests.Test_M3Z09_BoundsAreIndependent, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:84:            RunTest("M3Z10 ReleaseIdempotence", ZombieRegionLifecycleAdapterTests.Test_M3Z10_CommitReleaseIsIdempotent, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:85:            RunTest("M3Z11 NativeDemandIsolation", ZombieRegionLifecycleAdapterTests.Test_M3Z11_NativeDemandMismatchDoesNotChangeLedgerGeneration, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:86:            RunTest("M3Z12 QuarantineReleaseGate", ZombieRegionLifecycleAdapterTests.Test_M3Z12_QuarantineBlocksReleaseUntilDemandRecovers, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:93:            RunTest("M4Z07 BoundsDoNotCrossCommit", ZombieSnapshotAdapterTests.Test_M4Z07_DifferentBoundsDoNotCrossCommit, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:101:            RunTest("M5A01 FirstAcquire", AnimalRegionLifecycleAdapterTests.Test_M5A01_FirstAcquireCreatesOneGeneration, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:102:            RunTest("M5A02 GenerationCommit", AnimalRegionLifecycleAdapterTests.Test_M5A02_GenerationCommitAdvancesMonotonically, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:103:            RunTest("M5A03 ReleaseHysteresis", AnimalRegionLifecycleAdapterTests.Test_M5A03_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:104:            RunTest("M5A04 DemandCancelsRelease", AnimalRegionLifecycleAdapterTests.Test_M5A04_DemandCancelsRelease, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:105:            RunTest("M5A05 StaleSession", AnimalRegionLifecycleAdapterTests.Test_M5A05_StaleSessionCannotRelease, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:106:            RunTest("M5A06 StaleGeneration", AnimalRegionLifecycleAdapterTests.Test_M5A06_StaleGenerationCannotRelease, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:107:            RunTest("M5A07 BoundIsolation", AnimalRegionLifecycleAdapterTests.Test_M5A07_BoundsAreIndependent, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:108:            RunTest("M5A08 ReleaseIdempotence", AnimalRegionLifecycleAdapterTests.Test_M5A08_CommitReleaseIsIdempotentAndAdvancesGeneration, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:109:            RunTest("M5A09 DisconnectCleansLease", AnimalRegionLifecycleAdapterTests.Test_M5A09_DisconnectCleansObserverState, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:110:            RunTest("M5A10 DemandMismatchQuarantine", AnimalRegionLifecycleAdapterTests.Test_M5A10_DemandMismatchTriggersQuarantine, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:116:            RunTest("M5S06 BoundsDoNotCrossCommit", AnimalSnapshotAdapterTests.Test_M5S06_BoundsDoNotCrossCommit, ref total, ref passed, ref failed);
+WhitelistTests\Program.cs:200:            RunTest("B4 ConcurrentGuests", RouteBApprovalTests.Test_B4_ConcurrentGuestsAreDeduplicatedAndBounded, ref total, ref passed, ref failed);
+MultiObserver\Spatial\SpatialObserverIndex.cs:97:        /// 更新单一 Bounds 索引（如僵尸城镇导航 Bounds），并计算进出差异
+MultiObserver\Spatial\SpatialObserverIndex.cs:99:        public SpatialRelevanceDiff UpdateBound1D(
+Adapters\Zombie\ZombieSnapshotAdapter.cs:26:        public readonly byte Bound;
+Adapters\Zombie\ZombieSnapshotAdapter.cs:43:            Bound = bound;
+Adapters\Zombie\ZombieSnapshotAdapter.cs:54:                && Bound == other.Bound
+Adapters\Zombie\ZombieSnapshotAdapter.cs:68:                hash = (hash * 397) ^ Bound.GetHashCode();
+Adapters\Zombie\ZombieSnapshotAdapter.cs:82:            public byte ActiveBound = 255;
+Adapters\Zombie\ZombieSnapshotAdapter.cs:88:            public readonly HashSet<byte> PreparingBounds = new HashSet<byte>();
+Adapters\Zombie\ZombieSnapshotAdapter.cs:127:                        ActiveBound = bound,
+Adapters\Zombie\ZombieSnapshotAdapter.cs:139:                    state.ActiveBound = bound;
+Adapters\Zombie\ZombieSnapshotAdapter.cs:142:                    state.PreparingBounds.Clear();
+Adapters\Zombie\ZombieSnapshotAdapter.cs:149:                if (state.ActiveBound != bound)
+Adapters\Zombie\ZombieSnapshotAdapter.cs:151:                    state.ActiveBound = bound;
+Adapters\Zombie\ZombieSnapshotAdapter.cs:190:                if (state.ActiveBound != bound && bound != 255)
+Adapters\Zombie\ZombieSnapshotAdapter.cs:201:                if (state.PreparingBounds.Contains(bound))
+Adapters\Zombie\ZombieSnapshotAdapter.cs:206:                state.PreparingBounds.Add(bound);
+Adapters\Zombie\ZombieSnapshotAdapter.cs:238:                if (!state.PreparingBounds.Remove(token.Bound))
+Adapters\Zombie\ZombieSnapshotAdapter.cs:243:                state.CommittedGenerations[token.Bound] = token.RegionGeneration;
+Adapters\Zombie\ZombieSnapshotAdapter.cs:244:                state.ClothesCommitted.Add(token.Bound);
+Adapters\Zombie\ZombieSnapshotAdapter.cs:262:                return state.PreparingBounds.Remove(token.Bound);
+MultiObserver\MultiObserverShadowLedger.cs:61:    internal readonly struct RegionKey : IEquatable<RegionKey>
+MultiObserver\MultiObserverShadowLedger.cs:63:        internal RegionKey(byte x, byte y)
+MultiObserver\MultiObserverShadowLedger.cs:72:        public bool Equals(RegionKey other) => X == other.X && Y == other.Y;
+MultiObserver\MultiObserverShadowLedger.cs:73:        public override bool Equals(object obj) => obj is RegionKey other && Equals(other);
+MultiObserver\MultiObserverShadowLedger.cs:85:            byte zombieBound,
+MultiObserver\MultiObserverShadowLedger.cs:86:            bool hasFunctionalZombieBound,
+MultiObserver\MultiObserverShadowLedger.cs:97:            ZombieBound = zombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:98:            HasFunctionalZombieBound = hasFunctionalZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:110:        internal byte ZombieBound { get; }
+MultiObserver\MultiObserverShadowLedger.cs:111:        internal bool HasFunctionalZombieBound { get; }
+MultiObserver\MultiObserverShadowLedger.cs:152:            ZombieBound = state.ZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:153:            HasFunctionalZombieBound = state.HasFunctionalZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:167:        internal byte ZombieBound { get; }
+MultiObserver\MultiObserverShadowLedger.cs:168:        internal bool HasFunctionalZombieBound { get; }
+MultiObserver\MultiObserverShadowLedger.cs:185:        internal byte ZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:186:        internal bool HasFunctionalZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:192:        internal HashSet<RegionKey> ItemRegions = new HashSet<RegionKey>();
+MultiObserver\MultiObserverShadowLedger.cs:203:        private readonly Dictionary<RegionKey, int> _itemDemand =
+MultiObserver\MultiObserverShadowLedger.cs:204:            new Dictionary<RegionKey, int>();
+MultiObserver\MultiObserverShadowLedger.cs:218:        internal int ZombieDemandBoundCount => _zombieDemand.Count;
+MultiObserver\MultiObserverShadowLedger.cs:315:        internal int GetItemDemand(RegionKey region) =>
+MultiObserver\MultiObserverShadowLedger.cs:338:            HashSet<RegionKey> desiredItemRegions = BuildRegions(
+MultiObserver\MultiObserverShadowLedger.cs:352:                    ZombieBound = sample.ZombieBound,
+MultiObserver\MultiObserverShadowLedger.cs:353:                    HasFunctionalZombieBound = sample.HasFunctionalZombieBound,
+MultiObserver\MultiObserverShadowLedger.cs:373:                || state.ZombieBound != sample.ZombieBound
+MultiObserver\MultiObserverShadowLedger.cs:374:                || state.HasFunctionalZombieBound != sample.HasFunctionalZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:395:            state.ZombieBound = sample.ZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:396:            state.HasFunctionalZombieBound = sample.HasFunctionalZombieBound;
+MultiObserver\MultiObserverShadowLedger.cs:414:                    $"itemCenter=({sample.ItemRegionX},{sample.ItemRegionY}) zombieBound={sample.ZombieBound} " +
+MultiObserver\MultiObserverShadowLedger.cs:415:                    $"zombieRelevant={sample.HasFunctionalZombieBound}"));
+MultiObserver\MultiObserverShadowLedger.cs:427:        private static HashSet<RegionKey> BuildRegions(byte centerX, byte centerY, int worldSize, int radius)
+MultiObserver\MultiObserverShadowLedger.cs:429:            var result = new HashSet<RegionKey>();
+MultiObserver\MultiObserverShadowLedger.cs:438:                    result.Add(new RegionKey((byte)x, (byte)y));
+MultiObserver\MultiObserverShadowLedger.cs:464:            foreach (RegionKey region in state.ItemRegions)
+MultiObserver\MultiObserverShadowLedger.cs:466:            if (state.HasFunctionalZombieBound)
+MultiObserver\MultiObserverShadowLedger.cs:467:                Increment(_zombieDemand, state.ZombieBound);
+MultiObserver\MultiObserverShadowLedger.cs:472:            foreach (RegionKey region in state.ItemRegions)
+MultiObserver\MultiObserverShadowLedger.cs:474:            if (state.HasFunctionalZombieBound)
+MultiObserver\MultiObserverShadowLedger.cs:475:                Decrement(_zombieDemand, state.ZombieBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:27:            Bound = bound;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:33:        internal byte Bound { get; }
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:46:        internal int QuarantinedBoundCount => _quarantined.Count;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:105:                && lease.RegionGeneration == GetGeneration(lease.Bound)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:106:                && !IsQuarantined(lease.Bound)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:113:            if (!_releases.TryGetValue(lease.Bound, out ZombieReleaseLease current)) return false;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:117:            return _releases.Remove(lease.Bound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:129:    internal static class ZombieRegionLifecycleAdapter
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:169:                if (Ledger.IsQuarantined(lease.Bound))
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:171:                    Ledger.CancelRelease(lease.Bound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:172:                    SafeWarn($"release-cancel bound={lease.Bound} reason=demand-quarantined");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:175:                if (!TryGetRegion(lease.Bound, out ZombieRegion region)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:176:                    || !RegionIdentity.TryGetValue(lease.Bound, out ZombieRegion expected)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:179:                    Ledger.CancelRelease(lease.Bound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:180:                    SafeWarn($"release-cancel bound={lease.Bound} reason=region-identity-changed");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:187:                    Ledger.CancelRelease(lease.Bound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:188:                    SafeInfo($"release-cancel bound={lease.Bound} generation={lease.RegionGeneration} demand={nativeDemand}");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:196:                SafeInfo($"release-commit bound={lease.Bound} generation={lease.RegionGeneration} demand=0 hysteresis={ReleaseHysteresisSeconds:0.0}s");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:200:        internal static bool TryAcquireForRemote(Player player, byte oldBound, byte newBound)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:205:            if (!TryGetRegion(newBound, out ZombieRegion region)) return false;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:207:            ObserveDemand(newBound, region.PlayerCountInRegion);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:208:            Ledger.CancelRelease(newBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:210:            if (player?.movement?.loadedBounds == null
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:211:                || newBound >= player.movement.loadedBounds.Length
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:212:                || player.movement.loadedBounds[newBound] == null
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:213:                || player.movement.loadedBounds[newBound].isZombiesLoaded) return false;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:217:            ZombieManager.instance.generateZombies(newBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:218:            if (!TryGetRegion(newBound, out ZombieRegion verified) || !ReferenceEquals(region, verified))
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:221:            uint generation = Ledger.CommitAcquire(newBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:222:            RegionIdentity[newBound] = region;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:223:            SafeInfo($"acquire-commit bound={newBound} generation={generation} source=remote-0to1 zombies={before}->{region.zombies?.Count ?? -1} oldBound={oldBound}");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:227:        internal static void BeginLocalTransition(Player player, byte oldBound, byte newBound, ref ZombieLifecycleState state)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:235:            if (TryGetRegion(oldBound, out ZombieRegion oldRegion) && oldRegion.isNetworked)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:238:                ObserveDemand(oldBound, nativeDemand);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:239:                state.oldBound = oldBound;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:241:                state.oldRegionGeneration = Ledger.GetGeneration(oldBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:251:            if (player.channel.IsLocalPlayer && TryGetRegion(newBound, out ZombieRegion newRegion))
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:253:                Ledger.CancelRelease(newBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:254:                LoadedBound[] loaded = player.movement?.loadedBounds;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:255:                if (newRegion.isNetworked && loaded != null && newBound < loaded.Length
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:256:                    && loaded[newBound] != null && !loaded[newBound].isZombiesLoaded)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:258:                    state.newBound = newBound;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:260:                    state.newRegionGeneration = Ledger.GetGeneration(newBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:262:                    loaded[newBound].isZombiesLoaded = true;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:268:        internal static void CompleteLocalTransition(Player player, byte newBound, ref ZombieLifecycleState state, Exception exception)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:274:            if (exception == null && TryGetRegion(newBound, out ZombieRegion newRegion) && newRegion.isNetworked)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:276:                if (!RegionIdentity.TryGetValue(newBound, out ZombieRegion known) || !ReferenceEquals(known, newRegion))
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:278:                    uint generation = Ledger.CommitAcquire(newBound);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:279:                    RegionIdentity[newBound] = newRegion;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:280:                    SafeInfo($"acquire-observed bound={newBound} generation={generation} source=local-vanilla");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:282:                ObserveDemand(newBound, newRegion.PlayerCountInRegion);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:289:            if (!TryGetRegion(state.oldBound, out ZombieRegion region)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:291:                || Ledger.GetGeneration(state.oldBound) != state.oldRegionGeneration) return;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:296:            ObserveDemand(state.oldBound, nativeDemand);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:299:                RegionIdentity[state.oldBound] = region;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:300:                ZombieReleaseLease lease = Ledger.ScheduleRelease(state.oldBound, Time.realtimeSinceStartup, ReleaseHysteresisSeconds);
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:301:                SafeInfo($"release-scheduled bound={state.oldBound} generation={lease.RegionGeneration} deadline={lease.Deadline:0.000}");
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:307:            LoadedBound[] loaded = player?.movement?.loadedBounds;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:308:            if (loaded == null || state.newBound >= loaded.Length || loaded[state.newBound] == null) return;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:310:            if (!TryGetRegion(state.newBound, out ZombieRegion region)
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:312:                || Ledger.GetGeneration(state.newBound) != state.newRegionGeneration) return;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:313:            loaded[state.newBound].isZombiesLoaded = state.newOriginalIsZombiesLoaded;
+Adapters\Zombie\ZombieRegionLifecycleAdapter.cs:431:            && player.movement?.loadedBounds != null
+MultiObserver\MultiObserverShadowCoordinator.cs:169:                        $"zombieDemandBounds={Ledger.ZombieDemandBoundCount} shadowOnly=true");
+MultiObserver\MultiObserverShadowCoordinator.cs:313:                    // Mirror ZombieManager.onBoundUpdated: a player outside all navigation bounds
+MultiObserver\MultiObserverShadowCoordinator.cs:315:                    bool hasFunctionalZombieBound = LevelNavigation.checkSafe(observer.Movement.bound);
+MultiObserver\MultiObserverShadowCoordinator.cs:325:                        hasFunctionalZombieBound,
+Adapters\Zombie\ZombieDomainAdapter.cs:18:            ZombieRegionLifecycleAdapter.SetRegistrationReady(true);
+Adapters\Zombie\ZombieDomainAdapter.cs:24:            ZombieRegionLifecycleAdapter.SetRegistrationReady(false);
+Adapters\Zombie\ZombieDomainAdapter.cs:40:            ZombieRegionLifecycleAdapter.Tick();
+Adapters\Zombie\ZombieDomainAdapter.cs:50:            // 空间观察者进入该 Bound
+Adapters\Zombie\ZombieDomainAdapter.cs:55:            // 空间观察者离开该 Bound
+Adapters\Collision\LevelObjectCollisionAdapter.cs:14:            RegionKey = regionKey;
+Adapters\Collision\LevelObjectCollisionAdapter.cs:20:        public int RegionKey { get; }
+Adapters\Collision\LevelObjectCollisionAdapter.cs:165:                    Ledger.CommitAcquire(ticket.RegionKey);
+Adapters\Collision\LevelObjectCollisionAdapter.cs:176:                    Ledger.ScheduleRelease(ticket.RegionKey, 0f, DefaultHysteresisSeconds);
+Adapters\Animal\AnimalRegionLifecycleAdapter.cs:27:            Bound = bound;
+Adapters\Animal\AnimalRegionLifecycleAdapter.cs:33:        public byte Bound { get; }
+Adapters\Animal\AnimalRegionLifecycleAdapter.cs:46:        public int QuarantinedBoundCount => _quarantined.Count;
+Adapters\Animal\AnimalRegionLifecycleAdapter.cs:130:    /// 动物区域生命周期协调适配器 (AnimalRegionLifecycleAdapter)
+Adapters\Animal\AnimalRegionLifecycleAdapter.cs:131:    /// 管理野生动物导航区域（Navmesh Bounds）的按需生成与滞回释放。
+Adapters\Animal\AnimalRegionLifecycleAdapter.cs:133:    public static class AnimalRegionLifecycleAdapter
+Adapters\Animal\AnimalDomainAdapter.cs:18:            AnimalRegionLifecycleAdapter.SetRegistrationReady(true);
+Adapters\Animal\AnimalDomainAdapter.cs:19:            AnimalRegionLifecycleAdapter.BeginSession(sessionEpoch);
+Adapters\Animal\AnimalDomainAdapter.cs:25:            AnimalRegionLifecycleAdapter.SetRegistrationReady(false);
+Adapters\Animal\AnimalDomainAdapter.cs:33:                AnimalRegionLifecycleAdapter.OnObserverAcquire((byte)ticket.RegionKey);
+Adapters\Animal\AnimalDomainAdapter.cs:41:                AnimalRegionLifecycleAdapter.OnObserverRelease((byte)ticket.RegionKey, 0f);
+Adapters\Animal\AnimalDomainAdapter.cs:47:            AnimalRegionLifecycleAdapter.Tick();
+Adapters\Animal\AnimalDomainAdapter.cs:57:            uint gen = AnimalRegionLifecycleAdapter.GetGeneration((byte)regionKey);
+Adapters\Animal\AnimalDomainAdapter.cs:63:            // 退出该 Bound
+Adapters\Animal\AnimalSnapshotAdapter.cs:14:            Bound = bound;
+Adapters\Animal\AnimalSnapshotAdapter.cs:21:        internal byte Bound { get; }
+Adapters\Animal\AnimalSnapshotAdapter.cs:28:        private readonly Dictionary<(ulong SteamId, byte Bound), AnimalSnapshotRecord> _snapshots =
+Adapters\Animal\AnimalSnapshotAdapter.cs:29:            new Dictionary<(ulong SteamId, byte Bound), AnimalSnapshotRecord>();
+Adapters\Animal\AnimalSnapshotAdapter.cs:85:            var keysToRemove = new List<(ulong SteamId, byte Bound)>();
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:13:    /// 根因（U3-SDK ZombieManager.cs:1448-1494 onBoundUpdated）：
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:15:    ///   - L1473 if (LevelNavigation.checkSafe(newBound))
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:16:    ///   - L1475 if (!player.movement.loadedBounds[newBound].isZombiesLoaded)
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:18:    ///       L1479 generateZombies(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:19:    ///       L1481 regions[newBound].isNetworked = true;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:21:    ///       L1485 SendZombiesToPlayer(player.channel.owner.transportConnection, newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:22:    ///     L1488 player.movement.loadedBounds[newBound].isZombiesLoaded = true;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:23:    ///   - L1491 regions[newBound].PlayerCountInRegion += 1;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:27:    /// 若该 bound 房主从未进入（regions[newBound].isNetworked=false，zombies 列表为空），
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:36:    ///   在 vanilla onBoundUpdated Prefix 阶段，若满足以下全部条件：
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:40:    ///     4. LevelNavigation.checkSafe(newBound)（bound 索引安全）
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:41:    ///     5. !player.movement.loadedBounds[newBound].isZombiesLoaded（客机首次进入该 bound）
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:42:    ///     6. !ZombieManager.regions[newBound].isNetworked（房主从未进入或已离开）
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:44:    ///     - 调用 ZombieManager.instance.generateZombies(newBound) 补充生成僵尸
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:45:    ///     - 设置 ZombieManager.regions[newBound].isNetworked = true 防止重复生成
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:51:    ///   - 条件 5 确保：客机重入同一 bound 时不重复生成（loadedBounds 已由 vanilla L1488 标记）；
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:54:    ///   - 不干预 loadedBounds[newBound].isZombiesLoaded 标记（vanilla L1488 自行设置）。
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:58:    ///     .OnBoundUpdated_Prefix（默认 Priority.Normal）之后执行。
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:67:        // vanilla ZombieManager.onBoundUpdated private method 完整参数类型表
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:68:        // U3-SDK ZombieManager.cs:1448 private void onBoundUpdated(Player player, byte oldBound, byte newBound)
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:69:        private static readonly System.Type[] VanillaOnBoundUpdatedParamTypes =
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:75:        public static bool OnBoundUpdatedPrefixRegistered { get; private set; }
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:76:        public static bool AllRegistrationsSucceeded => OnBoundUpdatedPrefixRegistered;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:82:            RoleLogger.Info("[Shared]", $"{PointPrefix} === 手动登记 1 个 hook（v0.2.3.32 P0-D onBoundUpdated Prefix supplement）===");
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:90:                    harmony, typeof(ZombieManager), "onBoundUpdated", VanillaOnBoundUpdatedParamTypes,
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:91:                    AccessTools.Method(patchType, "OnBoundUpdated_Prefix"),
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:92:                    HarmonyPatchType.Prefix, "P0-D.Zombie.onBoundUpdated.Pre");
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:96:                RoleLogger.Error("[Shared]", $"{PointPrefix} onBoundUpdated.Pre 登记异常: {ex}");
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:102:                $"{PointPrefix} RegisterManual 结果: onBoundUpdated.Pre={r1} all={all}");
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:111:                MethodInfo onBoundUpdatedPre = AccessTools.Method(patchType, "OnBoundUpdated_Prefix");
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:113:                OnBoundUpdatedPrefixRegistered = WorldSyncDiagnosticCore.IsPatchRegistered(
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:114:                    typeof(ZombieManager), "onBoundUpdated", onBoundUpdatedPre, HarmonyPatchType.Prefix, VanillaOnBoundUpdatedParamTypes);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:119:                        $"{PointPrefix} !!! 注册验证失败: onBoundUpdated.Pre={OnBoundUpdatedPrefixRegistered} " +
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:131:                OnBoundUpdatedPrefixRegistered = false;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:136:        // ============= onBoundUpdated Prefix =============
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:137:        // U3-SDK ZombieManager.cs:1448 private void onBoundUpdated(Player player, byte oldBound, byte newBound)
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:138:        // [HarmonyPriority(Priority.Low)] 确保在 ZombieManagerWorldSyncDiagnosticPatch.OnBoundUpdated_Prefix 之后执行
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:141:        [HarmonyPatch(typeof(ZombieManager), "onBoundUpdated")]
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:142:        public static void OnBoundUpdated_Prefix(Player player, byte oldBound, byte newBound)
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:146:                if (ZombieRegionLifecycleAdapter.IsReady)
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:148:                    ZombieRegionLifecycleAdapter.TryAcquireForRemote(player, oldBound, newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:152:                //   - player 为 null：Unity 生命周期异常场景（如 teardown 期间 onBoundUpdated 仍触发），
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:155:                //   - ZombieManager.instance 为 null：服务器关闭过程中 manager 已销毁但 onBoundUpdated 仍触发，
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:172:                // 条件 4: LevelNavigation.checkSafe(newBound)（bound 索引安全）
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:173:                bool safeBound = ReadLevelNavigationCheckSafe(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:174:                if (!safeBound) return;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:176:                // 条件 5: !player.movement.loadedBounds[newBound].isZombiesLoaded（客机首次进入该 bound）
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:177:                bool isZombiesLoaded = ReadLoadedBoundIsZombiesLoaded(player, newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:180:                // 条件 6: !ZombieManager.regions[newBound].isNetworked（房主从未进入或已离开）
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:181:                bool isNetworked = ReadRegionIsNetworked(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:185:                int? zombieCountBeforeOpt = ReadZombieCountInBound(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:188:                int playerCountBefore = ReadPlayerCountInRegion(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:190:                // 调用 generateZombies(newBound) 补充生成
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:192:                ZombieManager.instance.generateZombies(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:196:                SetRegionIsNetworked(newBound, true);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:198:                int? zombieCountAfterOpt = ReadZombieCountInBound(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:201:                int playerCountAfter = ReadPlayerCountInRegion(newBound);
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:208:                    $"{PointPrefix} supplement generateZombies player={maskedId} oldBound={oldBound} newBound={newBound} " +
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:215:                try { RoleLogger.Error("[Shared]", $"{PointPrefix} OnBoundUpdated Prefix 异常: {ex.Message}"); } catch { }
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:227:        private static bool ReadLoadedBoundIsZombiesLoaded(Player player, byte bound)
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:235:                // U3-SDK PlayerMovement.cs:356 public LoadedBound[] loadedBounds => _loadedBounds;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:236:                var loadedBounds = movement.loadedBounds;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:237:                if (loadedBounds == null) return false;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:238:                if (bound < 0 || bound >= loadedBounds.Length) return false;
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:240:                var lb = loadedBounds[bound];
+Adapters\Zombie\Patches\ZombieManagerP0DGenerateZombiesPatch.cs:277:        private static int? ReadZombieCountInBound(byte bound)
+Adapters\Zombie\Patches\ZombieLifecycleOwnerVerify.cs:11:    /// 对 `ZombieManager.onBoundUpdated(Player, byte, byte)` 的三种 Patch（Prefix/Postfix/Finalizer）
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:8:    /// ZombieManager.onBoundUpdated(Player, byte, byte) 生命周期状态。
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:13:        /// <summary>true 当且仅当 Prefix 真实写入 regions[oldBound].isNetworked=false</summary>
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:20:        /// <summary>记录 oldBound（用于恢复）</summary>
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:21:        public byte oldBound;
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:23:        /// <summary>true 当且仅当 Prefix 真实写入 loadedBounds[newBound].isZombiesLoaded=true</summary>
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:29:        /// <summary>记录 newBound（用于回滚）</summary>
+Adapters\Zombie\Patches\ZombieLifecycleState.cs:30:        public byte newBound;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:14:    /// 根因（U3-SDK ZombieManager.cs:1448-1494 onBoundUpdated）：
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:15:    ///   - L1452 if (LevelNavigation.checkSafe(oldBound) && regions[oldBound].isNetworked)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:16:    ///       L1454 regions[oldBound].destroy();
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:17:    ///       L1455 regions[oldBound].isNetworked = false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:18:    ///     本地主机离开 old bound 时，只检查 regions[oldBound].isNetworked，不检查远端玩家是否仍占用。
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:19:    ///   - L1475 if (!player.movement.loadedBounds[newBound].isZombiesLoaded)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:21:    ///         L1479 generateZombies(newBound);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:22:    ///         L1481 regions[newBound].isNetworked = true;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:23:    ///       L1488 player.movement.loadedBounds[newBound].isZombiesLoaded = true;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:24:    ///     本地主机进入 new bound 时，若 loadedBounds[newBound].isZombiesLoaded=false，会调用 generateZombies
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:27:    ///     * TryProtectOldBound：当远端客机仍在 old bound 时，临时设置 regions[oldBound].isNetworked=false
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:29:    ///       newLoadedBound.isZombiesLoaded=false（本地主机首次进入该 bound）时，临时设置
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:30:    ///       loadedBounds[newBound].isZombiesLoaded=true（让 vanilla L1475 跳过 generateZombies 分支）。
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:35:    ///   1. old/new 控制流完全独立：TryProtectOldBound + TryProcessNewBound 两条独立 try-catch 路径，互不阻断。
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:49:        // vanilla ZombieManager.onBoundUpdated private method 完整参数类型表
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:50:        // U3-SDK ZombieManager.cs:1448 private void onBoundUpdated(Player player, byte oldBound, byte newBound)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:51:        private static readonly Type[] VanillaOnBoundUpdatedParamTypes =
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:76:                    harmony, typeof(ZombieManager), "onBoundUpdated", VanillaOnBoundUpdatedParamTypes,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:77:                    AccessTools.Method(patchType, "OnBoundUpdated_Prefix"),
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:78:                    HarmonyPatchType.Prefix, "P0-E-Zombie-v6.6.onBoundUpdated.Pre");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:82:                RoleLogger.Error("[Shared]", $"{PointPrefix} onBoundUpdated.Pre 登记异常: {ex}");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:89:                    harmony, typeof(ZombieManager), "onBoundUpdated", VanillaOnBoundUpdatedParamTypes,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:90:                    AccessTools.Method(patchType, "OnBoundUpdated_Postfix"),
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:91:                    HarmonyPatchType.Postfix, "P0-E-Zombie-v6.6.onBoundUpdated.Post");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:95:                RoleLogger.Error("[Shared]", $"{PointPrefix} onBoundUpdated.Post 登记异常: {ex}");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:102:                    harmony, typeof(ZombieManager), "onBoundUpdated", VanillaOnBoundUpdatedParamTypes,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:103:                    AccessTools.Method(patchType, "OnBoundUpdated_Finalizer"),
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:104:                    HarmonyPatchType.Finalizer, "P0-E-Zombie-v6.6.onBoundUpdated.Final");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:108:                RoleLogger.Error("[Shared]", $"{PointPrefix} onBoundUpdated.Final 登记异常: {ex}");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:127:                MethodInfo pre = AccessTools.Method(patchType, "OnBoundUpdated_Prefix");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:128:                MethodInfo post = AccessTools.Method(patchType, "OnBoundUpdated_Postfix");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:129:                MethodInfo fin = AccessTools.Method(patchType, "OnBoundUpdated_Finalizer");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:132:                    typeof(ZombieManager), "onBoundUpdated", pre, HarmonyPatchType.Prefix, VanillaOnBoundUpdatedParamTypes);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:134:                    typeof(ZombieManager), "onBoundUpdated", post, HarmonyPatchType.Postfix, VanillaOnBoundUpdatedParamTypes);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:136:                    typeof(ZombieManager), "onBoundUpdated", fin, HarmonyPatchType.Finalizer, VanillaOnBoundUpdatedParamTypes);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:140:                    AccessTools.Method(typeof(ZombieManager), "onBoundUpdated", VanillaOnBoundUpdatedParamTypes),
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:168:        // U3-SDK ZombieManager.cs:1448 private void onBoundUpdated(Player player, byte oldBound, byte newBound)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:171:        [HarmonyPatch(typeof(ZombieManager), "onBoundUpdated")]
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:172:        public static void OnBoundUpdated_Prefix(
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:173:            Player player, byte oldBound, byte newBound,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:178:            if (ZombieRegionLifecycleAdapter.IsReady)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:180:                ZombieRegionLifecycleAdapter.BeginLocalTransition(player, oldBound, newBound, ref __state);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:188:            TryProtectOldBound(player, oldBound, ref __state);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:189:            TryProcessNewBound(player, newBound, ref __state);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:192:        // ============= onBoundUpdated Postfix（乐观路径） =============
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:195:        [HarmonyPatch(typeof(ZombieManager), "onBoundUpdated")]
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:196:        public static void OnBoundUpdated_Postfix(
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:197:            Player player, byte oldBound, byte newBound,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:200:            if (ZombieRegionLifecycleAdapter.IsReady)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:202:                ZombieRegionLifecycleAdapter.CompleteLocalTransition(player, newBound, ref __state, null);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:224:        [HarmonyPatch(typeof(ZombieManager), "onBoundUpdated")]
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:225:        public static System.Exception OnBoundUpdated_Finalizer(
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:226:            Player player, byte oldBound, byte newBound,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:230:            if (ZombieRegionLifecycleAdapter.IsReady)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:233:                    ZombieRegionLifecycleAdapter.CompleteLocalTransition(player, newBound, ref __state, __exception);
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:271:        /// TryProtectOldBound：当远端客机仍在 old bound 时，临时设置 regions[oldBound].isNetworked=false。
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:274:        private static void TryProtectOldBound(Player player, byte oldBound, ref ZombieLifecycleState __state)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:279:                if (!OldBoundGuards(oldBound, out ZombieRegion oldRegion)) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:282:                if (!HasRemoteClientInBound(oldBound, player)) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:286:                __state.oldBound = oldBound;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:293:                if (WorldSyncDiagnosticCore.TryAcquireQuota("P0-E-Zombie-v6.6-TryProtectOldBound", out _))
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:296:                        $"{PointPrefix} TryProtectOldBound oldBound={oldBound} " +
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:303:                RoleLogger.Error("[Shared]", $"{PointPrefix} TryProtectOldBound 异常: {ex.Message}");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:309:        /// newLoadedBound.isZombiesLoaded=false（本地主机首次进入该 bound）时，
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:310:        /// 临时设置 loadedBounds[newBound].isZombiesLoaded=true。让 vanilla L1475 跳过 generateZombies 分支。
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:313:        private static void TryProcessNewBound(Player player, byte newBound, ref ZombieLifecycleState __state)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:318:                if (!NewBoundGuards(player, newBound, out ZombieRegion newRegion, out LoadedBound newLoadedBound)) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:322:                // 仅当 newLoadedBound.isZombiesLoaded=false（本地主机首次进入该 bound）才介入
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:323:                if (newLoadedBound.isZombiesLoaded) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:326:                __state.newOriginalIsZombiesLoaded = newLoadedBound.isZombiesLoaded;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:327:                __state.newBound = newBound;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:330:                newLoadedBound.isZombiesLoaded = true;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:334:                if (WorldSyncDiagnosticCore.TryAcquireQuota("P0-E-Zombie-v6.6-TryProcessNewBound", out _))
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:337:                        $"{PointPrefix} TryProcessNewBound newBound={newBound} " +
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:344:                RoleLogger.Error("[Shared]", $"{PointPrefix} TryProcessNewBound 异常: {ex.Message}");
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:367:            // 守门 4: movement.loadedBounds 非 null
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:368:            var loadedBounds = movement.loadedBounds;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:369:            if (loadedBounds == null) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:383:        private static bool OldBoundGuards(byte oldBound, out ZombieRegion oldRegion)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:386:            // 守门 1: LevelNavigation.checkSafe(oldBound)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:387:            if (!LevelNavigation.checkSafe(oldBound)) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:391:            // 守门 3: oldBound < regions.Length
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:392:            if (oldBound >= regions.Length) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:393:            // 守门 4: regions[oldBound] 非 null
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:394:            oldRegion = regions[oldBound];
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:402:        private static bool NewBoundGuards(Player player, byte newBound,
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:403:            out ZombieRegion newRegion, out LoadedBound newLoadedBound)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:406:            newLoadedBound = null;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:407:            // 守门 1: LevelNavigation.checkSafe(newBound)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:408:            if (!LevelNavigation.checkSafe(newBound)) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:412:            // 守门 3: loadedBounds 非 null
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:413:            var loadedBounds = movement.loadedBounds;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:414:            if (loadedBounds == null) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:415:            // 守门 4: newBound < loadedBounds.Length
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:416:            if (newBound >= loadedBounds.Length) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:417:            // 守门 5: ZombieManager.regions 非 null + newBound < regions.Length
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:420:            if (newBound >= regions.Length) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:421:            // 守门 6: regions[newBound] 非 null + loadedBounds[newBound] 非 null
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:422:            newRegion = regions[newBound];
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:424:            newLoadedBound = loadedBounds[newBound];
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:425:            if (newLoadedBound == null) return false;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:435:        private static bool HasRemoteClientInBound(byte bound, Player excludingPlayer)
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:453:                        byte clientBound = clientPlayer.movement.bound;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:454:                        if (clientBound == bound) return true;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:480:            if (__state.oldBound >= regions.Length) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:481:            var region = regions[__state.oldBound];
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:493:            var loadedBounds = movement.loadedBounds;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:494:            if (loadedBounds == null) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:495:            if (__state.newBound >= loadedBounds.Length) return;
+Adapters\Zombie\Patches\ZombieLifecyclePatch.cs:496:            var lb = loadedBounds[__state.newBound];
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs:406:            //   ZombieManagerP0DGenerateZombiesPatch：onBoundUpdated Prefix supplement
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs:419:            //   ZombieLifecyclePatch：onBoundUpdated Prefix(VeryLow) + Postfix(High) + Finalizer(High)
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs:511:            //   - ZombieEntityMappingDiagnosticPatch：7 DP（SendZombies/ReceiveZombies/SendZombieStates/ReceiveZombieStates/onBoundUpdated/sendZombieDead+Alive/ReceiveZombieDead+Alive）
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:32:            if (ledger.GetItemDemand(new RegionKey(5, 5)) != 2 || ledger.GetZombieDemand(2) != 2)
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:36:            return ledger.GetItemDemand(new RegionKey(5, 5)) == 1
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:83:        internal static bool Test_M05_EdgeRelevanceIsBounded()
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:89:                && ledger.GetItemDemand(new RegionKey(0, 0)) == 1
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:90:                && ledger.GetItemDemand(new RegionKey(1, 1)) == 1
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:91:                && ledger.GetItemDemand(new RegionKey(2, 2)) == 0;
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:115:            return ledger.GetItemDemand(new RegionKey(5, 5)) == 0
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:116:                && ledger.GetItemDemand(new RegionKey(10, 10)) == 1
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:132:                && ledger.ZombieDemandBoundCount == 0;
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:172:        internal static bool Test_M11_ShutdownGateAndFaultBackoffAreBounded()
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:218:        internal static bool Test_M14_InvalidZombieBoundDoesNotCreateFunctionalDemand()
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:223:                || invalid.HasFunctionalZombieBound
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:225:                || ledger.GetItemDemand(new RegionKey(5, 5)) != 1
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:227:                || ledger.ZombieDemandBoundCount != 0)
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:233:            if (ledger.GetZombieDemand(2) != 1 || ledger.ZombieDemandBoundCount != 1) return false;
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:237:                && !after.HasFunctionalZombieBound
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:239:                && ledger.GetItemDemand(new RegionKey(5, 5)) == 1
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:241:                && ledger.ZombieDemandBoundCount == 0;
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:259:            bool hasFunctionalZombieBound = true)
+WhitelistTests\MultiObserver\MultiObserverShadowTests.cs:263:                hasFunctionalZombieBound, false, authorized, 9, staleLoaded, 9);
+Adapters\Collision\Patches\LevelObjectRemoteCollisionPatch.cs:507:                // U3-SDK PlayerMovement.updateRegionAndBound derives its region from transform.position.
+WhitelistTests\Adapters\Security\RouteBApprovalTests.cs:67:        internal static bool Test_B4_ConcurrentGuestsAreDeduplicatedAndBounded()
+WhitelistTests\Adapters\Resource\ResourceSnapshotAdapterTests.cs:21:                   record.RegionKey == regionKey &&
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:928:            //   ZombieManagerP0DGenerateZombiesPatch：onBoundUpdated Prefix supplement
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:943:            //   ZombieLifecyclePatch：onBoundUpdated Prefix(VeryLow) + Postfix(High) + Finalizer(High)
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:963:                MultiObserver.ZombieRegionLifecycleAdapter.SetRegistrationReady(m3Ready);
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:979:                MultiObserver.ZombieRegionLifecycleAdapter.SetRegistrationReady(false);
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:1290:            //   - ZombieEntityMappingDiagnosticPatch：7 DP（SendZombies/ReceiveZombies/SendZombieStates/ReceiveZombieStates/onBoundUpdated/sendZombieDead+Alive/ReceiveZombieDead+Alive）
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:1344:                        $"dp5={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
+Core\Registration\SteamP2PFriendsPlugin.PatchRegistrationCriticalVerification.cs:1360:                        $"dp5={Patches.P0EDiagnostic.ZombieEntityMappingDiagnosticPatch.DP5_OnBoundUpdated_Registered} " +
+WhitelistTests\Adapters\Resource\ResourceRegionLifecycleAdapterTests.cs:29:                   lease.RegionKey == regionKey &&
+WhitelistTests\Adapters\Zombie\ZombieSnapshotAdapterTests.cs:75:        internal static bool Test_M4Z07_DifferentBoundsDoNotCrossCommit()
+Adapters\Structure\BuildingDomainAdapter.cs:42:                BarricadeRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+Adapters\Structure\BuildingDomainAdapter.cs:43:                StructureRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+Adapters\Structure\BuildingDomainAdapter.cs:51:                BarricadeRegionLifecycleAdapter.OnObserverRelease(ticket.RegionKey, 0f);
+Adapters\Structure\BuildingDomainAdapter.cs:52:                StructureRegionLifecycleAdapter.OnObserverRelease(ticket.RegionKey, 0f);
+WhitelistTests\Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs:5:    internal static class ZombieRegionLifecycleAdapterTests
+WhitelistTests\Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs:75:        internal static bool Test_M3Z09_BoundsAreIndependent()
+WhitelistTests\Adapters\Zombie\ZombieRegionLifecycleAdapterTests.cs:117:            ZombieRegionLifecycleLedger ledger = ZombieRegionLifecycleAdapter.CreateLedgerForTests();
+WhitelistTests\Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs:6:    public static class AnimalRegionLifecycleAdapterTests
+WhitelistTests\Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs:39:                   lease.Bound == 5 &&
+WhitelistTests\Adapters\Animal\AnimalRegionLifecycleAdapterTests.cs:78:        public static bool Test_M5A07_BoundsAreIndependent()
+WhitelistTests\Adapters\Animal\AnimalSnapshotAdapterTests.cs:20:                   record.Bound == 2 &&
+WhitelistTests\Adapters\Animal\AnimalSnapshotAdapterTests.cs:76:        public static bool Test_M5S06_BoundsDoNotCrossCommit()
+WhitelistTests\Adapters\Collision\LevelObjectCollisionAdapterTests.cs:29:                   lease.RegionKey == regionKey &&
+Adapters\Resource\ResourceDomainAdapter.cs:33:                ResourceRegionLifecycleAdapter.OnObserverAcquire(ticket.RegionKey);
+Adapters\Resource\ResourceDomainAdapter.cs:41:                ResourceRegionLifecycleAdapter.OnObserverRelease(ticket.RegionKey, 0f);
+Adapters\Resource\ResourceRegionLifecycleAdapter.cs:14:            RegionKey = regionKey;
+Adapters\Resource\ResourceRegionLifecycleAdapter.cs:20:        public int RegionKey { get; }
+Adapters\Resource\ResourceSnapshotAdapter.cs:14:            RegionKey = regionKey;
+Adapters\Resource\ResourceSnapshotAdapter.cs:21:        public int RegionKey { get; }
+Adapters\Resource\ResourceSnapshotAdapter.cs:28:        private readonly Dictionary<(ulong SteamId, int RegionKey), ResourceSnapshotRecord> _snapshots =
+Adapters\Resource\ResourceSnapshotAdapter.cs:29:            new Dictionary<(ulong SteamId, int RegionKey), ResourceSnapshotRecord>();
+Adapters\Resource\ResourceSnapshotAdapter.cs:96:                current.RegionKey,
+Adapters\Resource\ResourceSnapshotAdapter.cs:106:            var keysToRemove = new List<(ulong SteamId, int RegionKey)>();
+Patches\LocalRegionProgressDiagnosticPatch.cs:226:                                $"下一步：检查 PlayerMovement.updateRegionAndBound 是否被调用，" +
+Patches\P0EBarricadeLifecycle\BarricadeLifecycleHelper.cs:26:    ///   - result=false 时直接 return false，不调用 LogHitBounded
+Patches\P0EBarricadeLifecycle\BarricadeLifecycleHelper.cs:27:    ///   - LogHitBounded 不再需要 helperResult 字段
+Patches\P0EBarricadeLifecycle\BarricadeLifecycleHelper.cs:56:            LogHitBounded("equip", instance, ref _equipHitLogCount);
+Patches\P0EBarricadeLifecycle\BarricadeLifecycleHelper.cs:71:            LogHitBounded("checkClaims", instance, ref _checkClaimsHitLogCount);
+Patches\P0EBarricadeLifecycle\BarricadeLifecycleHelper.cs:126:        private static void LogHitBounded(string category, UseableBarricade instance, ref int counter)
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:15:    ///   1. OnBoundUpdated 日志先判断 Provider.isServer，客机输出 skip(not server)。
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:24:    ///   1. 源事件：onBoundUpdated（玩家进入新 bound）
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:25:    ///   2. 资格/目标：LevelNavigation.checkSafe(newBound) + loadedBounds[newBound].isZombiesLoaded
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:29:    ///   5. Receive 后状态：客机 loadedBounds / zombies count
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:33:    ///   - onBoundUpdated: L1448 `private void onBoundUpdated(Player player, byte oldBound, byte newBound)`
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:34:    ///     - L1473 `if (LevelNavigation.checkSafe(newBound))`
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:35:    ///     - L1475 `if (!player.movement.loadedBounds[newBound].isZombiesLoaded)`
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:36:    ///     - L1477 `if (player.channel.IsLocalPlayer)` -> L1479 `generateZombies(newBound);`
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:37:    ///     - 否则 L1485 `SendZombiesToPlayer(player.channel.owner.transportConnection, newBound);`
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:38:    ///     - L1488 `player.movement.loadedBounds[newBound].isZombiesLoaded = true;`
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:53:        private static readonly System.Type[] VanillaOnBoundUpdatedParamTypes =
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:83:        public static bool OnBoundUpdatedPrefixRegistered { get; private set; }
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:90:            UpdateRegionsPrefixRegistered && OnBoundUpdatedPrefixRegistered
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:116:                    harmony, typeof(ZombieManager), "onBoundUpdated", VanillaOnBoundUpdatedParamTypes,
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:117:                    AccessTools.Method(patchType, "OnBoundUpdated_Prefix"),
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:118:                    HarmonyPatchType.Prefix, "Zombie.onBoundUpdated.Pre");
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:120:            catch (System.Exception ex) { RoleLogger.Error("[Shared]", $"[WorldSyncDiag/Zombie] onBoundUpdated.Pre 登记异常: {ex}"); r2 = false; }
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:169:                $"[WorldSyncDiag/Zombie] RegisterManual 结果: updateRegionsAndSendZombieStates.Pre={r1} onBoundUpdated.Pre={r2} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:184:                MethodInfo onBoundUpdatedPre = AccessTools.Method(patchType, "OnBoundUpdated_Prefix");
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:193:                OnBoundUpdatedPrefixRegistered = WorldSyncDiagnosticCore.IsPatchRegistered(
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:194:                    typeof(ZombieManager), "onBoundUpdated", onBoundUpdatedPre, HarmonyPatchType.Prefix, VanillaOnBoundUpdatedParamTypes);
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:211:                        $"onBoundUpdated.Pre={OnBoundUpdatedPrefixRegistered} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:228:                UpdateRegionsPrefixRegistered = OnBoundUpdatedPrefixRegistered = false;
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:268:        // ============= 2. 源事件：onBoundUpdated（玩家进入新 bound） =============
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:270:        [HarmonyPatch(typeof(ZombieManager), "onBoundUpdated")]
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:271:        public static void OnBoundUpdated_Prefix(Player player, byte oldBound, byte newBound)
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:284:                // U3-SDK ZombieManager.onBoundUpdated L1471: if (Provider.isServer) { ... }
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:288:                    if (!WorldSyncDiagnosticCore.TryAcquirePlayerQuota(steamId, "Zombie.onBoundUpdated",
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:295:                        $"{PointPrefix} onBoundUpdated #{countSkip}/{WorldSyncDiagnosticCore.PerPlayerPointLimit} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:296:                        $"player={maskedId} oldBound={oldBound} newBound={newBound} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:303:                bool safeBound = ReadLevelNavigationCheckSafe(newBound);
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:304:                bool isZombiesLoadedBefore = ReadLoadedBoundIsZombiesLoaded(player, newBound);
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:305:                int? zombieCountBeforeOpt = ReadZombieCountInBound(newBound);
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:309:                bool willEnterBlock = safeBound && !isZombiesLoadedBefore;
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:314:                if (!WorldSyncDiagnosticCore.TryAcquirePlayerQuota(steamId, "Zombie.onBoundUpdated",
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:321:                    $"{PointPrefix} onBoundUpdated #{count}/{WorldSyncDiagnosticCore.PerPlayerPointLimit} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:322:                    $"player={maskedId} oldBound={oldBound} newBound={newBound} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:324:                    $"safeBound={safeBound} isZombiesLoaded_before={isZombiesLoadedBefore} " +
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:331:                try { RoleLogger.Error("[Shared]", $"{PointPrefix} onBoundUpdated Prefix 异常: {ex.Message}"); } catch { }
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:344:                int? zombieCountOpt = ReadZombieCountInBound(bound);
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:377:                int? zombieCountOpt = ReadZombieCountInBound(bound);
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:488:        /// 读取 player.movement.loadedBounds[bound].isZombiesLoaded。
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:490:        private static bool ReadLoadedBoundIsZombiesLoaded(Player player, byte bound)
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:498:                var field = typeof(PlayerMovement).GetField("_loadedBounds",
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:502:                var loadedBounds = field.GetValue(movement) as LoadedBound[];
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:503:                if (loadedBounds == null) return false;
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:504:                if (bound < 0 || bound >= loadedBounds.Length) return false;
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:506:                var lb = loadedBounds[bound];
+Patches\ZombieManagerWorldSyncDiagnosticPatch.cs:521:        private static int? ReadZombieCountInBound(byte bound)

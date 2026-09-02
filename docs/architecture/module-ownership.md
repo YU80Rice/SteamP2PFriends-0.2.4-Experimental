@@ -10,12 +10,14 @@
 | Core Identity | `Core/Identity` | `DomainIds` | `U3-REG-05` |
 | Core Lifecycle | `Core/Lifecycle` | `SteamP2PFriendsPlugin` lifecycle partial | `U3-REG-07` |
 | Core Registration | `Core/Registration` | `PatchRegistrationOrchestrator` + `RegistrationClosure` | `U3-REG-07` |
+| Core Ownership | `Core/Ownership` | `ModuleOwnershipCatalog`（模块所有权权威根） | `U3-REG-07` |
 | Platform Client | `Platform/Client` | `P2PJoinManager` | `U3-REG-01` / `U3-REG-03` |
 | Platform Host | `Platform/Host` | `HostManager` | `U3-REG-03` / `U3-REG-05` |
 | Platform Transport | `Platform/Transport` | `ExplicitDnsDirectIpService` | `U3-REG-01` |
 | Platform UI | `Platform/UI` | `P2PNativeMenuUI` | `U3-REG-03` / `U3-REG-05` |
 | Platform Diagnostics | `Platform/Diagnostics` | `RoleLogger` | `U3-REG-02` / `U3-REG-04` / `U3-REG-06` |
 | Security | `Security` | `P2PApprovalManager` + `P2PWhitelistService` | `U3-REG-03` |
+| Animal adapter | `Adapters/Animal` | `AnimalDomainAdapter`（生命周期/复制）；`Adapters/Animal/Patches`（Animal 补丁） | `U3-REG-05`；详见 `animal-structure-ownership.md` |
 | Resource adapter | `Adapters/Resource` | `ResourceDomainAdapter`（生命周期/复制）；`Adapters/Resource/Patches`（Resource 补丁） | `U3-REG-05` |
 | Collision adapter | `Adapters/Collision` | `LevelObjectCollisionAdapter`（生命周期）；`Adapters/Collision/Patches`（静态物体碰撞补丁） | `U3-REG-05` |
 | Item adapter | `Adapters/Item` | `ItemDomainAdapter`（生命周期/复制）；`Adapters/Item/Patches`（Item 生成、区域同步、诊断补丁） | `U3-REG-05` |
