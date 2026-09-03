@@ -1,4 +1,6 @@
-# Ticket 06：Item / Zombie 领域所有权
+# Item / Zombie 领域所有权
+
+> 源自结构基线 Ticket 06（已并入 0.2.4.8 基线），票号仅供历史追溯。
 
 ## 结构基线
 

@@ -1,4 +1,6 @@
-# Ticket 04：Core / Platform / Security 模块归属
+# Core / Platform / Security 模块归属
+
+> 源自结构基线 Ticket 04（已并入 0.2.4.8 基线），票号仅供历史追溯。
 
 状态：源码结构完成，Runtime Pending
 

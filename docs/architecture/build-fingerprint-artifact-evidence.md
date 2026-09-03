@@ -1,4 +1,6 @@
-# Ticket 09：Build Fingerprint 与独立产物证据
+# Build Fingerprint 与独立产物证据
+
+> 源自结构基线 Ticket 09（已并入 0.2.4.8 基线），票号仅供历史追溯。
 
 ## 目的
 

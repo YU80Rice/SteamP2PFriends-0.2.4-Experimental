@@ -10,6 +10,8 @@ publish/
 # Logs
 logs-*/
 *.log
+# Ticket evidence logs under .scratch root are tracked per docs/agents/issue-tracker.md (R-A3)
+!.scratch/ticket*-*.log
 
 # Runtime-test evidence is locally archived through TestLogs scripts, not committed.
 TestLogs/artifacts/*

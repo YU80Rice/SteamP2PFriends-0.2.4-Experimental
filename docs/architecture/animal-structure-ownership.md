@@ -1,4 +1,6 @@
-# Ticket 07：Animal、Structure、Barricade 与其他领域所有权
+# Animal、Structure、Barricade 与其他领域所有权
+
+> 源自结构基线 Ticket 07（已并入 0.2.4.8 基线），票号仅供历史追溯。
 
 ## 结论
 

@@ -6,6 +6,8 @@
 [![Version](https://img.shields.io/badge/version-0.2.4.8--experimental-blue.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
 [![Status](https://img.shields.io/badge/status-Ticket%2009%20Build%20Fingerprint-orange.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
 
+> **版本来源**：徽章与下方「当前版本」表中的版本号均以 `Build/Version.props` 为唯一来源；展示值须与其一致，bump 版本时同步更新此处。
+
 > **实验区**：本目录专用于 Multi-Observer 架构升级。稳定的 `0.2.3.70-beta.2` 仍保留在相邻 `SteamP2PFriends` 目录；两个 DLL 不得同时部署。
 
 ## 项目简介

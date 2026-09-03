@@ -75,7 +75,7 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | Evidence Class | 结果 | 证据 |
 |---|---|---|
 | PureMemory | PASS | RegistrationClosure seam 场景并入现有测试入口 |
-| StaticIL | PASS（由 Ticket 04 补齐） | Ticket 02 当时的待办已由 `ticket-04-static-metadata-snapshot.md` 与 Registration Trace 65 单元矩阵完成 |
+| StaticIL | PASS（由 Ticket 04 补齐） | Ticket 02 当时的待办已由 `audit/2026-08-26/ticket-04-static-metadata-snapshot.md` 与 Registration Trace 65 单元矩阵完成 |
 | BuildArtifact | PASS | 主项目、WhitelistTests Release 构建 0 errors / 0 warnings |
 | Runtime | PENDING | 未执行 SP、U3DS 或 P2P 运行验证 |
 
@@ -176,7 +176,7 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 | `Core/Ownership/ModuleOwnershipCatalog.cs` | 新增 | 模块 ID、物理根、权威类型和 Trace 覆盖的单一结构目录 |
 | `WhitelistTests/StaticIL/ModuleOwnershipStaticILContractTests.cs` | 新增 | 唯一权威入口与 Security/Registration Closure 的编译产物契约 |
 | `docs/architecture/module-ownership.md` | 新增 | 归属表、跨领域保留原因和行为不变量 |
-| `docs/architecture/ticket-04-static-metadata-snapshot.md` | 新增 | Release 产物与结构 StaticIL 的可复核快照 |
+| `audit/2026-08-26/ticket-04-static-metadata-snapshot.md` | 新增 | Release 产物与结构 StaticIL 的可复核快照 |
 
 ### 保持不变
 

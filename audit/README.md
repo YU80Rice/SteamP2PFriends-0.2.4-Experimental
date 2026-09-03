@@ -1,0 +1,37 @@
+# Audit Report Index（审计报告索引）
+
+审计报告按 `audit/YYYY-MM-DD/` 归档，文件名格式见 `docs/agents/issue-tracker.md` 的
+audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找映射。
+
+## 结构基线 0.2.4.8（Ticket 01–11）
+
+| Ticket | 交付/最终报告 | 补充与修复 |
+|---|---|---|
+| 01 U3-SDK Registration Trace 与注册基线 | `2026-08-26/Implementation-0.2.4.8-1154.md` | `2026-08-26/Implementation-0.2.4.8-1033.md`（结构基线第一批实施） |
+| 02 Patch Registration Orchestrator | `2026-08-26/Implementation-0.2.4.8-1420.md` | — |
+| 03 Domain Identity、Region Key 与 Bound Key | `2026-08-26/Implementation-0.2.4.8-1551.md` | — |
+| 04 Core / Platform / Security 模块归属 | `2026-08-26/Implementation-0.2.4.8-1654.md` | `2026-08-26/ticket-04-static-metadata-snapshot.md`（独立产物快照） |
+| 05 Resource / Collision 结构迁移 | `2026-08-26/Implementation-0.2.4.8-1825.md`（最终独立复核） | `…-1742.md`（交付）、`…-1800.md`（返工复核） |
+| 06 Item / Zombie 结构迁移 | `2026-08-26/Implementation-0.2.4.8-1850.md` | — |
+| 07 Animal / Structure / Barricade 结构迁移 | `2026-08-26/Implementation-0.2.4.8-1933.md` | `2026-08-26/Implementation-0.2.4.8-2334.md`（独立复核与阻塞修复） |
+| 08 Evidence Class 测试结构与门禁 | `2026-08-27/Implementation-0.2.4.8-0915.md` | — |
+| 09 Build Fingerprint 与独立产物证据 | `2026-08-27/Implementation-0.2.4.8-1234.md`（最终循环审计） | `2026-08-27/Implementation-0.2.4.8-1117.md`（实施与独立复核） |
+| 10 Resource Production Control Seam | `2026-08-27/Implementation-0.2.4.8-Ticket10.md` | — |
+| 11 Resource 旧 Authority Writer 退出与 Runtime Gate | `2026-08-27/Implementation-0.2.4.8-Ticket11.md` | `2026-08-27/RuntimeFix-0.2.4.8-0017.md`、`2026-08-28/RuntimeFix-0.2.4.8-0812.md`、`…-0916.md`、`…-1442.md`、`2026-08-29/RuntimeFix-0.2.4.8-2229.md`（当前最新） |
+
+## 历史阶段（0.2.4.0–0.2.4.4，M0–M4）
+
+| 版本/阶段 | 交付/验收报告 |
+|---|---|
+| 0.2.4.0 / M0 | `2026-08-21/Implementation-0.2.4.0-1849.md` |
+| 0.2.4.1 / M0–M1 | `2026-08-21/Implementation-0.2.4.1-2030.md`、`…-2141.md`（运行验收通过记录）；`RuntimeFix-0.2.4.1-1949/2008/2110.md` |
+| 0.2.4.2 / M2 | `2026-08-21/Implementation-0.2.4.2-2209.md`；`RuntimeFix-0.2.4.2-2245/2359.md` |
+| 0.2.4.3 / M3 | `2026-08-22/Implementation-0.2.4.3-0022.md`；`2026-08-24/RuntimeAcceptance-0.2.4.3-0105.md` |
+| 0.2.4.4 / M4 | `2026-08-25/RuntimeAcceptance-0.2.4.4-0005.md` |
+
+## 命名规则（前进）
+
+- 新报告必须使用带票号名称：`Implementation-<ver>-<ticket>[-<HHMM>].md`、
+  `RuntimeFix-<ver>-<ticket>[-<HHMM>].md`、`RuntimeAcceptance-<ver>-<ticket>[-<HHMM>].md`。
+- 历史 HHMM-only 文件名冻结不改；其票号映射以上表与 `docs/architecture/migration-manifest.md`
+  中的引用为准。

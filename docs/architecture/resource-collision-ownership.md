@@ -1,4 +1,6 @@
-# Ticket 05：Resource 与 Collision 领域所有权
+# Resource / Collision 领域所有权
+
+> 源自结构基线 Ticket 05（已并入 0.2.4.8 基线），票号仅供历史追溯。
 
 ## 结构基线
 

@@ -1,0 +1,209 @@
+===============================================================
+=== SteamP2PFriends Modular TestRunner (Target: 186 PASS) ===
+===============================================================
+
+--- [Domain 1/8: Core & Diagnostics Policy] ---
+  PASS LOG1 Markers
+  PASS LOG2 Defaults
+  PASS LOG3 Labels
+  PASS LOG4 Tags
+  PASS ID Contract
+  PASS ID StaticIL
+  PASS Resource/Collision StaticIL
+  PASS Item/Zombie StaticIL
+
+--- [Domain 2/8: MultiObserver Control Plane & Spatial Index] ---
+  PASS SPI01 Grid2DDiff
+  PASS SPI02 Bound1DDiff
+  PASS SPI03 DisconnectReleasesAll
+  PASS SPI04 ReconnectInvalidation
+  PASS M01 PendingIsObserver
+  PASS M02 DemandRefCount
+  PASS M03 ConnectionGeneration
+  PASS M04 DisconnectEpoch
+  PASS M05 EdgeRelevance
+  PASS M06 DuplicateObserver
+  PASS M07 MovementDemand
+  PASS M08 SessionIdentity
+  PASS M09 IncompleteCapture
+  PASS M10 LifecycleSequence
+  PASS M11 FaultBackoff
+  PASS M12 StaleLoaded
+  PASS M13 ObserverCapacity
+  PASS M14 InvalidZombieBound
+
+--- [Domain 3/8: Adapters / Item Domain (M1 + M2)] ---
+  PASS G1 FirstCommit
+  PASS G2 Abort
+  PASS G3 Reset
+  PASS G4 Preparing
+  PASS M1I01 LocalVanilla
+  PASS M1I02 DedicatedAuthority
+  PASS M1I03 RegistrationGate
+  PASS M1I04 RemoteEligibility
+  PASS M1I05 PendingObserver
+  PASS M1I06 CurrentU3IL
+  PASS M2I01 ReliableCommit
+  PASS M2I02 AbortRetry
+  PASS M2I03 RelevanceReentry
+  PASS M2I04 Reconnect
+  PASS M2I05 OverlappingObservers
+  PASS M2I06 DifferentRegions
+  PASS M2I07 NewWorldGeneration
+  PASS M2I08 ExplicitCapability
+  PASS M2I09 CurrentU3ReplicationGate
+  PASS M2I10 LoadedRollback
+  PASS M2I11 ExactDisconnect
+
+--- [Domain 4/8: Adapters / Zombie Domain (M3 + M4)] ---
+  PASS M3Z01 FirstAcquire
+  PASS M3Z02 GenerationCommit
+  PASS M3Z03 ReleaseHysteresis
+  PASS M3Z04 DemandCancelsRelease
+  PASS M3Z05 StaleSession
+  PASS M3Z06 StaleGeneration
+  PASS M3Z07 DemandMismatch
+  PASS M3Z08 QuarantineRecovery
+  PASS M3Z09 BoundIsolation
+  PASS M3Z10 ReleaseIdempotence
+  PASS M3Z11 NativeDemandIsolation
+  PASS M3Z12 QuarantineReleaseGate
+  PASS M4Z01 InitialSnapshot
+  PASS M4Z02 StaleGenerationResync
+  PASS M4Z03 AbortRetry
+  PASS M4Z04 RelevanceReentry
+  PASS M4Z05 ReconnectInvalidation
+  PASS M4Z06 OverlappingSnapshots
+  PASS M4Z07 BoundsDoNotCrossCommit
+  PASS M4Z08 ExplicitCapability
+  PASS M4Z09 DeltaSequenceMonotonic
+  PASS M4Z10 ExactDisconnect
+
+--- [Domain 5/8: Adapters / Animal Domain (M5)] ---
+  PASS M5A01 FirstAcquire
+  PASS M5A02 GenerationCommit
+  PASS M5A03 ReleaseHysteresis
+  PASS M5A04 DemandCancelsRelease
+  PASS M5A05 StaleSession
+  PASS M5A06 StaleGeneration
+  PASS M5A07 BoundIsolation
+  PASS M5A08 ReleaseIdempotence
+  PASS M5A09 DisconnectCleansLease
+  PASS M5A10 DemandMismatchQuarantine
+  PASS M5S01 InitialSnapshot
+  PASS M5S02 DuplicateIgnored
+  PASS M5S03 StaleGenerationResync
+  PASS M5S04 ReconnectInvalidation
+  PASS M5S05 OverlappingSnapshots
+  PASS M5S06 BoundsDoNotCrossCommit
+  PASS M5S07 DisconnectCleansObserver
+
+--- [Domain 6/8: Adapters / Collision & Resource Domains (M6)] ---
+  PASS M6C01 FirstAcquire
+  PASS M6C02 ReleaseHysteresis
+  PASS M6C03 DemandCancelsRelease
+  PASS M6C04 CommitRelease
+  PASS M6C05 StaleSession
+  PASS M6C06 StaleGeneration
+  PASS M6C07 MultipleRegions
+  PASS M6C08 DisconnectCleanup
+  PASS M6R01 TreeOreAcquire
+  PASS M6R02 ResourceHysteresis
+  PASS M6R03 ResourceDemandCancel
+  PASS M6R04 ResourceCommitRelease
+  PASS M6R05 ResourceStaleSession
+  PASS M6R06 ResourceStaleGeneration
+  PASS M6R07 ResourceIsolation
+  PASS M6R08 ResourceDisconnect
+  PASS M6S01 ResourceInitialSnapshot
+  PASS M6S02 ResourceDuplicateIgnored
+  PASS M6S03 ResourceStaleGenResync
+  PASS M6S04 ResourceReconnectToken
+  PASS M6S05 ResourceOverlapping
+  PASS M6S06 ResourceDisconnectClean
+  PASS M6H01 HarvestDeadGen
+  PASS M6H02 HarvestMultiDead
+  PASS M6H03 HarvestAliveRevive
+  PASS M6H04 HarvestSnapshotDead
+  PASS M6H05 HarvestDeltaSeq
+  PASS M6H06 HarvestReconnect
+  PASS M6H07 HarvestIsolation
+  PASS M6H08 HarvestSessionReset
+  PASS M7B01 BarricadeAcquire
+  PASS M7B02 BarricadePlace
+  PASS M7B03 BarricadeDamage
+  PASS M7B04 BarricadeDeltaSeq
+  PASS M7B05 BarricadeHysteresis
+  PASS M7B06 BarricadeStaleSession
+  PASS M7B07 BarricadeReconnect
+  PASS M7B08 BarricadeDisconnect
+  PASS M7S01 StructureAcquire
+  PASS M7S02 StructurePlace
+  PASS M7S03 StructureDamage
+  PASS M7S04 StructureSalvage
+  PASS M7S05 StructureHysteresis
+  PASS M7S06 StructureStaleSession
+  PASS M7S07 StructureReconnect
+  PASS M7S08 StructureDisconnect
+
+--- [Domain 7/8: Adapters / Security Domain (Whitelist & Route B)] ---
+  PASS WL1 Bootstrap
+  PASS WL2 BootstrapSaveFailure
+  PASS WL3 BootstrapLoadFailure
+  PASS WL4 BootstrapContainsFailure
+  PASS WL5 AddSaveFailure
+  PASS WL6 AddLoadFailure
+  PASS WL7 AddContainsFailure
+  PASS WL8 AddSnapshotFailure
+  PASS WL9 RemoveSaveFailure
+  PASS WL9a RevokeCommitBeforeKick
+  PASS WL9b RevokeFailureNoDisconnect
+  PASS WL9c NativeContainsRaw
+  PASS WL10 RemoveNoOp
+  PASS WL11 RemoveSnapshotFailure
+  PASS WL12 AddSelf
+  PASS WL13 RemoveSelf
+  PASS WL14 AddInvalidLocal
+  PASS WL15 RemoveInvalidLocal
+  PASS WL16 JudgeEqualsLocal
+  PASS WL17 PersistenceFault
+  PASS B1 HandshakePermit
+  PASS B2 WorldEntry
+  PASS B3 TrustedVisitor
+  PASS B4 ConcurrentGuests
+  PASS B5 Approve
+  PASS B6 PersistFailure
+  PASS B7 DisconnectReject
+  PASS B8 TimeoutLayout
+  PASS B9 Revoke
+  PASS B10 RevokePersistFailure
+  PASS B11 AuthoritativeGates
+  PASS B12 InputSanitizer
+
+--- [Domain 8/8: Platform UI, Readiness & Compatibility] ---
+  PASS E1 EntryEarlyMenu
+  PASS E2 EntryLifecycleFailure
+  PASS E3 EntryIdempotentReset
+  PASS E4 HandshakeCompatibilityGate
+  PASS P1 PersonaEmpty
+  PASS P2 PersonaControls
+  PASS P3 PersonaTruncate
+  PASS P4 PersonaValid
+  PASS P5 PersonaFormat
+  PASS P6 PersonaInvalid
+  PASS HC1 Observer
+  PASS HC2 ForeignTranspiler
+  PASS HC3 TransportExclusive
+  PASS IUI1 Exact
+  PASS IUI2 StaleRendered
+  PASS IUI3 StalePending
+  PASS IUI4 Identity
+  PASS IUI5 Reflection
+  PASS IUI6 Production
+  PASS RC1 AnimationRestore
+  PASS RC2 PolicyBeforeActivation + RegistrationClosure
+  PASS T04 ModuleOwnershipStaticIL
+
+===============================================================
+=== Final Result: 186/186 PASS (Failed: 0) ===
+===============================================================

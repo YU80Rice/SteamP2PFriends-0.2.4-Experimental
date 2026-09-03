@@ -26,7 +26,7 @@ Resource Production Control Seam，不修改当前标签或已归档版本。
 - Route B 的 approval、whitelist 和准入补丁迁移至 `Security/`，未保留第二份生产实现。
 - 新增 `Core/Ownership/ModuleOwnershipCatalog.cs` 及结构 StaticIL 契约测试。
 - 更新 `.csproj` 编译路径、结构文档、迁移清单、Registration Trace、CONTEXT 与 ADR-0008。
-- 新增 `docs/architecture/ticket-04-static-metadata-snapshot.md`，记录独立产物快照。
+- 新增 `audit/2026-08-26/ticket-04-static-metadata-snapshot.md`，记录独立产物快照。
 
 ## 四、保持不变与范围边界
 
@@ -55,7 +55,7 @@ Resource Production Control Seam，不修改当前标签或已归档版本。
 以上 SHA-256 为验收侧对当前 Release 文件重新计算的独立值；它们不等同于运行时自报告。
 MVID 由 `audit/2026-08-26/Verify-Ticket04Metadata.ps1` 使用 `System.Reflection.Metadata`
 读取 PE metadata 重新提取；该脚本只读且不加载插件依赖。
-完整快照见 [`ticket-04-static-metadata-snapshot.md`](../../docs/architecture/ticket-04-static-metadata-snapshot.md)。
+完整快照见 [`ticket-04-static-metadata-snapshot.md`](./ticket-04-static-metadata-snapshot.md)。
 
 ## 七、独立审核记录
 

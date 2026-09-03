@@ -48,6 +48,10 @@ directly under `.scratch/`. Their names must carry the owning ticket prefix, for
 `ticketNN-*.txt` or `ticketNN-*.log`. These files are evidence inputs or process artifacts,
 not issue definitions, and must not be interpreted as tickets.
 
+The global `*.log` ignore rule explicitly re-includes `!.scratch/ticket*-*.log` (see
+`.gitignore`), so ticket-prefixed evidence logs under `.scratch/` are tracked and archived
+normally; other logs remain ignored.
+
 ## Ticket Ownership and Lifecycle Fields
 
 Field ownership is separated as follows:
@@ -68,7 +72,11 @@ dimension replaces the other.
 
 `audit/YYYY-MM-DD/` is the repository location for implementation
 (`Implementation-<ver>-<HHMM>.md`), runtime-fix (`RuntimeFix-*`), and runtime-acceptance
-(`RuntimeAcceptance-*`) reports.
+(`RuntimeAcceptance-*`) reports. New reports must use a ticket-bearing name:
+`Implementation-<ver>-<ticket>[-<HHMM>].md`, `RuntimeFix-<ver>-<ticket>[-<HHMM>].md`, or
+`RuntimeAcceptance-<ver>-<ticket>[-<HHMM>].md` — the ticket is required, the time (HHMM)
+optional. Historic HHMM-only names are frozen; their ticket mapping is indexed in
+`audit/README.md`.
 
 ## Conventions
 
