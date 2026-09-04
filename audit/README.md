@@ -17,7 +17,7 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | 08 Evidence Class 测试结构与门禁 | `2026-08-27/Implementation-0.2.4.8-0915.md` | — |
 | 09 Build Fingerprint 与独立产物证据 | `2026-08-27/Implementation-0.2.4.8-1234.md`（最终循环审计） | `2026-08-27/Implementation-0.2.4.8-1117.md`（实施与独立复核） |
 | 10 Resource Production Control Seam | `2026-08-27/Implementation-0.2.4.8-Ticket10.md` | — |
-| 11 Resource 旧 Authority Writer 退出与 Runtime Gate | `2026-08-27/Implementation-0.2.4.8-Ticket11.md` | `2026-08-27/RuntimeFix-0.2.4.8-0017.md`、`2026-08-28/RuntimeFix-0.2.4.8-0812.md`、`…-0916.md`、`…-1442.md`、`2026-08-29/RuntimeFix-0.2.4.8-2229.md`（当前最新） |
+| 11 Resource 旧 Authority Writer 退出与 Runtime Gate | `2026-08-27/Implementation-0.2.4.8-Ticket11.md` | `2026-08-27/RuntimeFix-0.2.4.8-0017.md`、`2026-08-28/RuntimeFix-0.2.4.8-0812.md`、`…-0916.md`、`…-1442.md`、`2026-08-29/RuntimeFix-0.2.4.8-2229.md`、`2026-09-03/Implementation-0.2.4.8-Ticket11-1123.md`（诊断结论落盘 + 取证埋点）、`2026-09-04/Forensics-0.2.4.8-Ticket11-H1-1046.md`（H1 裁决：trees-unavailable 时序根因 + 整批回滚铁证）、`2026-09-04/ReviewRecheck-0.2.4.8-0933.md`（第三方评审逐条只读复核）、`2026-09-04/Implementation-0.2.4.8-Ticket11-1133.md`（修复轮：单区域隔离 + foliage 暂缓重试，259/259 静态全绿，Runtime PENDING 待动态测试） |
 
 ## 历史阶段（0.2.4.0–0.2.4.4，M0–M4）
 

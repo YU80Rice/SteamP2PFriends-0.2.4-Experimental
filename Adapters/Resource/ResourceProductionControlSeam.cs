@@ -4,6 +4,7 @@ using SteamP2PFriends.MultiObserver.Spatial;
 using SteamP2PFriends.Shared;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace SteamP2PFriends.Adapters.Resource
 {
@@ -25,6 +26,22 @@ namespace SteamP2PFriends.Adapters.Resource
             internal float Deadline;
         }
 
+        /// <summary>acquire 失败区域的重试登记:由观察者的下一次 Update 驱动重试。
+        /// 登记按观察者归属,避免多观察者同区域时互相吞并彼此的重试资格。</summary>
+        private readonly struct AcquireRetry
+        {
+            internal AcquireRetry(ulong observerId, float nextRetryAt, int attempts)
+            {
+                ObserverId = observerId;
+                NextRetryAt = nextRetryAt;
+                Attempts = attempts;
+            }
+
+            internal ulong ObserverId { get; }
+            internal float NextRetryAt { get; }
+            internal int Attempts { get; }
+        }
+
         private readonly SpatialObserverIndex _spatialIndex = new SpatialObserverIndex();
         private readonly ILifecycleDomainAdapter _lifecycle;
         private readonly IReversibleRegionLifecycleAdapter _reversibleLifecycle;
@@ -38,6 +55,12 @@ namespace SteamP2PFriends.Adapters.Resource
             new Dictionary<RegionKey, RegionGeneration>();
         private readonly Dictionary<RegionKey, PendingRelease> _pendingReleases =
             new Dictionary<RegionKey, PendingRelease>();
+        /// <summary>foliage 未烘焙区域的暂缓重试间隔(秒):短暂等待后 capture 即可成功,不计 fault。</summary>
+        private const float DeferredAcquireRetryInterval = 2.0f;
+        /// <summary>其他 acquire 失败的重试间隔(秒):单区域隔离后由观察者下一次 Update 重试。</summary>
+        private const float FailedAcquireRetryInterval = 10.0f;
+        private readonly Dictionary<RegionKey, AcquireRetry> _acquireRetries =
+            new Dictionary<RegionKey, AcquireRetry>();
         private readonly HashSet<ulong> _observers = new HashSet<ulong>();
         private readonly Dictionary<ulong, ulong> _connectionTokens = new Dictionary<ulong, ulong>();
 
@@ -182,6 +205,7 @@ namespace SteamP2PFriends.Adapters.Resource
             _demand.Clear();
             _leases.Clear();
             _pendingReleases.Clear();
+            _acquireRetries.Clear();
             _observers.Clear();
             _connectionTokens.Clear();
             _observerCount = 0;
@@ -232,6 +256,7 @@ namespace SteamP2PFriends.Adapters.Resource
                 ulong exitedConnectionToken = connectionChanged ? previousConnectionToken : connectionToken;
                 ProcessExited(observerId, exitedConnectionToken, diff.ExitedRegions, compensations);
                 ProcessEntered(observerId, connectionToken, diff.EnteredRegions, compensations);
+                ProcessAcquireRetries(observerId, connectionToken, compensations);
                 if (connectionChanged)
                 {
                     _lifecycle.OnObserverDisconnect(observerId, previousConnectionToken);
@@ -284,6 +309,19 @@ namespace SteamP2PFriends.Adapters.Resource
                 _connectionTokens.Remove(observerId);
                 _observers.Remove(observerId);
                 _observerCount = _observers.Count;
+                List<RegionKey> orphanedRetries = null;
+                foreach (KeyValuePair<RegionKey, AcquireRetry> pair in _acquireRetries)
+                {
+                    if (pair.Value.ObserverId == observerId)
+                    {
+                        if (orphanedRetries == null) orphanedRetries = new List<RegionKey>();
+                        orphanedRetries.Add(pair.Key);
+                    }
+                }
+                if (orphanedRetries != null)
+                {
+                    foreach (RegionKey region in orphanedRetries) _acquireRetries.Remove(region);
+                }
             }
             return diff;
             }
@@ -486,6 +524,9 @@ namespace SteamP2PFriends.Adapters.Resource
 
         public bool IsLeased(RegionKey regionKey) => _leases.ContainsKey(regionKey);
 
+        /// <summary>当前处于暂缓/失败 acquire 重试队列中的区域数(可观测性)。</summary>
+        public int PendingAcquireRetryCount => _acquireRetries.Count;
+
         public bool TryGetLease(RegionKey regionKey, out ResourceProductionLease lease)
         {
             if (_leases.TryGetValue(regionKey, out RegionGeneration generation))
@@ -503,6 +544,14 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             foreach (RegionKey region in regions)
             {
+                // 暂缓/失败重试中的区域从未完成 OnObserverEntered、demand 未计入;
+                // 观察者离开时撤销自己的重试登记,跳过 exited/demand 递减以避免状态失衡。
+                if (_acquireRetries.TryGetValue(region, out AcquireRetry leavingRetry)
+                    && leavingRetry.ObserverId == observerId)
+                {
+                    _acquireRetries.Remove(region);
+                    continue;
+                }
                 try
                 {
                     IReversibleObserverReplicationAdapter reversibleReplication =
@@ -555,86 +604,183 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
+        /// <summary>
+        /// 取证描述：把 acquire 阶段的异常类型与 Message 拼接为可观测日志片段。
+        ///
+        /// 刻意独立成静态方法（并禁止内联），使 <see cref="ProcessEntered"/> 的方法体 IL
+        /// 不包含任何 <c>System.Exception.get_Message</c> 调用 token，从而满足 StaticIL 契约
+        /// <c>Test_FailureClassificationDoesNotParseExceptionText</c>（ProcessEntered 内零
+        /// get_Message 调用）。Message 仅在这里承载，供运行时日志定位具体失败原生区域。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static string DescribeAcquireFailure(Exception ex)
+        {
+            return ex.GetType().Name + " message=" + ex.Message;
+        }
+
         private void ProcessEntered(ulong observerId, ulong connectionToken, RegionKey[] regions, List<Action> compensations)
         {
             foreach (RegionKey region in regions)
             {
-                int previous = GetDemand(region);
-                bool hasLease = _leases.ContainsKey(region);
-                bool hasPendingRelease = _pendingReleases.ContainsKey(region);
-                if (previous == 0 && !hasLease)
-                {
-                    RegionGeneration beforeAcquire;
-                    string acquireFailureReason = "acquire-failed";
-                    try
-                    {
-                        acquireFailureReason = "generation-reader-failed-before-acquire";
-                        beforeAcquire = ReadGeneration(region);
-                        LeaseTicket acquireTicket = CreateTicket(region, beforeAcquire, 1);
-                        if (!acquireTicket.Valid)
-                        {
-                            acquireFailureReason = "invalid-ticket";
-                            throw new InvalidOperationException("Resource acquire ticket is invalid.");
-                        }
-                        acquireFailureReason = "region-snapshot-failed";
-                        object acquireState = _reversibleLifecycle.CaptureRegionState(region);
-                        compensations.Add(() => _reversibleLifecycle.RestoreRegionState(region, acquireState));
-                        acquireFailureReason = "acquire-failed";
-                        _lifecycle.OnAcquire(acquireTicket);
-                        acquireFailureReason = "generation-reader-failed-after-acquire";
-                        RegionGeneration acquiredGeneration = ReadGeneration(region);
-                        if (acquiredGeneration.Value < beforeAcquire.Value)
-                        {
-                            acquireFailureReason = "generation-regressed-after-acquire";
-                            throw new ResourceAcquireRejectedException(acquireFailureReason);
-                        }
-                        _leases[region] = acquiredGeneration;
-                    }
-                    catch (Exception ex)
-                    {
-                        ResourceObservability.Error("[Host]", "LeaseAcquire", region.ToString(),
-                            _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value, "Fallback", true,
-                            "failed", "reason=" + acquireFailureReason + " exception=" + ex.GetType().Name);
-                        throw;
-                    }
-                }
-
-                try
-                {
-                    IReversibleObserverReplicationAdapter reversibleReplication =
-                        _replication as IReversibleObserverReplicationAdapter;
-                    object replicationState = reversibleReplication == null
-                        ? null
-                        : reversibleReplication.CaptureObserverReplicationState(observerId, connectionToken);
-                    if (reversibleReplication != null)
-                    {
-                        compensations.Add(() => reversibleReplication.RestoreObserverReplicationState(
-                            observerId, connectionToken, replicationState));
-                    }
-                    compensations.Add(() => _replication.OnObserverExited(observerId, connectionToken, region));
-                    _replication.OnObserverEntered(observerId, connectionToken, region);
-                }
-                catch (Exception ex)
-                {
-                    ResourceObservability.Error("[Host]", "SnapshotEnqueue", region.ToString(),
-                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
-                        "Fallback", true, "failed", "observer=" + observerId + " exception=" + ex.GetType().Name);
-                    throw;
-                }
-
-                _demand[region] = previous + 1;
-                if (previous == 0 && hasPendingRelease)
-                {
-                    _pendingReleases.Remove(region);
-                    ReentryCount++;
-                    ResourceObservability.Info("[Host]", "LeaseReentry", region.ToString(),
-                        _sessionEpoch.Value, connectionToken,
-                        ReadGeneration(region).Value, "SPI", true, "success",
-                        "hysteresisCancelled=true");
-                }
+                ProcessSingleRegionEntry(observerId, connectionToken, region, compensations);
             }
 
             _observerCount = _observers.Count;
+        }
+
+        /// <summary>
+        /// 单区域进入处理(acquire → replication → demand)。区域级 acquire 失败在此隔离:
+        /// 快照不可用(<see cref="ResourceNativeSnapshotUnavailableException"/>,原生 foliage
+        /// 尚未烘焙该区域)进入短延迟暂缓重试;其他 acquire 异常进入较长延迟重试。两类失败都
+        /// 只跳过本区域、保留可重试登记,不向调用方抛出——从而不触发 <see cref="UpdateObserver"/>
+        /// 的事务整批回滚,也不进入 coordinator 的 ShadowFaultBackoff 指数退避。
+        /// replication 段失败仍保持原事务语义(整批回滚)。异常文本仅经
+        /// <see cref="DescribeAcquireFailure"/> 承载(StaticIL 契约)。
+        /// </summary>
+        private void ProcessSingleRegionEntry(ulong observerId, ulong connectionToken, RegionKey region, List<Action> compensations)
+        {
+            int previous = GetDemand(region);
+            bool hasLease = _leases.ContainsKey(region);
+            bool hasPendingRelease = _pendingReleases.ContainsKey(region);
+            if (previous == 0 && !hasLease)
+            {
+                RegionGeneration beforeAcquire;
+                string acquireFailureReason = "acquire-failed";
+                int compensationBase = compensations.Count;
+                try
+                {
+                    acquireFailureReason = "generation-reader-failed-before-acquire";
+                    beforeAcquire = ReadGeneration(region);
+                    LeaseTicket acquireTicket = CreateTicket(region, beforeAcquire, 1);
+                    if (!acquireTicket.Valid)
+                    {
+                        acquireFailureReason = "invalid-ticket";
+                        throw new InvalidOperationException("Resource acquire ticket is invalid.");
+                    }
+                    acquireFailureReason = "region-snapshot-failed";
+                    object acquireState = _reversibleLifecycle.CaptureRegionState(region);
+                    compensations.Add(() => _reversibleLifecycle.RestoreRegionState(region, acquireState));
+                    acquireFailureReason = "acquire-failed";
+                    _lifecycle.OnAcquire(acquireTicket);
+                    acquireFailureReason = "generation-reader-failed-after-acquire";
+                    RegionGeneration acquiredGeneration = ReadGeneration(region);
+                    if (acquiredGeneration.Value < beforeAcquire.Value)
+                    {
+                        acquireFailureReason = "generation-regressed-after-acquire";
+                        throw new ResourceAcquireRejectedException(acquireFailureReason);
+                    }
+                    _leases[region] = acquiredGeneration;
+                }
+                catch (ResourceNativeSnapshotUnavailableException ex)
+                {
+                    // B:区域树条目不存在 = 原生 foliage 尚未烘焙该区域。暂缓快照:
+                    // 短延迟重试,不计 fault、不进指数退避,预期烘焙后重试即成功。
+                    // 撤销本区域已登记的补偿,避免之后其他区域失败时被整批回滚误执行。
+                    compensations.RemoveRange(compensationBase, compensations.Count - compensationBase);
+                    ScheduleAcquireRetry(region, observerId, deferred: true);
+                    ResourceObservability.Info("[Host]", "LeaseAcquire", region.ToString(),
+                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value, "Fallback", true,
+                        "deferred", "reason=region-snapshot-deferred exception=" + DescribeAcquireFailure(ex));
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    // A:单区域失败隔离——跳过本区域并保留可重试登记,其余区域继续。
+                    // 撤销本区域已登记的补偿(如 capture 快照恢复),原因同上。
+                    compensations.RemoveRange(compensationBase, compensations.Count - compensationBase);
+                    ScheduleAcquireRetry(region, observerId, deferred: false);
+                    ResourceObservability.Error("[Host]", "LeaseAcquire", region.ToString(),
+                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value, "Fallback", true,
+                        "skipped", "reason=" + acquireFailureReason + " exception=" + DescribeAcquireFailure(ex));
+                    return;
+                }
+            }
+
+            try
+            {
+                IReversibleObserverReplicationAdapter reversibleReplication =
+                    _replication as IReversibleObserverReplicationAdapter;
+                object replicationState = reversibleReplication == null
+                    ? null
+                    : reversibleReplication.CaptureObserverReplicationState(observerId, connectionToken);
+                if (reversibleReplication != null)
+                {
+                    compensations.Add(() => reversibleReplication.RestoreObserverReplicationState(
+                        observerId, connectionToken, replicationState));
+                }
+                compensations.Add(() => _replication.OnObserverExited(observerId, connectionToken, region));
+                _replication.OnObserverEntered(observerId, connectionToken, region);
+            }
+            catch (Exception ex)
+            {
+                ResourceObservability.Error("[Host]", "SnapshotEnqueue", region.ToString(),
+                    _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
+                    "Fallback", true, "failed", "observer=" + observerId + " exception=" + ex.GetType().Name);
+                throw;
+            }
+
+            _demand[region] = previous + 1;
+            if (previous == 0 && hasPendingRelease)
+            {
+                _pendingReleases.Remove(region);
+                ReentryCount++;
+                ResourceObservability.Info("[Host]", "LeaseReentry", region.ToString(),
+                    _sessionEpoch.Value, connectionToken,
+                    ReadGeneration(region).Value, "SPI", true, "success",
+                    "hysteresisCancelled=true");
+            }
+
+            // 只清除当前观察者自己的登记:其他观察者对同一区域的待重试登记仍然有效。
+            if (_acquireRetries.TryGetValue(region, out AcquireRetry ownRetry)
+                && ownRetry.ObserverId == observerId)
+            {
+                _acquireRetries.Remove(region);
+            }
+        }
+
+        /// <summary>
+        /// 登记失败区域的重试:按类别取基础间隔并温和倍增(暂缓 2s 起步上限 32s;
+        /// 一般失败 10s 起步上限 60s),避免长期不可用区域造成重试风暴与日志刷屏。
+        /// 成功即清除,不设次数上限——区域在本观察者离开前始终保留重试资格。
+        /// </summary>
+        private void ScheduleAcquireRetry(RegionKey region, ulong observerId, bool deferred)
+        {
+            int attempts = _acquireRetries.TryGetValue(region, out AcquireRetry previous)
+                && previous.ObserverId == observerId
+                    ? previous.Attempts + 1
+                    : 1;
+            float baseInterval = deferred ? DeferredAcquireRetryInterval : FailedAcquireRetryInterval;
+            int doublingShift = deferred ? Math.Min(attempts - 1, 4) : Math.Min(attempts - 1, 3);
+            float cap = deferred ? 32f : 60f;
+            float interval = Math.Min(baseInterval * (1 << doublingShift), cap);
+            _acquireRetries[region] = new AcquireRetry(observerId, _clock + interval, attempts);
+        }
+
+        /// <summary>
+        /// 处理该观察者已到期的暂缓/失败 acquire 重试。重试走与首次进入相同的
+        /// <see cref="ProcessSingleRegionEntry"/>:成功则补齐 replication 与 demand 并清除登记;
+        /// 仍失败则按类别推迟下次重试。同位置更新不会重复产生 Entered diff,
+        /// 因此重试只能由此登记驱动。
+        /// </summary>
+        private void ProcessAcquireRetries(ulong observerId, ulong connectionToken, List<Action> compensations)
+        {
+            if (_acquireRetries.Count == 0) return;
+            List<RegionKey> dueRegions = null;
+            foreach (KeyValuePair<RegionKey, AcquireRetry> pair in _acquireRetries)
+            {
+                if (pair.Value.ObserverId == observerId
+                    && _clock >= pair.Value.NextRetryAt)
+                {
+                    if (dueRegions == null) dueRegions = new List<RegionKey>();
+                    dueRegions.Add(pair.Key);
+                }
+            }
+
+            if (dueRegions == null) return;
+            foreach (RegionKey region in dueRegions)
+            {
+                ProcessSingleRegionEntry(observerId, connectionToken, region, compensations);
+            }
         }
 
         private int DecrementDemand(RegionKey region)

@@ -117,20 +117,23 @@ namespace SteamP2PFriends.WhitelistTests
                 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(99UL));
             RegionKey regionKey = new RegionKey(5, 6);
-            bool rejectedWithoutNativeBoundary = false;
+            // 真实 adapter 在无原生边界(测试环境区域树字典为空)时抛
+            // ResourceNativeSnapshotUnavailableException:按暂缓语义隔离,不再向调用方抛出。
+            bool threw = false;
             try
             {
                 seam.UpdateObserver(777UL, 5001UL, regionKey.X, regionKey.Y);
             }
             catch (Exception)
             {
-                rejectedWithoutNativeBoundary = true;
+                threw = true;
             }
 
-            return rejectedWithoutNativeBoundary
+            return !threw
                 && !seam.IsLeased(regionKey)
                 && seam.GetDemand(regionKey) == 0
-                && seam.PendingReleaseCount == 0;
+                && seam.PendingReleaseCount == 0
+                && seam.PendingAcquireRetryCount == 1;
         }
 
         internal static bool Test_M6P08_StaleRegionGenerationDelaysRelease()
@@ -258,7 +261,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && fake.Replication.RestoreReplicationStateCalls >= 1;
         }
 
-        internal static bool Test_M6P15_AcquireFailureAfterSideEffectIsCompensated()
+        internal static bool Test_M6P15_AcquireFailureAfterSideEffectIsIsolated()
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnAcquireAfterSideEffect = true;
@@ -271,12 +274,15 @@ namespace SteamP2PFriends.WhitelistTests
             try { seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y); }
             catch (InvalidOperationException) { threw = true; }
 
-            return threw
+            // OnAcquire 后段失败按单区域隔离语义处理:不抛、不整批回滚;本区域
+            // acquire 补偿被撤销(不执行),区域无 lease 并进入重试登记。
+            return !threw
                 && seam.GetDemand(regionKey) == 0
                 && !seam.IsLeased(regionKey)
                 && seam.PendingReleaseCount == 0
                 && fake.Lifecycle.Releases.Count == 0
-                && fake.Lifecycle.RestoreRegionStateCalls == 1;
+                && fake.Lifecycle.RestoreRegionStateCalls == 0
+                && seam.PendingAcquireRetryCount == 1;
         }
 
         internal static bool Test_M6P16_GenerationReaderFailureRetainsReleaseState()
@@ -369,7 +375,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && after.DeltaSequence == before.DeltaSequence;
         }
 
-        internal static bool Test_M6P21_AcquireFailureRestoresExactRegionState()
+        internal static bool Test_M6P21_AcquireFailureSideEffectIsolated()
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnAcquireAfterSideEffect = true;
@@ -382,10 +388,13 @@ namespace SteamP2PFriends.WhitelistTests
             try { seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y); }
             catch (InvalidOperationException) { }
 
-            return fake.Generation == initialGeneration
-                && fake.Lifecycle.RestoreRegionStateCalls == 1
+            // 隔离语义:补偿被撤销而非执行(Fake 的 generation 副作用按 generation
+            // 单调性保留),区域无 lease 并进入重试登记。
+            return fake.Generation == initialGeneration + 1U
+                && fake.Lifecycle.RestoreRegionStateCalls == 0
                 && fake.Lifecycle.Releases.Count == 0
-                && !seam.IsLeased(regionKey);
+                && !seam.IsLeased(regionKey)
+                && seam.PendingAcquireRetryCount == 1;
         }
 
         internal static bool Test_M6P22_SessionInitializationFailureStaysInactive()
@@ -506,9 +515,12 @@ namespace SteamP2PFriends.WhitelistTests
             try { seam.UpdateObserver(100UL, 1001UL, 10, 10); }
             catch (ResourceAcquireRejectedException) { threw = true; }
 
-            return threw && seam.GetDemand(new RegionKey(10, 10)) == 0
+            // generation 回退 = 区域曾重建,拒绝 lease 的 fail-closed 语义保留;
+            // 但按单区域隔离处理:不抛、不回滚其他区域,进入重试登记。
+            return !threw && seam.GetDemand(new RegionKey(10, 10)) == 0
                 && !seam.IsLeased(new RegionKey(10, 10))
-                && fake.Lifecycle.RestoreRegionStateCalls == 1;
+                && fake.Lifecycle.RestoreRegionStateCalls == 0
+                && seam.PendingAcquireRetryCount == 1;
         }
 
         internal static bool Test_M6P29_ExitGenerationRegressionRetainsStoredLease()
@@ -543,6 +555,64 @@ namespace SteamP2PFriends.WhitelistTests
             catch (InvalidOperationException) { beginThrew = true; }
 
             return endThrew && beginThrew && seam.RepairRequired && !seam.IsSessionActive;
+        }
+
+        internal static bool Test_M6P31_CaptureRegionFailureIsolationKeepsOtherRegions()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey failedRegion = new RegionKey(11, 10);
+            fake.Lifecycle.ThrowOnCaptureRegionStateFor = failedRegion;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey center = new RegionKey(10, 10);
+
+            // 预取理想结果：快照失败的单一区域被隔离/跳过，其余区域 acquire 全部保留，
+            // 不整批回滚，也不向调用方抛出（可随后续 Update 重试）。
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1001UL, center.X, center.Y); }
+            catch (InvalidOperationException) { threw = true; }
+
+            return !threw
+                && seam.IsLeased(center)
+                && !seam.IsLeased(failedRegion)
+                && seam.ActiveLeaseCount == 8
+                && fake.Lifecycle.Acquires.Count == 8
+                && fake.Lifecycle.RestoreRegionStateCalls == 0
+                && seam.PendingAcquireRetryCount == 1;
+        }
+
+        internal static bool Test_M6P32_SnapshotUnavailableDefersRetryThenAcquires()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey deferredRegion = new RegionKey(11, 10);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = deferredRegion;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey center = new RegionKey(10, 10);
+
+            // 预取理想结果：原生 foliage 尚未生成的区域（快照不可用）被暂缓——
+            // 不向调用方抛出（不计 fault、不触发指数退避）、不整批回滚，
+            // 进入短延迟重试队列；延迟到期后的下一次 Update 重试成功并清除暂缓标记。
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1001UL, center.X, center.Y); }
+            catch (InvalidOperationException) { threw = true; }
+
+            bool deferredIsolated = !threw
+                && seam.IsLeased(center)
+                && !seam.IsLeased(deferredRegion)
+                && seam.PendingAcquireRetryCount == 1;
+
+            seam.AdvanceTime(2.0f);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = null;
+            seam.UpdateObserver(100UL, 1001UL, center.X, center.Y);
+
+            return deferredIsolated
+                && seam.IsLeased(deferredRegion)
+                && seam.PendingAcquireRetryCount == 0
+                && fake.Lifecycle.Acquires.Count == 9
+                && fake.Lifecycle.RestoreRegionStateCalls == 0;
         }
 
         internal static bool Test_M6P19_ReleaseRejectionDoesNotRunCompensation()
@@ -607,6 +677,8 @@ namespace SteamP2PFriends.WhitelistTests
             internal bool RejectRelease;
             internal bool ThrowOnAcquireAfterSideEffect;
             internal bool ThrowOnDisconnectAfterSideEffect;
+            internal RegionKey? ThrowOnCaptureRegionStateFor;
+            internal RegionKey? DeferOnCaptureRegionStateFor;
             internal bool ThrowOnSessionBegin;
             internal bool ThrowOnSessionEnd;
             internal int RestoreCalls;
@@ -672,6 +744,17 @@ namespace SteamP2PFriends.WhitelistTests
 
             public object CaptureRegionState(RegionKey regionKey)
             {
+                if (DeferOnCaptureRegionStateFor.HasValue
+                    && regionKey == DeferOnCaptureRegionStateFor.Value)
+                {
+                    throw new ResourceNativeSnapshotUnavailableException(
+                        "native-resource-trees-unavailable");
+                }
+                if (ThrowOnCaptureRegionStateFor.HasValue
+                    && regionKey == ThrowOnCaptureRegionStateFor.Value)
+                {
+                    throw new InvalidOperationException("test capture region snapshot failure");
+                }
                 return new FakeRegionState(_readGeneration(), Acquires.Count, Releases.Count);
             }
 

@@ -42,6 +42,20 @@ namespace SteamP2PFriends.Adapters.Resource
         public string Reason { get; }
     }
 
+    /// <summary>
+    /// 原生区域快照不可用：该区域在 <c>LevelGround._regionTrees</c> 中没有树条目。
+    /// Unturned 2025 植被重构后，区域树随 foliage 烘焙渐进生成（玩家接近才建条目），
+    /// “条目不存在”是常态时序状态（快照先于烘焙），不是数据损坏；
+    /// 调用方应暂缓快照并短延迟重试，不得计为 fault 或进入指数退避。
+    /// </summary>
+    public sealed class ResourceNativeSnapshotUnavailableException : InvalidOperationException
+    {
+        public ResourceNativeSnapshotUnavailableException(string message)
+            : base(message)
+        {
+        }
+    }
+
     public static class ResourceGenerationRules
     {
         public static bool TryAdvance(uint current, out uint next)
@@ -476,7 +490,7 @@ namespace SteamP2PFriends.Adapters.Resource
             FieldInfo respawnIndexField = GetRequiredField(region, "respawnResourceIndex");
             List<ResourceSpawnpoint> trees = LevelGround.GetTreesOrNullInRegion(regionKey.X, regionKey.Y);
             if (trees == null)
-                throw new InvalidOperationException("native-resource-trees-unavailable");
+                throw new ResourceNativeSnapshotUnavailableException("native-resource-trees-unavailable");
 
             var dead = new HashSet<ushort>();
             for (ushort index = 0; index < trees.Count; index++)
@@ -507,7 +521,7 @@ namespace SteamP2PFriends.Adapters.Resource
             FieldInfo respawnIndexField = GetRequiredField(region, "respawnResourceIndex");
             List<ResourceSpawnpoint> trees = LevelGround.GetTreesOrNullInRegion(regionKey.X, regionKey.Y);
             if (trees == null)
-                throw new InvalidOperationException("native-resource-trees-unavailable");
+                throw new ResourceNativeSnapshotUnavailableException("native-resource-trees-unavailable");
 
             ValidateNativeRegionState(region, networkedField, respawnIndexField, trees, state);
             ResourceNativeRegionState before = CaptureNativeRegionState(regionKey);
@@ -542,7 +556,7 @@ namespace SteamP2PFriends.Adapters.Resource
             if (region == null || networkedField == null || respawnIndexField == null)
                 throw new InvalidOperationException("native-resource-region-fields-unavailable");
             if (trees == null)
-                throw new InvalidOperationException("native-resource-trees-unavailable");
+                throw new ResourceNativeSnapshotUnavailableException("native-resource-trees-unavailable");
             if (trees.Count != state.ResourceCount)
                 throw new InvalidOperationException("native-resource-tree-count-mismatch expected=" +
                     state.ResourceCount + " actual=" + trees.Count);

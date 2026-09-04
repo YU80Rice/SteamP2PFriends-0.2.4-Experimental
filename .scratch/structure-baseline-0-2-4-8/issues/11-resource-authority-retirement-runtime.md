@@ -31,3 +31,10 @@
 - Runtime：同一 Case-ID 下的 Host、Guest、多观察者、重连、离开/重新进入以及 Resource 碰撞、采伐、租约释放、generation、双端复制日志均未提供，保持 `PENDING`。
 
 详细报告：`audit/2026-08-27/Implementation-0.2.4.8-Ticket11.md`。
+
+## 修复轮交付证据（2026-09-04，取证轮之后）
+
+- H1 取证裁决：`audit/2026-09-04/Forensics-0.2.4.8-Ticket11-H1-1046.md`——9/9 失败均为 `native-resource-trees-unavailable`，根因锁定为 Unturned 植被重构后区域树渐进生成与 SPI 快照的时序错配，单区域失败整批回滚 + 指数退避致生产瘫痪。
+- 步骤④容错修复落地：`ProcessSingleRegionEntry` 单区域 Acquire 失败隔离（M6P31 转绿）+ `ResourceNativeSnapshotUnavailableException` 暂缓快照、2s 温和退避重试（M6P32 新增）；M6P07/15/21/28 按隔离语义升级；新增 StaticIL 分类边界契约。裁决记录见 `audit/2026-09-04/Implementation-0.2.4.8-Ticket11-1133.md` §3。
+- 静态门禁：259/259 PASS；修复版 DLL MVID `6ae0e666-882b-48ca-b6e2-024d79af9aae`、SHA-256 `B6A3ACC9131BFCD22564644140D2E874CB854BC5F8FE8D435B39DBC33C885986`（INDEPENDENT_ARTIFACT_VERIFICATION_PASS）。
+- Runtime：仍 `PENDING`——修复效果待 1 Host + 2 Guest 同 DLL 同 Case-ID 动态测试证明（重点：主机进入 foliage 未烘焙区域后自动补 lease、多观察者与客机重连场景），本票不得关闭。

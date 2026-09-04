@@ -165,6 +165,31 @@ namespace SteamP2PFriends.WhitelistTests
                 && CountMethodCalls(entered, "System.Exception", "get_Message") == 0;
         }
 
+        internal static bool Test_AcquireFailureHelperEmbedsExceptionMessage()
+        {
+            // 与 Test_FailureClassificationDoesNotParseExceptionText 互补：ProcessEntered 的
+            // EDG 不读取 Message（契约），但独立取证 helper DescribeAcquireFailure 必须真正
+            // 读取 Message（运行时日志定位需要）。二者共同保证取证信息进入可观测输出、
+            // 又不污染 ProcessEntered 的分类边界。
+            MethodInfo helper = typeof(ResourceProductionControlSeam).GetMethod(
+                "DescribeAcquireFailure", BindingFlags.Static | BindingFlags.NonPublic);
+            return helper != null
+                && CountMethodCalls(helper, "System.Exception", "get_Message") == 1
+                && CountMethodCalls(helper, "System.Exception", "get_StackTrace") == 0;
+        }
+
+        internal static bool Test_SingleRegionEntryDoesNotParseExceptionText()
+        {
+            // ProcessEntered 的单区域处理体（含 acquire 失败分类 catch）抽入
+            // ProcessSingleRegionEntry 后，分类边界随之迁移；本契约镜像
+            // Test_FailureClassificationDoesNotParseExceptionText，守护新的分类边界
+            // 同样不解析异常文本（Message 仅经 DescribeAcquireFailure helper 承载）。
+            MethodInfo singleRegion = typeof(ResourceProductionControlSeam).GetMethod(
+                "ProcessSingleRegionEntry", BindingFlags.Instance | BindingFlags.NonPublic);
+            return singleRegion != null
+                && CountMethodCalls(singleRegion, "System.Exception", "get_Message") == 0;
+        }
+
         internal static bool Test_ClientConnectionGenerationFailureRequestsTeardown()
         {
             MethodInfo connected = typeof(P2PJoinManager).GetMethod(
