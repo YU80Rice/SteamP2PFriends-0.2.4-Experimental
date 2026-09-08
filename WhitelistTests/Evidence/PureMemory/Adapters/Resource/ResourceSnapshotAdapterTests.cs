@@ -184,5 +184,27 @@ namespace SteamP2PFriends.WhitelistTests
             bool advanced = ResourceGenerationRules.TryAdvance(uint.MaxValue, out uint next);
             return !advanced && next == uint.MaxValue;
         }
+
+        public static bool Test_M6S11_StaleSnapshotRemovalToleratedWithoutThrow()
+        {
+            // R1(Runtime-2343):观察者重连后,旧 connection token 的待移除快照被
+            // generation gate 拒绝,ResourceDomainAdapter.OnObserverExited 曾以 throw
+            // 方式失败 → ObserverUpdate 事务回滚 → coordinator 计 fault → M0 会话重建。
+            // 改为"过时移除容忍":拒绝只记录日志、不抛出,且不破坏新 token 的复制状态。
+            ResourceSnapshotAdapter.ResetSession(1UL);
+            RegionKey regionKey = new RegionKey(31, 25);
+            ulong observerId = 76561198000000001UL;
+            ResourceSnapshotAdapter.EnqueueInitialSnapshot(observerId, 100UL, regionKey, 1U);
+            ResourceSnapshotAdapter.EnqueueInitialSnapshot(observerId, 200UL, regionKey, 1U);
+
+            var adapter = new ResourceDomainAdapter();
+            bool threw = false;
+            try { adapter.OnObserverExited(observerId, 100UL, regionKey); }
+            catch (InvalidOperationException) { threw = true; }
+
+            bool found = ResourceSnapshotAdapter.TryGetSnapshot(observerId, regionKey,
+                out ResourceSnapshotRecord record);
+            return !threw && found && record.ConnectionToken == 200UL;
+        }
     }
 }

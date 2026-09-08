@@ -573,13 +573,28 @@ namespace SteamP2PFriends.WhitelistTests
             try { seam.UpdateObserver(100UL, 1001UL, center.X, center.Y); }
             catch (InvalidOperationException) { threw = true; }
 
-            return !threw
-                && seam.IsLeased(center)
+            // 成功区域以当前 generation 建立 lease（1123 §3：成功区 acquire 保留且代次正确）。
+            bool isolated = !threw
+                && seam.TryGetLease(center, out ResourceProductionLease centerLease)
+                && centerLease.RegionGeneration.Value == fake.Generation
                 && !seam.IsLeased(failedRegion)
                 && seam.ActiveLeaseCount == 8
                 && fake.Lifecycle.Acquires.Count == 8
                 && fake.Lifecycle.RestoreRegionStateCalls == 0
                 && seam.PendingAcquireRetryCount == 1;
+
+            // 失败区的下次重试（1123 §3 原始验收）：一般失败 10s 到期重试成功后补齐
+            // lease、清除重试登记，全程不产生补偿恢复。
+            fake.Lifecycle.ThrowOnCaptureRegionStateFor = null;
+            seam.AdvanceTime(10.0f);
+            seam.UpdateObserver(100UL, 1001UL, center.X, center.Y);
+
+            return isolated
+                && seam.IsLeased(failedRegion)
+                && seam.ActiveLeaseCount == 9
+                && fake.Lifecycle.Acquires.Count == 9
+                && seam.PendingAcquireRetryCount == 0
+                && fake.Lifecycle.RestoreRegionStateCalls == 0;
         }
 
         internal static bool Test_M6P32_SnapshotUnavailableDefersRetryThenAcquires()

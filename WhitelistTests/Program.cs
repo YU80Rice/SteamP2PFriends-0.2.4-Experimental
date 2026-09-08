@@ -156,6 +156,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6S08 ResourceNativeDataPlane", ResourceSnapshotAdapterTests.Test_M6S08_NativeDataPlaneEventsAreRecordedThroughResourceLedger, ref total, ref passed, ref failed);
             RunTest("M6S09 ResourceOldBaseline", ResourceSnapshotAdapterTests.Test_M6S09_OldBaselineCannotOverwriteNewerBaseline, ref total, ref passed, ref failed);
             RunTest("M6S10 ResourceGenerationOverflow", ResourceSnapshotAdapterTests.Test_M6S10_RegionGenerationOverflowFailsClosed, ref total, ref passed, ref failed);
+            RunTest("M6S11 ResourceStaleRemoveTolerated", ResourceSnapshotAdapterTests.Test_M6S11_StaleSnapshotRemovalToleratedWithoutThrow, ref total, ref passed, ref failed);
 
             RunTest("M6H01 HarvestDeadGen", ResourceHarvestReplicationTests.Test_M6H01_ResourceDeadAdvancesGeneration, ref total, ref passed, ref failed);
             RunTest("M6H02 HarvestMultiDead", ResourceHarvestReplicationTests.Test_M6H02_MultipleResourcesDeadTrackedIndependently, ref total, ref passed, ref failed);

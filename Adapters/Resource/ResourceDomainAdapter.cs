@@ -177,12 +177,13 @@ namespace SteamP2PFriends.Adapters.Resource
         public void OnObserverExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             bool removed = ResourceSnapshotAdapter.RemoveSnapshot(observerId, connectionToken, regionKey);
+            // 过时移除容忍(R1):观察者重连后,旧 connection token 的移除被 generation gate
+            // 拒绝属预期场景,只记录日志不抛出——抛出会回滚 ObserverUpdate 事务并触发 M0 会话重建。
             ResourceObservability.Info("[Host]", "SnapshotRemove", regionKey.ToString(),
                 ResourceRegionLifecycleAdapter.CurrentSessionEpoch, connectionToken,
                 ResourceRegionLifecycleAdapter.GetGeneration(regionKey), "SPI", true,
-                removed ? "success" : "rejected", "observer=" + observerId);
-            if (!removed)
-                throw new InvalidOperationException("Resource snapshot removal rejected by connection generation gate.");
+                removed ? "success" : "rejected", "observer=" + observerId +
+                " reason=" + (removed ? "none" : "stale-removal-tolerated"));
         }
 
         public void OnReplicationTick(float deltaTime)

@@ -569,9 +569,12 @@ namespace SteamP2PFriends.Adapters.Resource
                 }
                 catch (Exception ex)
                 {
+                    // message 埋点(R1):仅 exception=TypeName 是取证盲区,Message 经
+                    // NoInlining helper 承载,定位具体失败区域与原因(沿用 StaticIL 契约模式)。
                     ResourceObservability.Error("[Host]", "SnapshotRemove", region.ToString(),
                         _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
-                        "Fallback", true, "failed", "observer=" + observerId + " exception=" + ex.GetType().Name);
+                        "Fallback", true, "failed", "observer=" + observerId +
+                        " exception=" + DescribeAcquireFailure(ex));
                     throw;
                 }
 
@@ -713,9 +716,12 @@ namespace SteamP2PFriends.Adapters.Resource
             }
             catch (Exception ex)
             {
+                // message 埋点(R1):同 SnapshotRemove 失败日志,Message 经 NoInlining
+                // helper 承载,不破坏 ProcessSingleRegionEntry 的零 get_Message 分类契约。
                 ResourceObservability.Error("[Host]", "SnapshotEnqueue", region.ToString(),
                     _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
-                    "Fallback", true, "failed", "observer=" + observerId + " exception=" + ex.GetType().Name);
+                    "Fallback", true, "failed", "observer=" + observerId +
+                    " exception=" + DescribeAcquireFailure(ex));
                 throw;
             }
 
