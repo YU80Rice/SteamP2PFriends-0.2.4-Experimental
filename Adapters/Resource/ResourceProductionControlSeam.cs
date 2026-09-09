@@ -57,6 +57,9 @@ namespace SteamP2PFriends.Adapters.Resource
             new Dictionary<RegionKey, PendingRelease>();
         /// <summary>foliage 未烘焙区域的暂缓重试间隔(秒):短暂等待后 capture 即可成功,不计 fault。</summary>
         private const float DeferredAcquireRetryInterval = 2.0f;
+        /// <summary>deferred 连续重试达到该次数后降级静默稳态(R2):仅计数,不再逐条打
+        /// Info——真无树区域 32s 退避稳态的 2317 次/轮日志量降级;重试与清除语义不变。</summary>
+        private const int DeferredAcquireQuietAttempts = 5;
         /// <summary>其他 acquire 失败的重试间隔(秒):单区域隔离后由观察者下一次 Update 重试。</summary>
         private const float FailedAcquireRetryInterval = 10.0f;
         private readonly Dictionary<RegionKey, AcquireRetry> _acquireRetries =
@@ -546,10 +549,24 @@ namespace SteamP2PFriends.Adapters.Resource
             {
                 // 暂缓/失败重试中的区域从未完成 OnObserverEntered、demand 未计入;
                 // 观察者离开时撤销自己的重试登记,跳过 exited/demand 递减以避免状态失衡。
+                // 撤销同样登记补偿(R4 治本,同尾部清除):退出批次回滚时恢复登记,
+                // 保证 retry/demand/spatialIndex 三者一致。
                 if (_acquireRetries.TryGetValue(region, out AcquireRetry leavingRetry)
                     && leavingRetry.ObserverId == observerId)
                 {
                     _acquireRetries.Remove(region);
+                    compensations.Add(() => _acquireRetries[region] = leavingRetry);
+                    continue;
+                }
+                // 兜底(R4):过时退出容忍,对称 R1——区域在空间索引却无 demand 且无本
+                // 观察者登记,属历史失衡残留或未知路径。记日志跳过,不抛 underflow,
+                // 消除该退出路径的 M0 会话重建源;不动其他观察者的有效登记。
+                if (GetDemand(region) <= 0)
+                {
+                    ResourceObservability.Info("[Host]", "RegionExit", region.ToString(),
+                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value,
+                        "SPI", true, "skipped",
+                        "reason=stale-exit-without-demand observer=" + observerId);
                     continue;
                 }
                 try
@@ -680,10 +697,17 @@ namespace SteamP2PFriends.Adapters.Resource
                     // 短延迟重试,不计 fault、不进指数退避,预期烘焙后重试即成功。
                     // 撤销本区域已登记的补偿,避免之后其他区域失败时被整批回滚误执行。
                     compensations.RemoveRange(compensationBase, compensations.Count - compensationBase);
+                    bool quietSteadyState = _acquireRetries.TryGetValue(region, out AcquireRetry currentRetry)
+                        && currentRetry.ObserverId == observerId
+                        && currentRetry.Attempts >= DeferredAcquireQuietAttempts;
                     ScheduleAcquireRetry(region, observerId, deferred: true);
-                    ResourceObservability.Info("[Host]", "LeaseAcquire", region.ToString(),
-                        _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value, "Fallback", true,
-                        "deferred", "reason=region-snapshot-deferred exception=" + DescribeAcquireFailure(ex));
+                    if (!quietSteadyState)
+                    {
+                        ResourceObservability.Info("[Host]", "LeaseAcquire", region.ToString(),
+                            _sessionEpoch.Value, connectionToken, GetStoredGeneration(region).Value, "Fallback", true,
+                            "deferred", "reason=region-snapshot-deferred attempts=" + _acquireRetries[region].Attempts +
+                            " exception=" + DescribeAcquireFailure(ex));
+                    }
                     return;
                 }
                 catch (Exception ex)
@@ -737,10 +761,14 @@ namespace SteamP2PFriends.Adapters.Resource
             }
 
             // 只清除当前观察者自己的登记:其他观察者对同一区域的待重试登记仍然有效。
+            // 清除必须登记补偿(R4 治本):登记清除若游离在事务补偿之外,任何一次
+            // UpdateObserver 回滚都会留下"区域在空间索引、无 demand、无 retry 登记"
+            // 的失衡态,后续该区域退出/重连必触发 DecrementDemand underflow。
             if (_acquireRetries.TryGetValue(region, out AcquireRetry ownRetry)
                 && ownRetry.ObserverId == observerId)
             {
                 _acquireRetries.Remove(region);
+                compensations.Add(() => _acquireRetries[region] = ownRetry);
             }
         }
 

@@ -198,6 +198,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6P30 ResourceRepairRequiredLock", ResourceProductionControlSeamTests.Test_M6P30_RepairRequiredRejectsNewSession, ref total, ref passed, ref failed);
             RunTest("M6P31 ResourceCaptureFailureIsolation", ResourceProductionControlSeamTests.Test_M6P31_CaptureRegionFailureIsolationKeepsOtherRegions, ref total, ref passed, ref failed);
             RunTest("M6P32 ResourceSnapshotUnavailableDeferredRetry", ResourceProductionControlSeamTests.Test_M6P32_SnapshotUnavailableDefersRetryThenAcquires, ref total, ref passed, ref failed);
+            RunTest("M6P33 ResourceRollbackRestoresRetryRegistration", ResourceProductionControlSeamTests.Test_M6P33_RollbackRestoresAcquireRetryRegistration, ref total, ref passed, ref failed);
+            RunTest("M6P34 ResourceDeferredOnlyRegionExit", ResourceProductionControlSeamTests.Test_M6P34_DeferredOnlyRegionExitSkipsDemand, ref total, ref passed, ref failed);
+            RunTest("M6P35 ResourceStaleExitTolerated", ResourceProductionControlSeamTests.Test_M6P35_StaleExitWithoutDemandIsTolerated, ref total, ref passed, ref failed);
             RunTest("M6O01 ResourceObservabilityFields", ResourceObservabilityTests.Test_M6O01_FormatsRequiredResourceFields, ref total, ref passed, ref failed);
             RunTest("M6O02 ResourceFallbackExplicit", ResourceObservabilityTests.Test_M6O02_FallbackAndSkippedAreExplicit, ref total, ref passed, ref failed);
             RunTest("M6O03 ResourceReceiveDecisionBoundary", ResourceObservabilityTests.Test_M6O03_NativeReceiveDoesNotInventAcceptance, ref total, ref passed, ref failed);

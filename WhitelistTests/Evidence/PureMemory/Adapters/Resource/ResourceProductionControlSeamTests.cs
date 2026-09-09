@@ -630,6 +630,110 @@ namespace SteamP2PFriends.WhitelistTests
                 && fake.Lifecycle.RestoreRegionStateCalls == 0;
         }
 
+        internal static bool Test_M6P33_RollbackRestoresAcquireRetryRegistration()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey failedRegion = new RegionKey(11, 10);
+            fake.Lifecycle.ThrowOnCaptureRegionStateFor = failedRegion;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+
+            // 重试到期且本区域可成功 acquire;用同事务内断连失败制造整批回滚——
+            // R4:登记清除发生在 ProcessSingleRegionEntry 尾部(重试成功后),必须
+            // 纳入补偿列表,回滚后 retry/demand/spatialIndex 三者一致。
+            fake.Lifecycle.ThrowOnCaptureRegionStateFor = null;
+            seam.AdvanceTime(10.0f);
+            fake.Lifecycle.ThrowOnDisconnectAfterSideEffect = true;
+            bool threw = false;
+            try { seam.UpdateObserver(100UL, 1002UL, 10, 10); }
+            catch (InvalidOperationException) { threw = true; }
+            fake.Lifecycle.ThrowOnDisconnectAfterSideEffect = false;
+
+            bool restored = threw
+                && seam.PendingAcquireRetryCount == 1
+                && seam.GetDemand(failedRegion) == 0
+                && !seam.IsLeased(failedRegion)
+                && seam.ObserverCount == 1
+                && seam.TryGetConnectionGeneration(100UL, out ulong token)
+                && token == 1001UL;
+
+            // 登记恢复后,重试资格保留:下一次 Update 成功补齐 lease 并清除登记。
+            seam.UpdateObserver(100UL, 1002UL, 10, 10);
+
+            return restored
+                && seam.IsLeased(failedRegion)
+                && seam.GetDemand(failedRegion) == 1
+                && seam.PendingAcquireRetryCount == 0
+                && fake.Lifecycle.Acquires.Count == 10;
+        }
+
+        internal static bool Test_M6P34_DeferredOnlyRegionExitSkipsDemand()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey deferredRegion = new RegionKey(11, 10);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = deferredRegion;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = null;
+
+            // R4 回归锁:deferred-only 区域(在空间索引、无 demand、有登记)随观察者
+            // 整体退出时,由登记撤销分支接住——不抛 underflow、不触发会话重建源,
+            // 其余 8 个已租区域正常进入滞回释放。
+            bool deferredOnly = seam.PendingAcquireRetryCount == 1
+                && seam.GetDemand(deferredRegion) == 0
+                && !seam.IsLeased(deferredRegion)
+                && fake.Replication.Entered.Count == 8;
+
+            seam.RemoveObserver(100UL);
+
+            return deferredOnly
+                && seam.PendingAcquireRetryCount == 0
+                && seam.GetDemand(deferredRegion) == 0
+                && !seam.IsLeased(deferredRegion)
+                && fake.Replication.Exited.Count == 8
+                && seam.PendingReleaseCount == 8
+                && seam.ObserverCount == 0;
+        }
+
+        internal static bool Test_M6P35_StaleExitWithoutDemandIsTolerated()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey staleRegion = new RegionKey(10, 10);
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = staleRegion;
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = null;
+            bool deferredOnly = seam.PendingAcquireRetryCount == 1
+                && seam.GetDemand(staleRegion) == 0;
+
+            // 反射清除登记,伪造 R4 失衡残留(历史回滚时代的产物/未知路径):
+            // 区域在空间索引、无 demand、无登记。补偿治本覆盖已知路径,该兜底
+            // 容忍剩余过时退出——对称 R1,记日志跳过,不抛 underflow。
+            System.Reflection.FieldInfo retriesField = typeof(ResourceProductionControlSeam).GetField(
+                "_acquireRetries", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            System.Collections.IDictionary retries = (System.Collections.IDictionary)retriesField.GetValue(seam);
+            retries.Remove(staleRegion);
+            bool residueState = seam.PendingAcquireRetryCount == 0
+                && seam.GetDemand(staleRegion) == 0;
+
+            bool tolerated = true;
+            try { seam.RemoveObserver(100UL); }
+            catch (InvalidOperationException) { tolerated = false; }
+
+            return deferredOnly && residueState && tolerated
+                && seam.ObserverCount == 0
+                && seam.GetDemand(staleRegion) == 0
+                && seam.PendingReleaseCount == 0
+                && !seam.IsLeased(staleRegion)
+                && seam.IsSessionActive;
+        }
+
         internal static bool Test_M6P19_ReleaseRejectionDoesNotRunCompensation()
         {
             var fake = new FakeResourceAdapters();

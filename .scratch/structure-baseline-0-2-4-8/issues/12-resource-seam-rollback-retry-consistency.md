@@ -4,19 +4,19 @@
 
 **Blocked by:** 11 / Resource 旧 Authority Writer 退出与运行时验收（已关闭）
 
-**Status:** ready-for-agent
+**Status:** implemented-pending-runtime（静态闭环+双轴 round 1 双 CLEAN；Runtime 验证归属本票,停等用户 1H+2G,见 `audit/2026-09-10/Implementation-0.2.4.8-Ticket12-0027.md` §8）
 
-- [ ] 治本：`ProcessSingleRegionEntry` 尾部 retry 登记清除纳入事务补偿列表——事务回滚时恢复被清除的登记，保证 retry/demand/spatialIndex 三者一致。
-- [ ] 兜底：`ProcessExited` 对 demand=0（或缺失）的过时退出对称 R1 做容忍——记日志（含 reason，沿用 outcome 封闭枚举）不抛出，消除该路径的会话重建源。
-- [ ] 回归测试（PureMemory）：① 事务回滚后 retry 登记一致性（制造回滚场景，断言登记恢复）；② deferred-only 区域退出不再触发 underflow/fault；③ 兜底容忍路径的日志与状态断言。
-- [ ] 一次 Release 重建 + 全静态门禁（260+ 全绿、指纹脚本、布局门禁、git diff --check），新指纹登记（主 DLL + 测试 exe `32B9B7B5…`/`b19b0910…` 的 provenance 更新，见 IndependentReview-2337 §九-5）。
+- [x] 治本：`ProcessSingleRegionEntry` 尾部 retry 登记清除纳入事务补偿列表——事务回滚时恢复被清除的登记，保证 retry/demand/spatialIndex 三者一致。（同缺陷类超集:`ProcessExited` 头部撤销登记亦纳入补偿,Spec 轴确认合理）
+- [x] 兜底：`ProcessExited` 对 demand=0（或缺失）的过时退出对称 R1 做容忍——记日志（含 reason，沿用 outcome 封闭枚举）不抛出，消除该路径的会话重建源。
+- [x] 回归测试（PureMemory）：① 事务回滚后 retry 登记一致性（M6P33,红测逐帧复现 Runtime-2314 underflow 链后转绿）；② deferred-only 区域退出不再触发 underflow/fault（M6P34 回归锁）；③ 兜底容忍路径的状态断言（M6P35,反射伪造残留）；日志内容由 Runtime 复核承载（RoleLogger 无测试 sink,既有 seam gap,具名于审计 §6）。
+- [x] 一次 Release 重建 + 全静态门禁（263/263 全绿、指纹脚本、布局门禁、git diff --check），新指纹登记（主 DLL `BBBDCC25…`/`cdac3a0a…`；测试 exe `86C4D5E6…`/`4050716b…`,provenance 更新取代 `32B9B7B5…`/`b19b0910…`,见 IndependentReview-2337 §九-5 与审计 §5）。
 - [ ] Runtime 验证（归属本票）：用户重跑 1H+2G，预期 0 次 M0 fault、0 次 fault-recovery 会话重建、重连后可见 `reason=` 容忍日志；UMM 诊断包回传后按 Runtime-2314 同口径审计落盘。
 
 ## 可并票项（同票顺带，均小改动）
 
-- [ ] R2：deferred 连续 N 次后降级静默稳态（仅计数不逐条打 Info）——降低 2317 次/轮的日志量，不改变重试语义。
-- [ ] `Tools/Verify-Ticket09Documentation.ps1` 补 UTF-8 BOM（存量解析期编码缺陷，IndependentReview-2337 §四；补 BOM 后用 PS5.1 原样运行验证 PASS）。
-- [ ] Standards 判断性坏味道两条（IndependentReview-2337 §六）评估：如顺手则以共享 props 或注释说明收口，不顺手则记录延期理由。
+- [x] R2：deferred 连续 N 次后降级静默稳态（仅计数不逐条打 Info）——降低 2317 次/轮的日志量，不改变重试语义。（N=DeferredAcquireQuietAttempts=5,可见日志补 attempts= 字段;日志降量由 Runtime 复核）
+- [x] `Tools/Verify-Ticket09Documentation.ps1` 补 UTF-8 BOM（存量解析期编码缺陷，IndependentReview-2337 §四；补 BOM 后用 PS5.1 原样运行验证 PASS）。（另将文档读取改显式 UTF-8——文档本体无 BOM,仅补 BOM 时 PS5.1 内容期按 ANSI 读取仍失败;同属该编码缺陷收口,见审计 §6-4）
+- [x] Standards 判断性坏味道两条（IndependentReview-2337 §六）评估：均记录延期理由（收口会触碰构建身份配置/捆绑本身为票面授权形态）,见审计 §7;本轮 Standards 轴另点名两条判断性坏味道一并具名延期。
 
 ## 范围与边界
 

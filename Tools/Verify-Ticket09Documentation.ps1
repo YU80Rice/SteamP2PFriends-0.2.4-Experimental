@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $versionPropsPath = Join-Path $repoRoot 'Build\Version.props'
@@ -33,7 +33,9 @@ foreach ($document in $documents) {
         throw "Missing Ticket 09 metadata document: $($document.Path)"
     }
 
-    $content = Get-Content -LiteralPath $path -Raw
+    # 文档本体无 BOM:PS5.1 Get-Content 会按 ANSI 读取并破坏中文 Ordinal 匹配。
+    # 与本脚本解析期 UTF-8 BOM 配套,内容读取同样显式 UTF-8(2337 §四镜像口径)。
+    $content = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
     foreach ($required in $document.Required) {
         if ($content.IndexOf($required, [System.StringComparison]::Ordinal) -lt 0) {
             throw "Document metadata mismatch: $($document.Path) is missing '$required'"
