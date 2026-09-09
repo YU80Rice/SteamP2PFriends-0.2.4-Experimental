@@ -361,7 +361,7 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 
 ## Batch 11：Resource 旧 Authority Writer 退出与 Runtime Gate
 
-状态：旧 Resource 租约释放 Writer 已从生产调用图退出；真实 Runtime Gate `PENDING`，Resource Migration Slice 未完成。
+状态：**完成**——旧 Resource 租约释放 Writer 已从生产调用图退出；Runtime Gate 已通过（三端 1H+2G 动态测试 + 独立审核 PASS，2026-09-09）；**Resource Migration Slice 完成**，可推进依赖该结论的其他领域迁移。
 
 ### Authority Writer 状态
 
@@ -373,12 +373,12 @@ U3-SDK：`ea7b4973af5ba10f62baad2bfde36ab2e5b060eb`
 
 ### Runtime Gate 状态
 
-当前仓库没有同一 `0.2.4.8` DLL、共享 Case-ID 下的 Host、Guest、多观察者、重连和离开/重新进入原始运行日志；本机也未发现可执行的 Unturned Runtime。因此：
+Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3…`、MVID `2ff47d8f…`，经独立跨路径实验证实为源码复现身份）、共享 Case-ID `SPF-0.2.4.8-Experimental-StructureBaseline` 下的三端（1 Host + 2 Guest）运行日志已取得：
 
-- Host/Guest 日志与当次 DLL 的 SHA-256、MVID、版本、插件 GUID 关联：`PENDING`；
-- Resource 碰撞、采伐、2 秒租约释放、generation 防护、快照与增量复制：`PENDING`；
-- 不得把 Ticket 10 的 PureMemory/StaticIL/BuildArtifact PASS 升级为 Ticket 11 Runtime PASS；
-- 不得把本 Batch 标记为 `Resource Migration Slice complete`，也不得推进依赖该结论的其他领域迁移。
+- Host/Guest 日志与当次 DLL 的 SHA-256、MVID、版本、插件 GUID 关联：**通过**（三端自报逐字节一致，`Runtime-0.2.4.8-Ticket11-2314.md`）；
+- Resource 碰撞、采伐、租约释放、generation 防护、快照与增量复制：**通过**（CollisionActivation 6376、HarvestDead 7/7 accepted、LeaseAcquire failed 0、滞回/重入/双端复制事件齐全）；
+- 唯一 Authority Writer 因果链成立；已知工程缺陷 R4（deferred 区域退出事务 demand 不平衡致 4 次会话重建，用户无感）登记为审核后首批修复票，其 Runtime 验证归属 R4 票；
+- 独立审核正式 **PASS**：`audit/2026-09-09/IndependentReview-0.2.4.8-Ticket11-2337.md`（7 项门禁全过，Spec/Standards 双轴 CLEAN）。
 
 ### 本轮静态交付
 
