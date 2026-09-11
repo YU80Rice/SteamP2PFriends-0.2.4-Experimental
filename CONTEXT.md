@@ -162,3 +162,19 @@ _Avoid_: Pre-join queue, handshake block, hard whitelist
 **Gameplay Authorization**:
 The administrative permission granting an observer full gameplay rights, completely decoupled from world presence and rendering.
 _Avoid_: World admission, connection permit
+
+**Listen-Host Dedicated Gate**:
+The listen-host eligibility that must match a dedicated-server early-return so world simulation (respawn, despawn, periodic tick) actually runs for a P2P host.
+_Avoid_: B-batch, vanilla-fix batch, U3DS alignment batch, Route B, Admission spec
+
+**Join Routing**:
+The pre-world classification and `Provider.connect` parameter assembly for SteamID and Direct-IP, including password and `:port` suffix handling.
+_Avoid_: Admission spec, Route B, handshake, quarantine
+
+**Listen-Host Session Password**:
+The optional host password that exists only in the current listen-host session as `Provider.serverPassword`; empty means an open room.
+_Avoid_: room setting, persisted password, connect password, whitelist
+
+**Animal Pack Model**:
+The unresolved design choice for Animal: vanilla AnimalManager has no per-region generate, so a Region Lease slice must not be wired until the project decides full-map pack lifetime versus a new observer model.
+_Avoid_: animal migration, bound lease for animals, SPI-ready animal adapter
