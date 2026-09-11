@@ -43,4 +43,4 @@ GitHub: [YU80Rice](https://github.com/YU80Rice)
 - AI 生成内容不代替编译、静态检查、运行时日志和人工实机验收。
 - 本项目在 [MIT License](./LICENSE) 下开源。
 
-**最后更新**：2026-08-10
+**最后更新**：2026-09-11。0.2.4 实验线已公开；0.2.3 旧仓只作来时路。Claude 于 2026-08-26 出具的架构评审作为里程碑原样公开，见仓库根 `ARCHITECTURE-REVIEW-0.2.4-Experimental.md`。

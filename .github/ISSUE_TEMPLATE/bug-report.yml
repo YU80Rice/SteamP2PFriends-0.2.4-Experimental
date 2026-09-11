@@ -5,8 +5,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        请先确认双方都使用同一版本的 SteamP2PFriends，并完全退出游戏后重新启动。
-        联机问题必须同时提供房主和客机的日志；仅截图或仅一份日志无法判断是网络、环境冲突还是插件行为。
+        本仓库是 0.2.4 实验线，**没有 GitHub Release**。请先确认双方部署的是同一份自构建 `SteamP2PFriends.dll`（SHA-256 一致），并完全退出游戏后重新启动。
+        已知未修（请先对照 README，避免重复开单）：僵尸被打死后不重生、地面掉落物不按专用服节奏消失/再生、SteamID 路线丢密码、`SteamID:端口` 粘贴静默失败。
+        联机问题必须同时提供房主和客机的 `BepInEx/LogOutput.log`（推荐 UMM 诊断包）；仅截图或仅一份日志无法判断是网络、环境冲突还是插件行为。
 
   - type: dropdown
     id: category

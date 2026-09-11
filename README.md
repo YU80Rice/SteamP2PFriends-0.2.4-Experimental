@@ -1,46 +1,46 @@
-# SteamP2PFriends
+# SteamP2PFriends 0.2.4 Experimental
 
-> 为 Unturned 提供无 U3DS 的便捷 listen-host 联机，同时支持 SteamID P2P 和 IPv4 直连。
+> Unturned listen-host 联机插件的实验线：无 U3DS 开房，并正在把世界状态从旧补丁切到 Multi-Observer 区域租约架构。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.4.8--experimental-blue.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
-[![Status](https://img.shields.io/badge/status-Ticket%2009%20Build%20Fingerprint-orange.svg)](./EXPERIMENTAL-ARCHITECTURE.md)
+[![Version](https://img.shields.io/badge/version-0.2.4.8--experimental-blue.svg)](./Build/Version.props)
+[![Status](https://img.shields.io/badge/status-experimental--no--release-orange.svg)](./ARCHITECTURE-REVIEW-0.2.4-Experimental.md)
 
-> **版本来源**：徽章与下方「当前版本」表中的版本号均以 `Build/Version.props` 为唯一来源；展示值须与其一致，bump 版本时同步更新此处。
+> **版本来源**：徽章与「当前版本」表中的版本号以 [`Build/Version.props`](./Build/Version.props) 为唯一来源；展示值须与其一致。
+>
+> **不是稳定版，也没有 GitHub Release。** 本仓库默认分支是 `codex/structure-baseline-0.2.4`。玩家若只想用已归档的旧实现，请看 [YU80Rice/SteamP2PFriends](https://github.com/YU80Rice/SteamP2PFriends)（0.2.3，只读、已停止开发）。两个 DLL 不得同时部署。
 
-> **实验区**：本目录专用于 Multi-Observer 架构升级。稳定的 `0.2.3.70-beta.2` 仍保留在相邻 `SteamP2PFriends` 目录；两个 DLL 不得同时部署。
+## 这是什么
 
-## 项目简介
+房主从原版单人地图开多人房间，客机用 SteamID 或 IPv4 加入，不需要安装或启动 U3DS。
 
-SteamP2PFriends 是一个双端 BepInEx 插件。房主可直接从原版单人地图创建多人房间，不需要安装、配置或启动 U3DS。
-
-当前插件提供两条并存的联机路径：
+两条联机路径并存：
 
 - **SteamID P2P**：客机在原版直连地址栏输入房主个人 SteamID。
-- **IPv4 直连**：用于真实局域网、Radmin LAN 等虚拟局域网。客机输入房主 IPv4 和共享端口。
+- **IPv4 直连**：真实局域网或 Radmin LAN 等虚拟局域网；客机输入房主 IPv4 和共享端口。
 
-IP 只负责寻址。玩家身份、审批与白名单始终使用 Steam Networking Sockets 握手获取的 SteamID。
+IP 只负责寻址。玩家身份、审批与白名单始终使用 Steam Networking Sockets 握手得到的 SteamID。
 
-## 已实现功能
+0.2.4 相对 0.2.3 的目标不是再堆一层补丁，而是把观察者需求并集、区域租约和单一权威写入真正接到生产路径上。2026-08-26 的 [架构评审](./ARCHITECTURE-REVIEW-0.2.4-Experimental.md) 判定当时的控制面是死代码空壳；Resource 域已按该评审第 8 项纲领走通 Acquire → Release，其余域仍在旧路径上。逐条进度见 [ReviewRecheck](./audit/2026-09-04/ReviewRecheck-0.2.4.8-0933.md)。
 
-- 无 U3DS 的 listen-host 开房。
-- SteamID P2P 联机，不要求先添加 Steam 好友。
-- IPv4 直连，已通过 Radmin LAN 双机测试。
-- 房主可设置房间名称、最大玩家数、难度、PVP、作弊权限和死亡保留规则。
-- 自动保存上一次启动的房间设置。
-- 新玩家进入世界后先进入 30 秒审批隔离：禁止移动、交互、指令和伤害，并保持受保护状态。
-- 房主直接在原版玩家列表（默认按 `P` 打开，可重绑）中点击“允许/撤销允许”，不需要额外审批窗口。
-- 客机聊天栏以 5 秒间隔显示审批剩余时间。
-- 创意工坊地图与缺失内容下载已通过双机测试。
-- listen-host 自然刷新物品由房主统一生成，避免主客机地面物品不一致和幽灵物品。
-- 运行时 Harmony 注册与兼容性自检；自身关键补丁失效时 fail-closed，第三方补丁按风险分级告警或阻断。
+## 当前状态（请按这里判断能不能玩）
 
-## 安装
+| 项目 | 值 |
+|---|---|
+| BepInPlugin / AssemblyVersion | `0.2.4.8` |
+| 通道 | Experimental，无发布标识 |
+| 已验证 | Resource 域 Multi-Observer 三端 Runtime（区域租约、采伐、滞回释放）；SteamID P2P 与 IPv4 直连开房/审批隔离 |
+| 已知未修（玩家会碰到） | 僵尸被打死后不重生；地面掉落物不按专用服节奏消失/再生；SteamID 路线丢密码；`SteamID:端口` 粘贴会静默失败 |
+| 分发 | **只从源码构建**；本仓库不提供 Release zip |
+| 旧实现 | 0.2.3 已归档，只作来时路，不再开发 |
 
-1. 房主和所有客机都需要安装相同版本的 BepInEx 和 SteamP2PFriends。
-2. 从 [GitHub Releases](https://github.com/YU80Rice/SteamP2PFriends/releases) 下载与双方一致的 `SteamP2PFriends-v<版本>.zip`。
-3. 将压缩包解压到 Unturned 游戏根目录。
-4. 确认 DLL 最终位于：
+静态测试全绿不等于运行时可用。本仓库把证据分成 PureMemory / StaticIL / BuildArtifact / Runtime 四类，互不升级替代；没有真实多机日志，不得宣称 Runtime PASS。
+
+## 安装（从源码）
+
+1. 房主和所有客机安装**同一构建**的 BepInEx 与本插件。
+2. 按下方「从源码构建」得到 `SteamP2PFriends.dll`。
+3. 放到：
 
 ```text
 Unturned/
@@ -49,109 +49,76 @@ Unturned/
         └── SteamP2PFriends.dll
 ```
 
+4. 用 `certutil -hashfile SteamP2PFriends.dll SHA256` 核对三端哈希一致后再进世界。
+
 ## 使用方法
 
 ### 房主开房
 
 1. 进入原版单人地图选择界面。
-2. 点击插件的“多人联机”。
-3. 设置玩家数、房间难度、PVP、作弊与死亡保留规则。
-4. 复制房主 SteamID，或将房主的 LAN/Radmin IPv4 发送给客机。
-5. 进入世界后，按 `P`（原版默认键，可重绑）在玩家列表中审批新玩家。
+2. 点击插件的「多人联机」。
+3. 设置玩家数、难度、PVP、作弊与死亡保留规则。
+4. 把房主 SteamID，或局域网 / Radmin IPv4 发给客机。
+5. 进入世界后按 `P`（原版默认，可重绑），在玩家列表里审批新玩家。
+
+新玩家进世界后先进入约 30 秒审批隔离：不能移动、交互、指令和造成伤害，并保持受保护。客机聊天栏会按间隔显示剩余时间。
 
 ### 客机通过 SteamID 加入
 
-1. 打开“开始游戏 → 直连”。
-2. 在顶部地址栏粘贴房主个人 SteamID。
+1. 打开「开始游戏 → 直连」。
+2. 在顶部地址栏粘贴房主个人 SteamID（不要带 `:端口`；当前分类器还剥不掉这个后缀）。
 3. 点击连接。
 
-插件只接管有效的 Steam 个人账户 ID；U3DS Server Code 仍交给原版处理。
-
-### 连接日志
-
-`v0.2.4.8` 当前处于 Structure Baseline / Ticket 09 构建证据阶段。运行时启动日志会输出 Build Fingerprint；验收脚本可独立核验 DLL 版本、MVID、SHA-256、插件 GUID，并通过共享 Case-ID 关联自报告日志。
+插件只接管有效的 Steam 个人账户 ID；U3DS Server Code 仍交给原版。房间若设了密码，请先走 IPv4 直连，或等密码修复票——SteamID 路线目前会丢掉密码。
 
 ### 客机通过 IPv4 加入
 
-1. 打开“开始游戏 → 直连”。
+1. 打开「开始游戏 → 直连」。
 2. 输入房主的局域网或 Radmin IPv4。
-3. 端口填写房主实际监听的 UDP 端口（局域网/Radmin 默认 `27016`）。
-4. 插件会跳过 U3DS A2S 查询，直接连接该 UDP 端口（单端口语义，query 与 connection 端口相同）。
+3. 端口填房主实际监听的 UDP 端口（局域网 / Radmin 默认 `27016`）。
+4. 插件会跳过 U3DS A2S 查询，直接连该 UDP 端口。
 
 Windows 防火墙必须允许 Unturned 在相应网络上使用 UDP `27016`。
 
-### SakuraFRP / 公网穿透（诊断候选）
+### SakuraFRP / 公网穿透（不保证可达）
 
-1. 房主在 SakuraFRP 创建 **一条** UDP 隧道：本地 `127.0.0.1:27016` → 远端 UDP 端口 `R`。
-2. 客机打开“开始游戏 → 直连”，输入 Sakura 节点分配的**域名**或数值 IPv4，端口填远端端口 `R`。
-3. 若 SakuraFRP 只提供随机域名（无法稳定取得节点 IPv4），勾选直连页的 **“插件域名直连（FRP）”**，插件会将域名解析为 IPv4 并直接连接填写的 UDP 端口（跳过原版 U3DS/A2S 查询）。
-4. 插件不会自动把端口改成 `27016` 或计算 `R±1`；输入的就是实际可达端口。
+1. 房主建**一条** UDP 隧道：本地 `127.0.0.1:27016` → 远端 UDP 端口 `R`。
+2. 客机直连页填 Sakura 节点域名或 IPv4，端口填 `R`。
+3. 若只有随机域名，勾选「插件域名直连（FRP）」。
+4. 插件不会把端口改成 `27016` 或计算 `R±1`。
 
-> ⚠️ SakuraFRP 公网 UDP 穿透依赖第三方网络环境；本次 Beta 总回归已完成项目侧 P2P/IPv4/域名直连流程验证，但不保证第三方节点、运营商网络或 NAT 环境始终可用。
+可用性取决于第三方节点、NAT 和运营商，测试通过不构成公网保证。
 
 ## 端口说明
 
 | 端口 | 原版用途 | 当前插件用途 |
 |---|---|---|
-| UDP 27015 | U3DS A2S 查询端口 | 不再作为客机输入端口使用（无 A2S 应答器） |
-| UDP 27016 | 游戏连接端口 | Steam Networking Sockets 实际游戏数据；局域网/Radmin 客机输入此端口 |
+| UDP 27015 | U3DS A2S 查询 | 客机不必再填（无 A2S 应答器） |
+| UDP 27016 | 游戏连接 | Steam Networking Sockets 实际数据；局域网 / Radmin 客机填此端口 |
 
-单端口语义：客机输入的端口既是 query 端口也是 connection 端口。SakuraFRP 可将任意远端 UDP 端口 `R` 映射到房主本地 `27016`。开启“插件域名直连（FRP）”后，域名由玩家填写、端口为实际可达 UDP 端口，不写死任何供应商域名。
-
-## 当前版本
-
-| 项目 | 值 |
-|---|---|
-| BepInPlugin | `0.2.4.8` |
-| AssemblyVersion | `0.2.4.8` |
-| AssemblyFileVersion | `0.2.4.8` |
-| 架构阶段 | `Structure Baseline / Ticket 09`：Build Fingerprint、统一元数据与独立产物证据 |
-| 静态状态 | Release 0 errors / 0 warnings；自动化回归 `192/192 PASS`；独立产物审核 PASS |
-| 发布标识 | 无；实验构建，不覆盖 `0.2.3.70-beta.2` |
-| 运行状态 | 结构与产物证据已完成，等待 SP/listen-host/U3DS/P2P 双端运行验收 |
-
-## 历史运行证据（不属于 0.2.4.8 当前验收）
-
-以下条目来自旧版本或旧构建的运行归档，仅作历史参考，不计入当前 `0.2.4.8` 的 Runtime 验收。当前版本的 Runtime 状态仍为 `PENDING`。
-
-历史归档中曾验证：
-
-- SteamID P2P 加入。
-- Radmin LAN IPv4 直连。
-- 30 秒隔离与原版玩家列表（默认 `P`）审批/撤销。
-- PVP、难度、死亡保留和作弊权限投影。
-- 缺失创意工坊地图/物品的原版下载流程。
-- 地面自然刷新物品的房主权威同步。
-- 普通静态场景物件（例如家具、柜子、沙发）的远区碰撞：房主离开客机所在区域后，客机仍受房主权威碰撞约束。
-
-历史证据限定：
-
-- 当前版本的双端手动测试归档为 `Beta2-P2P-AHost-20260818-1300`，双方使用同一 DLL，归档摘要为 `AllOK=true`。部署与日志归档由测试人员手动控制；`TestLogs` 中的 CFG 哈希工具仅作可选辅助记录，不构成额外发布门。
-- 家具远区碰撞验收使用 `UMM-诊断包_20260820_172007`（客机）和 `UMM-诊断包_20260820_172032`（房主）。测试时房主部署的碰撞候选 DLL SHA-256 为 `2FC58A382E9B7E86ED2EC202001CD6A7574509FB55394CAF5459007B53EBABFC`；客机归档记录版本 `0.2.3.62`，但未保存可独立核验的 DLL 哈希。
-- **开发者人工部署担保**：`v0.2.3.63-beta.2` 的唯一发布 DLL SHA-256 为 `B89D6039E033EDE2FE566D3CA2C033153CFF2B27BA14CEAEF626490C3CF05042`。本次测试端插件由开发者手动安装并确认；开发者将该哈希作为本发布的部署身份归档，接受其替代本次缺失的自动双端哈希快照。该声明只证明部署来源与版本身份，不构成未测试功能的运行时验收。
-- 树木、灌木、可采集资源、动物、载具，以及物件/路障/建筑的完整远区交互与存档，均不在本次碰撞修复的验收范围内。
-- SakuraFRP/公网穿透的最终可用性受第三方节点、NAT、运营商和防火墙影响；测试通过不构成网络可达性保证。
-- Steam 付费外观、第三方内容和未安装资源的表现取决于双方本地资源与原版下载机制，不构成插件对第三方资产的担保。
-- 不承诺与任意第三方 BepInEx/Harmony/原生注入工具共存。启动后可从 `BepInEx/config/SteamP2PFriends/p2p-harmony-compatibility.json` 获取 Harmony 冲突清单；连接、认证与 transport 关键目标上的冲突会在创建或加入 P2P 会话前阻断。
-- 本插件为 Beta 预发布版本，可能包含未覆盖的地图、模组、网络环境或 Unturned 更新兼容性问题；使用者应备份存档并自行承担联机、数据丢失和服务中断风险。
+单端口语义：客机输入的端口既是 query 也是 connection。SakuraFRP 可以把任意远端 UDP 端口 `R` 映射到房主本地 `27016`。
 
 ## 从源码构建
 
-需要 Windows、.NET SDK/MSBuild，以及项目 `Libs` 目录中的 Unturned/BepInEx/Harmony 引用。
+需要 Windows、.NET SDK / MSBuild，以及项目 `Libs` 目录中的 Unturned / BepInEx / Harmony 引用。Git Bash 下不要写 `/t:Rebuild`（会被 MSYS 当成路径），用 `-t:Rebuild`。
 
 ```powershell
-dotnet msbuild SteamP2PFriends.csproj /t:Rebuild /p:Configuration=Release
-dotnet msbuild WhitelistTests/SteamP2PFriends.WhitelistTests.csproj /t:Rebuild /p:Configuration=Release
+dotnet msbuild SteamP2PFriends.csproj -t:Rebuild -p:Configuration=Release
+dotnet msbuild WhitelistTests/SteamP2PFriends.WhitelistTests.csproj -t:Rebuild -p:Configuration=Release
 ./WhitelistTests/bin/Release/SteamP2PFriends.WhitelistTests.exe
 ```
 
+产物：`bin/Release/SteamP2PFriends.dll`。
+
 ## 文档
 
-- [CHANGELOG.md](./CHANGELOG.md)：发布变更。
-- [AUDIT_CHECKLIST.md](./AUDIT_CHECKLIST.md)：当前裁决摘要与历史审计记录。
-- [DEDICATED_SYNC_COMPARISON_CHECKLIST.md](./DEDICATED_SYNC_COMPARISON_CHECKLIST.md)：U3DS 权威实现的历史对照参考。
-- [VIBECODING.md](./VIBECODING.md)：人机协作开发与审计原则。
+- [ARCHITECTURE-REVIEW-0.2.4-Experimental.md](./ARCHITECTURE-REVIEW-0.2.4-Experimental.md)：2026-08-26 架构评审（里程碑，原样公开）。
+- [audit/2026-09-04/ReviewRecheck-0.2.4.8-0933.md](./audit/2026-09-04/ReviewRecheck-0.2.4.8-0933.md)：评审逐条对照与可升级清单。
+- [EXPERIMENTAL-ARCHITECTURE.md](./EXPERIMENTAL-ARCHITECTURE.md)：实验区架构说明（其中部分目录名已随结构基线迁移，以仓库实际布局为准）。
+- [CONTRIBUTING.md](./CONTRIBUTING.md)：如何构建、报告问题和提交改动。
+- [CHANGELOG.md](./CHANGELOG.md)：变更记录。
 - [CONTRIBUTORS.md](./CONTRIBUTORS.md)：贡献者与工具声明。
+- [VIBECODING.md](./VIBECODING.md)：人机协作与审计原则。
 
 ## 许可证
 

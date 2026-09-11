@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 使用与安装说明
-    url: https://github.com/YU80Rice/SteamP2PFriends/blob/main/README.md
-    about: 安装、SteamID 连接方式和已知限制请先阅读 README。
+  - name: 使用、构建与已知限制
+    url: https://github.com/YU80Rice/SteamP2PFriends-0.2.4-Experimental/blob/codex/structure-baseline-0.2.4/README.md
+    about: 本仓库无 GitHub Release；安装与已知未修项请先读 README。
+  - name: 0.2.3 旧实现（已归档，不再开发）
+    url: https://github.com/YU80Rice/SteamP2PFriends
+    about: 只读参考。请不要在旧仓提新功能或把两个 DLL 一起部署。
