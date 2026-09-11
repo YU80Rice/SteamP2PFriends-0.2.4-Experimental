@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 / Patch Registration Orchestrator 拆分；03 / Domain Id、Region Key 与 Bound Key 规范化
 
-**Status:** ready-for-human
+**Status:** completed
 
 - [x] Resource 与 Collision 的领域边界、命名空间和注册归属明确。
 - [x] 目录整理不改变当前 Harmony 目标、补丁顺序、碰撞、采伐和状态复制行为。
@@ -22,3 +22,9 @@
 - 复核构建：主项目和测试项目 Release 均为 0 errors / 0 warnings，全量测试 `185/185 PASS`，`git diff --check` 通过。
 
 范围说明：Runtime（Singleplayer、listen-host、U3DS、P2P）仍为 Pending；本票不接线 Resource Production Control Seam，不提前退休旧 Authority Writer。
+
+## 验收关单(2026-09-11,用户批量批准)
+
+- Runtime 确认:本票所辖 Resource/Collision 的碰撞激活、采伐增量、快照/增量复制行为在 Ticket 11/12 的三端验收中**直接通过**(`audit/2026-09-07/Runtime-0.2.4.8-Ticket11-2343.md`、`audit/2026-09-11/Runtime-0.2.4.8-Ticket12-0031.md`:三端 0 fault、0 会话重建、容忍路径零 throw)。
+- 边界:Collision 域自身的 SPI 驱动仍未接线(评审复核 §3.2/§3.3 留待推广票);本票验收范围=迁移行为保持,不含 Collision 接线。
+- 状态:ready-for-human → completed(用户 2026-09-11 验收)。
