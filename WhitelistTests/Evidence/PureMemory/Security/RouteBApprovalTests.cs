@@ -15,9 +15,10 @@ namespace SteamP2PFriends.WhitelistTests
     /// <summary>Route B state-machine regression tests. These tests never start Unturned or Steam.</summary>
     internal static class RouteBApprovalTests
     {
-        private static readonly CSteamID HostId = new CSteamID(76561199030780228UL);
-        private static readonly CSteamID Guest1 = new CSteamID(76561199721762479UL);
-        private static readonly CSteamID Guest2 = new CSteamID(76561199721762480UL);
+        // 测试假号（开源脱敏，2026-09-11）
+        private static readonly CSteamID HostId = new CSteamID(76561199000000001UL);
+        private static readonly CSteamID Guest1 = new CSteamID(76561199000000002UL);
+        private static readonly CSteamID Guest2 = new CSteamID(76561199000000003UL);
 
         internal static bool Test_B1_HandshakePermitIsScopedAndRejectable()
         {

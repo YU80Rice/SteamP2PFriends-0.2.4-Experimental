@@ -15,9 +15,9 @@ namespace SteamP2PFriends.WhitelistTests
     /// </summary>
     internal static class WhitelistServiceTests
     {
-        // 测试用 SteamID（合法的 Individual 账号）
-        private static readonly CSteamID HostId = new CSteamID(76561199030780228UL);
-        private static readonly CSteamID TargetId = new CSteamID(76561199721762479UL);
+        // 测试用 SteamID（合法的 Individual 账号；开源脱敏假号，2026-09-11）
+        private static readonly CSteamID HostId = new CSteamID(76561199000000001UL);
+        private static readonly CSteamID TargetId = new CSteamID(76561199000000002UL);
         private const string Tag = "MEMBER";
 
         // ===== 1. bootstrap 成功 =====

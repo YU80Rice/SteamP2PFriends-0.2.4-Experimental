@@ -20,7 +20,7 @@
 
 ### R07 双客机同区
 
-- 房主日志 673-679：第二客机以独立 SteamID `76561199130814523` 完成握手并进入 `clients=3`，同时加入待审核队列；这证明审核状态不是连接硬阻断。
+- 房主日志 673-679：第二客机以独立 SteamID `76561199000000004`（开源脱敏假号，原为真实测试账号 ID，2026-09-11 替换）完成握手并进入 `clients=3`，同时加入待审核队列；这证明审核状态不是连接硬阻断。
 - 房主日志 682：`remotePlayers=2 activeRegions=96`，两名远端观察者同时存在。
 - 房主日志 698-718：第二 observer 使用独立 `connectionGeneration=2` 提交 `(30..32)` 区域的 M1/M2 基线。
 - 房主日志 719-725：该 observer 先为 `authorized=False`，审批后转为 `authorized=True`，并明确记录 `observer presence unchanged`；审批没有销毁或重建玩家观察者。

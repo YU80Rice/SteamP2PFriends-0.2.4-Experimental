@@ -1,5 +1,7 @@
 # SteamP2PFriends 0.2.4-Experimental 架构评审
 
+> **里程碑注记（2026-09-11 开源归档时追加）**：本评审由 AI 模型 Claude 于 2026-08-26 出具，是 0.2.4 架构演进史的正式里程碑——它判定的「Multi-Observer 控制面死代码空壳」直接催生了结构基线 Ticket 01–09 与 Resource 生产接缝迁移（Ticket 10/11/12）。其第 8 项纲领（“先让 Resource 域完整走通 Acquire→Release 再铺新域”）已于 2026-09-11 以三端 Runtime 验收（0 fault、可复现构建）兑现。逐条翻案进度见 `audit/2026-09-04/ReviewRecheck-0.2.4.8-0933.md`。
+
 > 评审日期：2026-08-26
 > 评审基线：`master` @ `2e6de00`（feat(structure): implement Ticket 05 M7 Barricade & Structure lifecycle，181/181 PASS）
 > 对照源码：U3-SDK `D:\Dev\Codes\CSharp\Unturned\U3-SDK`

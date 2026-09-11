@@ -67,10 +67,10 @@ namespace SteamP2PFriends.WhitelistTests
             SteamPersonaDisplay._testRemotePersonaProvider = (id) => null; // 模拟 persona 不可得
             try
             {
-                CSteamID steamId = new CSteamID(76561199721762479UL);
+                CSteamID steamId = new CSteamID(76561199000000002UL);
                 string formatted = SteamPersonaDisplay.FormatPlayer(steamId);
                 // SteamID 必须保留（授权键不被名称替代）
-                if (!formatted.Contains("76561199721762479"))
+                if (!formatted.Contains("76561199000000002"))
                     return Fail("FormatPlayer must keep SteamID", "got=" + formatted);
                 // persona 不可得 -> "未知玩家" 回退
                 if (!formatted.Contains("未知玩家"))

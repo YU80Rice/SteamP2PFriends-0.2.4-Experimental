@@ -11,7 +11,7 @@ namespace SteamP2PFriends.WhitelistTests.Fakes
     internal sealed class FakeApprovalRuntimeContext : SteamP2PFriends.Security.IApprovalRuntimeContext
     {
         public bool IsActiveP2PHostValue = true;
-        public CSteamID LocalUserValue = new CSteamID(76561199030780228UL);
+        public CSteamID LocalUserValue = new CSteamID(76561199000000001UL); // 测试假号（开源脱敏）
         public float RealtimeValue = 1000f;
 
         public bool IsActiveP2PHost => IsActiveP2PHostValue;

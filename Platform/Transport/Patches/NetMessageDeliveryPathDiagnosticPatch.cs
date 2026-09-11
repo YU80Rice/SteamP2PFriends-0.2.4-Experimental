@@ -11,7 +11,7 @@ namespace SteamP2PFriends.Core.Patches
 {
     /// <summary>
     ///
-    /// 76561199030780228 是主机自身 SteamID，Loopback 异常与客机通信无关）。调整为追踪所有 NetMessage
+    /// 76561199000000001（测试假号，开源脱敏）是主机自身 SteamID，Loopback 异常与客机通信无关）。调整为追踪所有 NetMessage
     /// 发送给客机的实际投递路径与成功率。
     ///
     /// 目标（调整后）：
