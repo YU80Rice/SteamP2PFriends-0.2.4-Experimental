@@ -1,4 +1,6 @@
 using System;
+using System.Reflection;
+using System.Reflection.Emit;
 using SteamP2PFriends.Core.Build;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -13,6 +15,8 @@ namespace SteamP2PFriends.WhitelistTests
 
         private static int Main(string[] args)
         {
+            InstallBattlEyeTypeResolutionStub();
+
             Console.WriteLine("===============================================================");
             Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 255 PASS) ===");
             Console.WriteLine("===============================================================");
@@ -103,6 +107,11 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M4Z08 ExplicitCapability", ZombieSnapshotAdapterTests.Test_M4Z08_ExplicitCapabilityIsReliableEnqueue, ref total, ref passed, ref failed);
             RunTest("M4Z09 DeltaSequenceMonotonic", ZombieSnapshotAdapterTests.Test_M4Z09_DeltaSequenceMonotonic, ref total, ref passed, ref failed);
             RunTest("M4Z10 ExactDisconnect", ZombieSnapshotAdapterTests.Test_M4Z10_ExactDisconnectCleansObserver, ref total, ref passed, ref failed);
+
+            RunTest("DG1 EligibilityTruthTable", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P1_EligibilityTruthTable, ref total, ref passed, ref failed);
+            RunTest("DG2 ListenHostPeiNotBlocked", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P2_ListenHostBeaconFreeNormalPeiNotBlocked, ref total, ref passed, ref failed);
+            RunTest("DG3 ListenHostPartStatesFailClosed", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P3_ListenHostPartStatesFailClosed, ref total, ref passed, ref failed);
+            RunTest("DG4 GuardPassObservation", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P4_GuardPassObservationFromIndexRotation, ref total, ref passed, ref failed);
             #endregion
 
             #region 5. Adapters: Animal Domain Tests (17 Tests)
@@ -331,6 +340,10 @@ namespace SteamP2PFriends.WhitelistTests
                 ref total, ref passed, ref failed);
             RunTest("M2I09 CurrentU3ReplicationGate", ItemObserverReplicationStaticILTests.Test_M2I09_CurrentU3IlUsesM2ReplicationGate,
                 ref total, ref passed, ref failed);
+            RunTest("ZG1 RespawnDedicatedCallSiteUnique", ZombieRespawnDedicatedGateStaticILTests.Test_ZG1_CurrentU3IlHasExactlyOneDedicatedCallSite,
+                ref total, ref passed, ref failed);
+            RunTest("ZG2 RespawnGateTranspilerContract", ZombieRespawnDedicatedGateStaticILTests.Test_ZG2_TranspilerReplacesExactlyTheGuardCall,
+                ref total, ref passed, ref failed);
             RunTest("B11 AuthoritativeGates", RouteBApprovalStaticILTests.Test_B11_PendingActionAndCommandGatesAreAuthoritative,
                 ref total, ref passed, ref failed);
             RunTest("Harmony HC1 Observer", HarmonyCompatibilityAuditTests.Test_ObserverPatch_IsRecordedWithoutBlocking,
@@ -372,6 +385,53 @@ namespace SteamP2PFriends.WhitelistTests
             Console.WriteLine($"=== Final Result: {passed}/{total} PASS (Failed: {failed}) ===");
             Console.WriteLine("===============================================================");
             return failed == 0 ? 0 : 1;
+        }
+
+        /// <summary>
+        /// PureMemory 资格契约（DG1-DG3）需要真实执行生产路径
+        /// IsDedicatedOrP2PHost() → HostManager.ShouldProcessClientHostListen()
+        /// → Provider._isServer/_isConnected。Provider..cctor 仅向四个
+        /// BattlEye 类类型静态字段写入 null（battlEyeClientInitData/RunData、
+        /// battlEyeServerInitData/RunData，IL 实测），JIT 解析其类型即可，
+        /// 不调用任何 BattlEye 成员；BattlEye.dll 是游戏运行时组件，不在本仓
+        /// Libs 快照、也非插件编译依赖。该 resolver 只在测试进程内合成仅含
+        /// 四个类类型壳的动态程序集，使生产资格函数得以真实执行。
+        /// 作用域：仅响应 BattlEye 程序集名；不落盘、不进 Libs、不随插件 DLL
+        /// 打包、不改变游戏内真实解析。
+        /// </summary>
+        private static void InstallBattlEyeTypeResolutionStub()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, eventArgs) =>
+            {
+                AssemblyName name;
+                try { name = new AssemblyName(eventArgs.Name); }
+                catch { return null; }
+                if (name.Name != "BattlEye") return null;
+
+                AssemblyBuilder assembly = AppDomain.CurrentDomain.DefineDynamicAssembly(
+                    new AssemblyName("BattlEye, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null"),
+                    AssemblyBuilderAccess.Run);
+                ModuleBuilder module = assembly.DefineDynamicModule("BattlEye");
+
+                TypeBuilder client = module.DefineType(
+                    "BattlEye.BEClient", TypeAttributes.Public | TypeAttributes.Class);
+                TypeBuilder clientInit = client.DefineNestedType("BECL_GAME_DATA", TypeAttributes.NestedPublic);
+                TypeBuilder clientRun = client.DefineNestedType("BECL_BE_DATA", TypeAttributes.NestedPublic);
+
+                TypeBuilder server = module.DefineType(
+                    "BattlEye.BEServer", TypeAttributes.Public | TypeAttributes.Class);
+                TypeBuilder serverInit = server.DefineNestedType("BESV_GAME_DATA", TypeAttributes.NestedPublic);
+                TypeBuilder serverRun = server.DefineNestedType("BESV_BE_DATA", TypeAttributes.NestedPublic);
+
+                // 嵌套类型必须先于宿主类型定型，否则宿主程序集内解析不到嵌套 TypeRef
+                clientInit.CreateType();
+                clientRun.CreateType();
+                client.CreateType();
+                serverInit.CreateType();
+                serverRun.CreateType();
+                server.CreateType();
+                return assembly;
+            };
         }
 
         private static void RunTest(string name, Func<bool> test, ref int total, ref int passed, ref int failed)

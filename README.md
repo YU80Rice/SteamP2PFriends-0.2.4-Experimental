@@ -30,11 +30,11 @@ IP 只负责寻址。玩家身份、审批与白名单始终使用 Steam Network
 | BepInPlugin / AssemblyVersion | `0.2.4.8` |
 | 通道 | Experimental，无发布标识 |
 | 已验证 | Resource 域 Multi-Observer 三端 Runtime（区域租约、采伐、滞回释放）；SteamID P2P 与 IPv4 直连开房/审批隔离 |
-| 已知未修（玩家会碰到） | 僵尸被打死后不重生；地面掉落物不按专用服节奏消失/再生；SteamID 路线丢密码；`SteamID:端口` 粘贴会静默失败 |
+| 已知未修（玩家会碰到） | 僵尸被打死后不重生（ticket01 已实现，待 Runtime 验收）；地面掉落物不按专用服节奏消失/再生；SteamID 路线丢密码；`SteamID:端口` 粘贴会静默失败 |
 | 分发 | **只从源码构建**；本仓库不提供 Release zip |
 | 旧实现 | 0.2.3 已归档，只作来时路，不再开发 |
 
-静态测试全绿不等于运行时可用。本仓库把证据分成 PureMemory / StaticIL / BuildArtifact / Runtime 四类，互不升级替代；没有真实多机日志，不得宣称 Runtime PASS。
+静态测试全绿不等于运行时可用。本仓库把证据分成 PureMemory / StaticIL / BuildArtifact / Runtime 四类，互不升级替代；没有真实多机日志，不得宣称 Runtime PASS。本轮 Listen-Host Dedicated Gate / Join Routing 的静态证据闭环后，其 Runtime 状态仍为 `PENDING`（共享验收票：`.scratch/listen-host-join-routing-runtime-acceptance/issues/05-shared-1h2g-runtime-acceptance.md`）；`Develop-Stage/` 与 `Archive/` 内的旧版本运行记录属历史运行证据（不属于 0.2.4.8 当前验收）。
 
 ## 安装（从源码）
 

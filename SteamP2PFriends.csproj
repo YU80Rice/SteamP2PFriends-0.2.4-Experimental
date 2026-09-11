@@ -151,6 +151,7 @@
     <Compile Include="Adapters\Zombie\Patches\\ZombieLifecycleState.cs" />
     <Compile Include="Adapters\Zombie\Patches\\ZombieManagerP0C1SendZombieStatesPatch.cs" />
     <Compile Include="Adapters\Zombie\Patches\\ZombieManagerP0DGenerateZombiesPatch.cs" />
+    <Compile Include="Adapters\Zombie\Patches\\ZombieManagerRespawnZombiesDedicatedGatePatch.cs" />
     <Compile Include="Adapters\Zombie\Patches\\ZombieManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Platform\Client\ClientLobbyListener.cs" />
     <Compile Include="Platform\Client\DisconnectTracer.cs" />

@@ -1006,6 +1006,32 @@ namespace SteamP2PFriends
                 allOk = false;
             }
 
+            //   ZombieManagerRespawnZombiesDedicatedGatePatch：respawnZombies 单点 Transpiler
+            //   + 重生门观测 Prefix/Postfix（ticket01 listen-host-dedicated-gate）。
+            //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
+            try
+            {
+                if (!Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.AllRegistrationsSucceeded)
+                {
+                    RoleLogger.Error("[Shared]",
+                        $"[RespawnGate/Zombie] !!! DIAGNOSTIC BUILD INVALID: summary={Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.RegistrationSummary} " +
+                        $"replacement={Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.ReplacementCount} " +
+                        $"signature={Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.SignatureResolved} " +
+                        $"transpilerOwner={Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.TranspilerOwnerVerified}");
+                    allOk = false;
+                }
+                else
+                {
+                    RoleLogger.Info("[Shared]",
+                        $"[RespawnGate/Zombie] OK summary={Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.RegistrationSummary}");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                RoleLogger.Error("[Shared]", $"[RespawnGate/Zombie] VerifyRegistration 整体异常: {ex.Message}");
+                allOk = false;
+            }
+
             //   VehicleManagerP0C1ReplicationPatch：Update Transpiler + OnUpdate Postfix
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try

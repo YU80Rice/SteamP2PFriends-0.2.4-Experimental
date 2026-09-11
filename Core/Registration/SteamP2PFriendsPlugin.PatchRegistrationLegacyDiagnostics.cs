@@ -443,6 +443,19 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"ZombieManagerP0C1SendZombieStatesPatch.RegisterManual 失败: {ex}");
             }
 
+            //   ZombieManagerRespawnZombiesDedicatedGatePatch：respawnZombies 单点 Transpiler
+            //   （listen-host-dedicated-gate ticket01：僵尸重生早退门控对齐 IsDedicatedOrP2PHost）
+            //   + 重生门观测 Prefix/Postfix。VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
+            try
+            {
+                Adapters.Zombie.Patches.ZombieManagerRespawnZombiesDedicatedGatePatch.RegisterManual(_harmony);
+            }
+            catch (System.Exception ex)
+            {
+                _registrationStageFailed = true;
+                RoleLogger.Error("[Shared]", $"ZombieManagerRespawnZombiesDedicatedGatePatch.RegisterManual 失败: {ex}");
+            }
+
             //   VehicleManagerP0C1ReplicationPatch：Update Transpiler（L2918）+ OnUpdate Postfix（位移检测+MarkForReplicationUpdate）
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try
