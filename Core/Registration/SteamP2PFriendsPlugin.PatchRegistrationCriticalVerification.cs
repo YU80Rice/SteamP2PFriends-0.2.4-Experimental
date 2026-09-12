@@ -1032,6 +1032,32 @@ namespace SteamP2PFriends
                 allOk = false;
             }
 
+            //   ItemManagerUpdateDedicatedGatePatch：Update 尾部 despawn/respawn 早退单点 Transpiler
+            //   + 三路区域观测探针（ticket02 listen-host-dedicated-gate）。
+            //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
+            try
+            {
+                if (!Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.AllRegistrationsSucceeded)
+                {
+                    RoleLogger.Error("[Shared]",
+                        $"[ItemGate/Item] !!! DIAGNOSTIC BUILD INVALID: summary={Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.RegistrationSummary} " +
+                        $"replacement={Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.ReplacementCount} " +
+                        $"signature={Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.SignatureResolved} " +
+                        $"transpilerOwner={Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.TranspilerOwnerVerified}");
+                    allOk = false;
+                }
+                else
+                {
+                    RoleLogger.Info("[Shared]",
+                        $"[ItemGate/Item] OK summary={Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.RegistrationSummary}");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                RoleLogger.Error("[Shared]", $"[ItemGate/Item] VerifyRegistration 整体异常: {ex.Message}");
+                allOk = false;
+            }
+
             //   VehicleManagerP0C1ReplicationPatch：Update Transpiler + OnUpdate Postfix
             //   聚合至 DiagnosticBuildValid 阻断门，失败强制 INVALID。
             try

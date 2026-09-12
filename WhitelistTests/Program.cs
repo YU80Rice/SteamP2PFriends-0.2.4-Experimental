@@ -112,6 +112,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("DG2 ListenHostPeiNotBlocked", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P2_ListenHostBeaconFreeNormalPeiNotBlocked, ref total, ref passed, ref failed);
             RunTest("DG3 ListenHostPartStatesFailClosed", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P3_ListenHostPartStatesFailClosed, ref total, ref passed, ref failed);
             RunTest("DG4 GuardPassObservation", ZombieRespawnDedicatedGateEligibilityTests.Test_ZG_P4_GuardPassObservationFromIndexRotation, ref total, ref passed, ref failed);
+            RunTest("IGP3 ItemEligibilityListenHostVsSingleplayer", ItemUpdateDedicatedGateEligibilityTests.Test_IGP3_EligibilityListenHostVsSingleplayer, ref total, ref passed, ref failed);
+            RunTest("IGP1 ItemDespawnObservation", ItemUpdateDedicatedGateEligibilityTests.Test_IGP1_DespawnObservationFromCountDelta, ref total, ref passed, ref failed);
+            RunTest("IGP2 ItemRespawnObservation", ItemUpdateDedicatedGateEligibilityTests.Test_IGP2_RespawnObservationFromCountDeltaAndWindow, ref total, ref passed, ref failed);
             #endregion
 
             #region 5. Adapters: Animal Domain Tests (17 Tests)
@@ -343,6 +346,10 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("ZG1 RespawnDedicatedCallSiteUnique", ZombieRespawnDedicatedGateStaticILTests.Test_ZG1_CurrentU3IlHasExactlyOneDedicatedCallSite,
                 ref total, ref passed, ref failed);
             RunTest("ZG2 RespawnGateTranspilerContract", ZombieRespawnDedicatedGateStaticILTests.Test_ZG2_TranspilerReplacesExactlyTheGuardCall,
+                ref total, ref passed, ref failed);
+            RunTest("IG1 ItemUpdateDedicatedCallSiteUnique", ItemUpdateDedicatedGateStaticILTests.Test_IG1_CurrentU3IlHasExactlyOneDedicatedCallSite,
+                ref total, ref passed, ref failed);
+            RunTest("IG2 ItemUpdateGateTranspilerContract", ItemUpdateDedicatedGateStaticILTests.Test_IG2_TranspilerReplacesExactlyTheGuardCall,
                 ref total, ref passed, ref failed);
             RunTest("B11 AuthoritativeGates", RouteBApprovalStaticILTests.Test_B11_PendingActionAndCommandGatesAreAuthoritative,
                 ref total, ref passed, ref failed);

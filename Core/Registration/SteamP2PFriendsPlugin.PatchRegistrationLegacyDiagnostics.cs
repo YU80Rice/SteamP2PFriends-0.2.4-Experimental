@@ -456,6 +456,19 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"ZombieManagerRespawnZombiesDedicatedGatePatch.RegisterManual 失败: {ex}");
             }
 
+            //   ItemManagerUpdateDedicatedGatePatch：Update 尾部 despawn/respawn 早退单点 Transpiler
+            //   （listen-host-dedicated-gate ticket02：物品周期生命周期门控对齐 IsDedicatedOrP2PHost）
+            //   + 三路区域观测探针（generateItems/despawnItems/respawnItems）。VerifyRegistration 聚合至阻断门。
+            try
+            {
+                Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.RegisterManual(_harmony);
+            }
+            catch (System.Exception ex)
+            {
+                _registrationStageFailed = true;
+                RoleLogger.Error("[Shared]", $"ItemManagerUpdateDedicatedGatePatch.RegisterManual 失败: {ex}");
+            }
+
             //   VehicleManagerP0C1ReplicationPatch：Update Transpiler（L2918）+ OnUpdate Postfix（位移检测+MarkForReplicationUpdate）
             //   VerifyRegistration 聚合至 DiagnosticBuildValid 阻断门。
             try

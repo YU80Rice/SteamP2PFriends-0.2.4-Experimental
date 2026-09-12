@@ -122,6 +122,7 @@
     <Compile Include="Adapters\Item\Patches\\AuthoritativeItemGenerationGatePatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemManagerP0B3PreGeneratePatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemManagerP0B6RegenerateOnLevelLoadedPatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemManagerUpdateDedicatedGatePatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceProductionControlSeam.cs" />
