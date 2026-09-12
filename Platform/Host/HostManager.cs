@@ -71,9 +71,11 @@ namespace SteamP2PFriends.Host
 
         /// <summary>
         /// 启动 P2P Listen Server（由 MenuPlaySingleplayerUIPatch 调用）。
+        /// 票 04：sessionPassword 仅作用于当前会话的 Provider.serverPassword（null/空 = 无密码房间），
+        /// 不持久化、不进审计；返回菜单/结束会话/销毁房间时经 SessionPassword.ClearRuntime 清空。
         /// </summary>
         public static void StartP2PServer(string mapName, string serverName, byte maxPlayers, EGameMode mode,
-            bool cheats, P2PRoomRules roomRules = null)
+            bool cheats, P2PRoomRules roomRules = null, string sessionPassword = null)
         {
             if (!RequireGameThread(nameof(StartP2PServer))) return;
 
@@ -116,7 +118,7 @@ namespace SteamP2PFriends.Host
 
             try
             {
-                RoleLogger.Info("[Host]", $"StartP2PServer: map={mapName} name={serverName} maxPlayers={maxPlayers} mode={mode} cheats={cheats}");
+                RoleLogger.Info("[Host]", $"StartP2PServer: map={mapName} name={serverName} maxPlayers={maxPlayers} mode={mode} cheats={cheats} hasPassword={SessionPassword.HasPassword(sessionPassword)}");
                 RoleLogger.Info("[Host]", "[Shared] 角色切换为房主");
 
                 _isStarting = true;
@@ -151,7 +153,7 @@ namespace SteamP2PFriends.Host
                 _activeRoomRules = roomRules;
 
                 // B 方 ConfigureCommonServerSettings；测试版固定 SteamUser P2P-only
-                ConfigureCommonServerSettings(level, mode, maxPlayers, cheats);
+                ConfigureCommonServerSettings(level, mode, maxPlayers, cheats, sessionPassword);
                 // 依据：U3-SDK Provider.cs:2054 singleplayer() 设 Dedicator.serverID = "Singleplayer_" + Characters.selected
                 Stage6ASessionContext.BeginSession(EHostMode.P2P, Characters.selected);
                 Provider.serverID = "Singleplayer_" + Stage6ASessionContext.CachedSlot;
@@ -756,13 +758,17 @@ namespace SteamP2PFriends.Host
             RoleLogger.Info("[Host]", "[P2P] PrepareClientHostSession 完成（ConfigData + LoadGameplayConfig + ModeConfig + Blacklist/Adminlist；Whitelist 经 P2PWhitelistService.TryBootstrap）");
         }
 
-        private static void ConfigureCommonServerSettings(LevelInfo level, EGameMode gameMode, byte maxPlayers, bool cheats)
+        private static void ConfigureCommonServerSettings(LevelInfo level, EGameMode gameMode, byte maxPlayers, bool cheats,
+            string sessionPassword = null)
         {
             Dedicator.serverVisibility = ESteamServerVisibility.LAN;
             Provider.map = level.name;
             Provider.maxPlayers = maxPlayers;
             Provider.queueSize = (byte)Math.Max(8, maxPlayers * 2);
-            Provider.serverPassword = string.Empty;
+            // 票 04：密码只作用于当前会话；日志只允许 hasPassword 布尔，禁止明文与长度。
+            Provider.serverPassword = SessionPassword.ResolveSessionServerPassword(sessionPassword);
+            RoleLogger.Info("[Host]",
+                "[SessionPassword] hasPassword=" + SessionPassword.HasPassword(Provider.serverPassword));
             Provider.isPvP = _activeRoomRules == null || _activeRoomRules.EnablePvp;
             Provider.isWhitelisted = false;
             Provider.hideAdmins = false;
@@ -989,11 +995,13 @@ namespace SteamP2PFriends.Host
             {
                 try
                 {
-                    _isStarting = false;
-                    IsP2PServerActive = false;
+                _isStarting = false;
+                IsP2PServerActive = false;
                 SteamReadyHandled = false;
                 _hostMode = EHostMode.None;
                 _activeRoomRules = null;
+                // 票 04：启动中止（销毁房间）同样清空运行时密码。
+                SessionPassword.ClearRuntime();
 
                 try
                 {
@@ -1114,6 +1122,8 @@ namespace SteamP2PFriends.Host
                 IsP2PServerActive = false;
                 _hostMode = EHostMode.None;
                 _activeRoomRules = null;
+                // 票 04：结束会话即清空运行时密码，下一局不沿用（GameServer 仍存活时顺带同步取消密码保护）。
+                SessionPassword.ClearRuntime();
                 _listenTickCount = 0;
                 _loggedListenActive = false;
                 _lastListenHeartbeatTime = 0f;

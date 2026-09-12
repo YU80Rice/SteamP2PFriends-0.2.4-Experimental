@@ -21,6 +21,7 @@ namespace SteamP2PFriends.Client
     {
         private static EJoinState _state = EJoinState.Idle;
         private static ulong _targetSteamId;
+        private static string _targetPassword;
         private static int _attempt;
         private static float _connectStartTime;
         private static bool _connectWatchdogWarningFired;
@@ -97,11 +98,19 @@ namespace SteamP2PFriends.Client
         /// </summary>
         public static bool TryConnectToHost(ulong steamIdRaw)
         {
-            ThreadUtil.assertIsGameThread();
-            return TryConnectToHostCore(steamIdRaw);
+            return TryConnectToHost(steamIdRaw, null);
         }
 
-        private static bool TryConnectToHostCore(ulong steamIdRaw)
+        /// <summary>
+        /// 票 04：directPagePassword 来自原版直连页密码框；null/空 = 无密码房间。不 trim、不记录明文。
+        /// </summary>
+        public static bool TryConnectToHost(ulong steamIdRaw, string directPagePassword)
+        {
+            ThreadUtil.assertIsGameThread();
+            return TryConnectToHostCore(steamIdRaw, directPagePassword);
+        }
+
+        private static bool TryConnectToHostCore(ulong steamIdRaw, string directPagePassword)
         {
             if (!SteamP2PFriendsPlugin.IsP2PEntryReady)
             {
@@ -156,6 +165,7 @@ namespace SteamP2PFriends.Client
             RoleLogger.Info(DynamicRole(), "[Shared] 角色切换为客机");
 
             _targetSteamId = steamIdRaw;
+            _targetPassword = directPagePassword;
             _attempt = 0;
             _lastFailureInfo = ESteamConnectionFailureInfo.NONE;
             SetState(EJoinState.Connecting, "join-request");
@@ -542,10 +552,10 @@ namespace SteamP2PFriends.Client
                 MenuUI.closeAll();
 
                 CSteamID hostSteamId = new CSteamID(_targetSteamId);
-                ServerConnectParameters parameters = new ServerConnectParameters(hostSteamId, string.Empty);
+                ServerConnectParameters parameters = SessionPassword.BuildSteamP2PConnectParameters(_targetSteamId, _targetPassword);
                 RoleLogger.Info(DynamicRole(),
                     $"[Diag] ServerConnectParameters constructed: hostSteamId={hostSteamId.m_SteamID} " +
-                    $"passwordEmpty={string.IsNullOrEmpty(string.Empty)}");
+                    $"hasPassword={SessionPassword.HasPassword(parameters)}");
                 P2PConnectionJournal.ClientConnectCalling(_targetSteamId, _attempt + 1);
                 Provider.connect(parameters, null, null);
                 P2PConnectionJournal.ClientConnectCallReturned(_targetSteamId);
@@ -760,6 +770,7 @@ namespace SteamP2PFriends.Client
 
             SetState(EJoinState.Idle, "reset");
             _targetSteamId = 0;
+            _targetPassword = null;
             _attempt = 0;
             _lastFailureInfo = ESteamConnectionFailureInfo.NONE;
             _serverAcceptedTime = 0f;

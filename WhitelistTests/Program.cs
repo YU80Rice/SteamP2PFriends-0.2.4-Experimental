@@ -284,7 +284,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("B12 InputSanitizer", RouteBApprovalTests.Test_B12_InputSanitizerPreservesNetworkProgress, ref total, ref passed, ref failed);
             #endregion
 
-            #region 8. Platform: UI, Gate & Diagnostic Tests (24 Tests)
+            #region 8. Platform: UI, Gate & Diagnostic Tests (27 Tests)
             Console.WriteLine("\n--- [PureMemory / Domain 8/8: Platform UI, Readiness & Compatibility] ---");
             RunTest("E1 EntryEarlyMenu", P2PEntryReadinessGateTests.Test_E1_EarlyMenuCannotExposeEntry, ref total, ref passed, ref failed);
             RunTest("E2 EntryLifecycleFailure", P2PEntryReadinessGateTests.Test_E2_FailedLifecycleCannotExposeEntry, ref total, ref passed, ref failed);
@@ -303,6 +303,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("JR1 SteamIdPortClassifiesAsSteamP2P", UnifiedJoinAddressClassifierTests.Test_JR1_SteamIdWithOptionalPortClassifiesAsSteamP2P, ref total, ref passed, ref failed);
             RunTest("JR2 ForbiddenSuffixesStayVanilla", UnifiedJoinAddressClassifierTests.Test_JR2_ForbiddenSuffixesStayVanilla, ref total, ref passed, ref failed);
             RunTest("JR3 DirectIpAndDnsKeepOwnPortStripping", UnifiedJoinAddressClassifierTests.Test_JR3_DirectIpAndDnsKeepOwnPortStripping, ref total, ref passed, ref failed);
+            RunTest("JR4 SteamIdRouteCarriesDirectPagePassword", SessionPasswordTests.Test_JR4_SteamIdRouteCarriesDirectPagePassword, ref total, ref passed, ref failed);
+            RunTest("JR5 HostMenuInputResolvesSessionPassword", SessionPasswordTests.Test_JR5_HostMenuInputResolvesSessionPassword, ref total, ref passed, ref failed);
+            RunTest("JR6 RuntimePasswordClearedOnSessionEnd", SessionPasswordTests.Test_JR6_RuntimePasswordClearedOnSessionEnd, ref total, ref passed, ref failed);
             #endregion
 
             _currentEvidenceClass = EvidenceClass.StaticIL;

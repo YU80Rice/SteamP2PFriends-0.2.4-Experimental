@@ -32,6 +32,7 @@ namespace SteamP2PFriends.UI
         private static ISleekField _steamIdField;
         private static ISleekLabel _selectedMapLabel;
         private static ISleekField _serverNameField;
+        private static ISleekField _passwordField;
         private static ISleekUInt8Field _maxPlayersField;
         private static ISleekToggle _cheatsToggle;
         private static ISleekToggle _pvpToggle;
@@ -41,6 +42,7 @@ namespace SteamP2PFriends.UI
         private static ISleekButton _modeButton;
         private static ISleekButton _roomCopySteamIdButton;
         private static string _sessionServerName = "P2P Co-op";
+        private static string _sessionPassword = string.Empty;
         private static byte _sessionMaxPlayers = 4;
         private static EGameMode _sessionMode = EGameMode.EASY;
         private static bool _sessionCheats = true;
@@ -155,6 +157,8 @@ namespace SteamP2PFriends.UI
             _steamIdField = null;
             _selectedMapLabel = null;
             _serverNameField = null;
+            _passwordField = null;
+            _sessionPassword = string.Empty;
             _maxPlayersField = null;
             _cheatsToggle = null;
             _pvpToggle = null;
@@ -196,6 +200,8 @@ namespace SteamP2PFriends.UI
             _sessionKeepInventory = SteamP2PFriendsPlugin.LastRoomKeepInventory?.Value ?? true;
             _sessionKeepSkills = SteamP2PFriendsPlugin.LastRoomKeepSkills?.Value ?? true;
             _sessionKeepExperience = SteamP2PFriendsPlugin.LastRoomKeepExperience?.Value ?? true;
+            // 票 04：密码每次打开默认空，不从上次房间设置恢复（会话级，不持久化）。
+            _sessionPassword = string.Empty;
             RefreshSessionSettingsView();
 
             try
@@ -265,7 +271,7 @@ namespace SteamP2PFriends.UI
 
             ISleekButton hostButton = Glazier.Get().CreateButton();
             hostButton.PositionOffset_X = -100;
-            hostButton.PositionOffset_Y = 550;
+            hostButton.PositionOffset_Y = 595;
             hostButton.PositionScale_X = 0.5f;
             hostButton.SizeOffset_X = 200;
             hostButton.SizeOffset_Y = 40;
@@ -277,7 +283,7 @@ namespace SteamP2PFriends.UI
 
             _roomCopySteamIdButton = Glazier.Get().CreateButton();
             _roomCopySteamIdButton.PositionOffset_X = -100;
-            _roomCopySteamIdButton.PositionOffset_Y = 505;
+            _roomCopySteamIdButton.PositionOffset_Y = 550;
             _roomCopySteamIdButton.PositionScale_X = 0.5f;
             _roomCopySteamIdButton.SizeOffset_X = 200;
             _roomCopySteamIdButton.SizeOffset_Y = 30;
@@ -290,7 +296,7 @@ namespace SteamP2PFriends.UI
 
             ISleekButton backButton = Glazier.Get().CreateButton();
             backButton.PositionOffset_X = -100;
-            backButton.PositionOffset_Y = 600;
+            backButton.PositionOffset_Y = 640;
             backButton.PositionScale_X = 0.5f;
             backButton.SizeOffset_X = 200;
             backButton.SizeOffset_Y = 30;
@@ -352,6 +358,20 @@ namespace SteamP2PFriends.UI
             _keepInventoryToggle = CreateRuleToggle(container, 370, "死亡保留物品与装备", OnKeepInventoryChanged);
             _keepSkillsToggle = CreateRuleToggle(container, 415, "死亡保留技能等级", OnKeepSkillsChanged);
             _keepExperienceToggle = CreateRuleToggle(container, 460, "死亡保留经验", OnKeepExperienceChanged);
+
+            // 票 04：会话密码字段——默认空、遮罩显示、与原版直连页一致不设最大长度、不 trim。
+            // 只作用于当前会话（TryStartHost 时写入 Provider.serverPassword），不持久化。
+            _passwordField = Glazier.Get().CreateStringField();
+            _passwordField.PositionOffset_X = -150;
+            _passwordField.PositionOffset_Y = 505;
+            _passwordField.PositionScale_X = 0.5f;
+            _passwordField.SizeOffset_X = 300;
+            _passwordField.SizeOffset_Y = 30;
+            _passwordField.MaxLength = 0;
+            _passwordField.IsPasswordField = true;
+            _passwordField.AddLabel("房间密码:", ESleekSide.LEFT);
+            _passwordField.OnTextChanged += OnPasswordChanged;
+            container.AddChild(_passwordField);
         }
 
         private static ISleekToggle CreateRuleToggle(SleekFullscreenBox container, float y, string label,
@@ -490,6 +510,12 @@ namespace SteamP2PFriends.UI
             _sessionServerName = (text ?? string.Empty).Trim();
         }
 
+        // 票 04：密码不 trim——空串即无密码房间，空白字符本身是合法密码组成部分。
+        private static void OnPasswordChanged(ISleekField field, string text)
+        {
+            _sessionPassword = text ?? string.Empty;
+        }
+
         private static void OnClickedCopyRoomSteamId(ISleekElement element)
         {
             ThreadUtil.assertIsGameThread();
@@ -548,6 +574,7 @@ namespace SteamP2PFriends.UI
         {
             if (_selectedMapLabel != null) _selectedMapLabel.Text = "地图：" + (_selectedMapName ?? string.Empty);
             if (_serverNameField != null) _serverNameField.Text = _sessionServerName ?? string.Empty;
+            if (_passwordField != null) _passwordField.Text = _sessionPassword ?? string.Empty;
             if (_maxPlayersField != null) _maxPlayersField.Value = _sessionMaxPlayers;
             if (_cheatsToggle != null) _cheatsToggle.Value = _sessionCheats;
             if (_pvpToggle != null) _pvpToggle.Value = _sessionPvp;
@@ -570,6 +597,11 @@ namespace SteamP2PFriends.UI
 
         private static void OnClickedBackFromRole(ISleekElement button)
         {
+            // 票 04：返回菜单即丢弃已输入的会话密码，并清空运行时密码（此处必在菜单期，isServer=false，
+            // 清空是幂等安全操作；Destroy 不做此事——它在 U3DS 上每 tick 触发，须保持零侵入）。
+            SessionPassword.ClearRuntime();
+            if (_passwordField != null) _passwordField.Text = string.Empty;
+            _sessionPassword = string.Empty;
             try
             {
                 _roleMenuContainer?.AnimateOutOfView(0, 1);
@@ -688,7 +720,9 @@ namespace SteamP2PFriends.UI
 
                 _roleMenuContainer?.AnimateOutOfView(0, 1);
 
-                HostManager.StartP2PServer(level.name, serverName, maxPlayers, mode, cheats, roomRules);
+                HostManager.StartP2PServer(level.name, serverName, maxPlayers, mode, cheats, roomRules,
+                    _sessionPassword);
+                // 票 04：_sessionPassword 有意不进入 PersistLastRoomSettings——密码不写上次房间设置/配置文件。
                 PersistLastRoomSettings(serverName, maxPlayers, mode, cheats, roomRules);
             }
             catch (Exception ex)

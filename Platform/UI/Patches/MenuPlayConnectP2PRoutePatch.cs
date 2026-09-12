@@ -46,8 +46,11 @@ namespace SteamP2PFriends.Core.Patches
                     return false;
                 }
 
-                bool started = P2PJoinManager.TryConnectToHost(targetId);
+                ISleekField p2pPasswordField = GetStaticField<ISleekField>("passwordField");
+                string directPagePassword = p2pPasswordField == null ? string.Empty : p2pPasswordField.Text;
+                bool started = P2PJoinManager.TryConnectToHost(targetId, directPagePassword);
                 RoleLogger.Info("[Client]", "[UnifiedConnect] route=SteamP2P target=" + targetId +
+                    " hasPassword=" + SessionPassword.HasPassword(directPagePassword) +
                     " started=" + started);
                 if (!started)
                 {
