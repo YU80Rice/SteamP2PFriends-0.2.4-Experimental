@@ -30,7 +30,7 @@ IP 只负责寻址。玩家身份、审批与白名单始终使用 Steam Network
 | BepInPlugin / AssemblyVersion | `0.2.4.8` |
 | 通道 | Experimental，无发布标识 |
 | 已验证 | Resource 域 Multi-Observer 三端 Runtime（区域租约、采伐、滞回释放）；SteamID P2P 与 IPv4 直连开房/审批隔离 |
-| 已知未修（玩家会碰到） | 僵尸被打死后不重生（ticket01 已实现，待 Runtime 验收）；地面掉落物不按专用服节奏消失/再生（ticket02 已实现，待 Runtime 验收）；SteamID 路线丢密码；`SteamID:端口` 粘贴会静默失败 |
+| 已知未修（玩家会碰到） | 僵尸被打死后不重生（ticket01 已实现，待 Runtime 验收）；地面掉落物不按专用服节奏消失/再生（ticket02 已实现，待 Runtime 验收）；SteamID 路线丢密码；`SteamID:端口` 粘贴（ticket03 已实现，待 Runtime 验收） |
 | 分发 | **只从源码构建**；本仓库不提供 Release zip |
 | 旧实现 | 0.2.3 已归档，只作来时路，不再开发 |
 
@@ -66,7 +66,7 @@ Unturned/
 ### 客机通过 SteamID 加入
 
 1. 打开「开始游戏 → 直连」。
-2. 在顶部地址栏粘贴房主个人 SteamID（不要带 `:端口`；当前分类器还剥不掉这个后缀）。
+2. 在顶部地址栏粘贴房主个人 SteamID（可带单个 `:端口`；端口只用于分类，不进入 P2P 连接参数）。
 3. 点击连接。
 
 插件只接管有效的 Steam 个人账户 ID；U3DS Server Code 仍交给原版。房间若设了密码，请先走 IPv4 直连，或等密码修复票——SteamID 路线目前会丢掉密码。

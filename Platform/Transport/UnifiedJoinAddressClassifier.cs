@@ -20,6 +20,30 @@ namespace SteamP2PFriends.Shared
         {
             steamId = 0UL;
             string value = (raw ?? string.Empty).Trim();
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (char.IsWhiteSpace(value[i])) return UnifiedJoinAddressKind.Vanilla;
+            }
+            int colon = value.IndexOf(':');
+            if (colon >= 0)
+            {
+                if (value.IndexOf(':', colon + 1) >= 0)
+                    return UnifiedJoinAddressKind.Vanilla;
+
+                string portText = value.Substring(colon + 1);
+                if (portText.Length == 0) return UnifiedJoinAddressKind.Vanilla;
+                uint portValue = 0;
+                for (int i = 0; i < portText.Length; i++)
+                {
+                    char c = portText[i];
+                    if (c < '0' || c > '9') return UnifiedJoinAddressKind.Vanilla;
+                    portValue = portValue * 10u + (uint)(c - '0');
+                    if (portValue > 65535u) return UnifiedJoinAddressKind.Vanilla;
+                }
+                if (portValue < 1u) return UnifiedJoinAddressKind.Vanilla;
+                value = value.Substring(0, colon);
+            }
+
             if (value.Length < 6 || !ulong.TryParse(value, out ulong parsed))
             {
                 return UnifiedJoinAddressKind.Vanilla;
