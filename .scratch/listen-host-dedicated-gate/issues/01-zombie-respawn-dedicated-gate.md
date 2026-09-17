@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** implemented-pending-runtime（静态闭环见 `audit/2026-09-12/Implementation-0.2.4.8-Ticket01-0027.md`；Runtime 归共享验收票 05）
+**Status:** completed（静态闭环 `audit/2026-09-12/Implementation-0.2.4.8-Ticket01-0027.md`；Runtime `audit/2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`，用户 2026-09-18 关单）
 
 - [x] 将该早退所依赖的资格判断对齐到现有 `IsDedicatedOrP2PHost()`，听主机进入原版专用服重生分支。
 - [x] 不修改生成表抽取、特化、Boss 上限、Beacon 剩余、Horde 波次、bound 轮转、tick 切片，也不再次修改已对齐的僵尸状态发送门控。

@@ -12,7 +12,7 @@
 
 ## 1. 结论
 
-**本轮机制断言闭合,票 05 作为共享 Runtime 验收可记 PASS(用户关单)。** 不改 RELEASES。01–04 的 Runtime 证据本轮补齐,转态随用户裁决。
+**本轮机制断言闭合;用户 2026-09-18 关单票 05。** 不改 RELEASES。01/02/04 随关单转 completed。票 03 **不转**:用户确认的操作是「端口栏先填 27016,再在地址栏填裸 SteamID」。识别为 SteamID 后 `MenuPlayConnectP2PIndicatorPatch` 将 `portField.IsVisible=false`,P2P 分支只 `Classify(hostField.Text)`、不读端口栏——测到的是裸 SteamID 路由,不是地址栏整串 `SteamID:27016`。
 
 上轮缺口本轮均有日志行:主机 Verbose 已开(`[Startup] … internal monitor=True`,L18;探针非 0);三局 `StartP2PServer` 为 False → True → False;客机无密码进入、`PASSWORD(6)` 拒绝、填对进入、第三局无密码再进。
 
@@ -23,7 +23,7 @@
 | Case | 裁决 | 证据 |
 |---|---|---|
 | C05-01 指纹 | **PASS**(跨两轮) | 09-17 三端 + 本轮两端同一 SHA/MVID/Case ID |
-| C05-02 无密码 SteamP2P | **PASS** | 第一局主机 L790/L810 `hasPassword=False`;客机 L148 `[UnifiedConnect] route=SteamP2P target=76561199030780228 hasPassword=False started=True`,L156 `ServerAccepted` / L413 `Connected` `failureInfo=NONE(0)`;主机 L2136 `HOST_ACCEPT` `76561199721762479` `clients=2`。**`:port` 无独立日志字段**(规格:端口只分类不进参数);本轮客机四次连接均为 `route=SteamP2P`,与分类器输出一致。用户须在关单时确认客机地址栏用了 `SteamID:27016`(日志不能代证粘贴形态) |
+| C05-02 无密码 SteamP2P | **PASS**(裸 SteamID 路由) | 第一局主机 L790/L810 `hasPassword=False`;客机 L148 `[UnifiedConnect] route=SteamP2P target=76561199030780228 hasPassword=False started=True`,L156 `ServerAccepted` / L413 `Connected` `failureInfo=NONE(0)`;主机 L2136 `HOST_ACCEPT` `76561199721762479` `clients=2`。用户关单说明:端口栏先填 27016、地址栏填裸 SteamID;识别后插件隐藏端口栏,P2P 不读该栏。**不是**地址栏整串 `SteamID:27016`(票 03) |
 | C05-03 僵尸 | **PASS** | 主机 `RespawnGateDiag/Zombie` 53 行。第一局 `elig=True`;空 bound 的 `passed=0 returned=N` 是原版「Count<=0 早退」(探针 `ObservePass`),**不是** dedicated 门没开。走进对齐分支:`bound=12 calls=91 passed=91 returned=0`(L1932);同局 `allPassed` 14→477(L1609→L4833,#20/20 配额用尽)。`ambiguous=0`。用户口述可见刷新 |
 | C05-04 物品 | **PASS** | `generateItems` 15 / `despawnItems` 53 / `respawnItems` 53。`respawnItems` `elig=True` 且 `calls` 持续增长(第一局 L3879 `calls=4802`)。周期移除:L1610 `removed=0` → L3878 邻域 `removed=13`(L 见下表)。再生:L3879 `region=(30,32) spawned=7 cooldown=4788 idle=7`(窗口未到为主、已有 spawned,非 `calls==0`)。第三局仍有 `spawned=1/3`。`anomaly=0`;`spawned` 个位数相对数千 `calls` 收敛,无同区无界累加。`generateItems` 进区账本不构成本票判据 |
 | C05-05 密码生命周期 | **PASS** | 第二局非空(L11657/L11677 `hasPassword=True`) → Stop(L14399) → 第三局开局 L14437/L14457 `hasPassword=False`;客机 L3228 无密码 `started=True`,L3236 `ServerAccepted`。结束路径静默,可观测点在下一局开局,与执行包一致 |
@@ -40,17 +40,17 @@
 - **密码纪律**:两端 `password` 命中为 `hasPassword` / 失败枚举 `PASSWORD` / `WRONG_PASSWORD`;无长度、无明文。
 - **退出**:客机三局均为 pause-menu exit 或 application quitting,先于主机对应 `StopP2PServer`;两端摘要退出码 0。
 - **1H+2G 形态**:同房双客本轮未重复;09-17 轮已绑定同一 DLL 并 `clients=3`。本轮不回退该证据。
-- **`:port` 粘贴**:无日志字段。分类结果四次均为 SteamP2P。关单时由用户口头确认地址栏形态。
+- **`:port` 粘贴**:用户关单时说明实际操作=端口栏 27016 + 地址栏裸 SteamID(因识别 SteamID 后插件挡住端口栏)。**不是**票 03 目标输入 `hostField="SteamID:27016"`。四次连接均为 `route=SteamP2P`,与裸 ID 分类一致。票 03 Runtime 仍 pending。
 
 ## 5. 状态建议(本报告不关单)
 
 | 项 | 建议 |
 |---|---|
-| 票 05 | Runtime 机制闭合,待用户关单;`ready-for-human` → 用户改为 completed |
-| 票 01 | Runtime 诊断+肉眼闭合,待用户从 `implemented-pending-runtime` 转 completed |
-| 票 02 | 同上 |
-| 票 03 | 路由四次 SteamP2P;粘贴形态口头确认后可转 |
-| 票 04 | 无密码/错密码/对密码/清空四态日志闭合,待用户转 |
+| 票 05 | completed(用户关单) |
+| 票 01 | completed |
+| 票 02 | completed |
+| 票 03 | 仍 `implemented-pending-runtime`(缺地址栏整串 `SteamID:port` 输入) |
+| 票 04 | completed |
 | RELEASES | 不改 |
 
 ## 6. 审计纪律

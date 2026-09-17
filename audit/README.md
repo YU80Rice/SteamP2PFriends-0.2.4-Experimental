@@ -24,11 +24,11 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 
 | Ticket | 交付/最终报告 | 补充与修复 |
 |---|---|---|
-| 01 僵尸重生 Listen-Host Dedicated Gate | `2026-09-12/Implementation-0.2.4.8-Ticket01-0027.md`（implemented-pending-runtime：respawnZombies 单点 Transpiler 对齐 `IsDedicatedOrP2PHost()`，round 1/2/3 双轴 CLEAN） | — |
-| 02 物品周期生命周期 Listen-Host Dedicated Gate | `2026-09-12/Implementation-0.2.4.8-Ticket02-1043.md`（implemented-pending-runtime：Update 尾部守卫单点 Transpiler + 三路区域计数诊断，round 2 双轴 CLEAN） | — |
-| 03 SteamID:port 分类 | `2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md`（implemented-pending-runtime：`UnifiedJoinAddressClassifier` 单冒号端口剥离，round 4 双轴 CLEAN，277/277） | — |
-| 04 Listen-Host Session Password | `2026-09-12/Implementation-0.2.4.8-Ticket04-1123.md`（implemented-pending-runtime：`SessionPassword` 缝 + 开房菜单密码框 + SteamID 路线密码传递，round 2 双轴 CLEAN，280/280；**最终指纹 A69B78AF/2ea4dbc6 接替前三票**） | — |
-| 05 共享 1 Host + 2 Guest Runtime 验收 | `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`（**机制闭合,待用户关单**：C05-01…07 日志锚行齐；1H+1G 补测密码三局+主机 Verbose 探针；同房双客仍以 09-17 轮 `clients=3` 为据。不改 RELEASES） | `2026-09-17/RuntimeAcceptance-0.2.4.8-Ticket05-2320.md`（第一轮不构成 PASS：Verbose 未开、密码局未跑） |
+| 01 僵尸重生 Listen-Host Dedicated Gate | `2026-09-12/Implementation-0.2.4.8-Ticket01-0027.md` + Runtime `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`（**completed**,用户 2026-09-18 关单） | — |
+| 02 物品周期生命周期 Listen-Host Dedicated Gate | 同上 Implementation-Ticket02-1043 + Runtime 0047（**completed**） | — |
+| 03 SteamID:port 分类 | `2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md`（静态闭环仍在；**Runtime 未闭合**：09-18 测的是端口栏 27016+裸 SteamID,非地址栏整串） | — |
+| 04 Listen-Host Session Password | Implementation-Ticket04-1123 + Runtime 0047 四态日志（**completed**） | — |
+| 05 共享 1 Host + 2 Guest Runtime 验收 | `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`（**completed**,用户关单；票 03 整串输入除外。不改 RELEASES） | `2026-09-17/RuntimeAcceptance-0.2.4.8-Ticket05-2320.md`（第一轮不构成 PASS） |
 
 ## 历史阶段（0.2.4.0–0.2.4.4，M0–M4）
 

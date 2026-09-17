@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** implemented-pending-runtime（静态闭环见 `audit/2026-09-12/Implementation-0.2.4.8-Ticket04-1123.md`；Runtime 归共享验收票 05）
+**Status:** completed（静态闭环 `audit/2026-09-12/Implementation-0.2.4.8-Ticket04-1123.md`；Runtime 无密码/PASSWORD/填对/清空四态见 `audit/2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`，用户 2026-09-18 关单）
 
 - [x] 插件开房菜单新增密码字段：默认空、遮罩、不设最大长度、不 trim。空串 = 无密码房间。输入规则只约束该新字段，不改变原版直连页密码框。
       （`P2PNativeMenuUI.BuildRoleMenu` 新增密码框：`IsPasswordField=true`、`MaxLength=0`、`OnPasswordChanged` 不 trim；`OpenRoleMenu` 每次打开默认空，不从配置恢复；原版直连页 `passwordField` 行为未改）

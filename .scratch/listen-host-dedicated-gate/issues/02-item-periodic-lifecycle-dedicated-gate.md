@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** implemented-pending-runtime（静态闭环见 `audit/2026-09-12/Implementation-0.2.4.8-Ticket02-1043.md`；Runtime 归共享验收票 05）
+**Status:** completed（静态闭环 `audit/2026-09-12/Implementation-0.2.4.8-Ticket02-1043.md`；Runtime `audit/2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`，用户 2026-09-18 关单）
 
 - [x] 听主机继续执行周期 `despawnItems` 与周期 respawn；普通单机/客机早退不变；专用服行为不变。
       （Update 尾部守卫单点 Transpiler 对齐现有 `IsDedicatedOrP2PHost()`；IGP3 资格回归锁 + IG1/IG2 接线锁联合闭合）

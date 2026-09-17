@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** implemented-pending-runtime（静态闭环见 `audit/2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md`；Runtime 归共享验收票 05）
+**Status:** implemented-pending-runtime（静态闭环 `audit/2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md`；Runtime **未闭合**：用户 2026-09-18 测的是「端口栏先填 27016、再在地址栏填裸 SteamID」。识别为 SteamID 后 `MenuPlayConnectP2PIndicatorPatch` 隐藏端口栏，P2P 分支不读 `portField`。票面目标是地址栏整串 `SteamID:27016`，本轮无该输入的日志。共享票 05 其余项已关单）
 
 - [x] 分类输入形如 `[可选空白] SteamID [可选单个 :port] [可选空白]`。仅当冒号最多一次、端口为 1–65535 十进制、去掉端口后仍是合法个人 SteamID 时返回 Steam P2P。
       （JR1 正例 + `CSteamID.IsValid/BIndividualAccount` 既有判定；端部空白走 Trim、内部空白守卫拒绝——round 2 Spec F2 修复）

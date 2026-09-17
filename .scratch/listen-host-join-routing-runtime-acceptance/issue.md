@@ -1,10 +1,10 @@
 ---
 title: "Listen-Host Dedicated Gate 与 Join Routing 共享三端 Runtime 验收"
-status: "ready-for-human"
+status: "completed"
 labels:
   - "ready-for-human"
 created_at: "2026-09-11T16:30:00+08:00"
-updated_at: "2026-09-11T16:30:00+08:00"
+updated_at: "2026-09-18T00:56:00+08:00"
 ---
 
 # Listen-Host Dedicated Gate 与 Join Routing 共享三端 Runtime 验收
