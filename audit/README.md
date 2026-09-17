@@ -26,7 +26,7 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 |---|---|---|
 | 01 僵尸重生 Listen-Host Dedicated Gate | `2026-09-12/Implementation-0.2.4.8-Ticket01-0027.md` + Runtime `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`（**completed**,用户 2026-09-18 关单） | — |
 | 02 物品周期生命周期 Listen-Host Dedicated Gate | 同上 Implementation-Ticket02-1043 + Runtime 0047（**completed**） | — |
-| 03 SteamID:port 分类 | `2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md`（静态闭环仍在；**Runtime 未闭合**：09-18 测的是端口栏 27016+裸 SteamID,非地址栏整串） | — |
+| 03 SteamID:port 分类 | `2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md` + Runtime `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket03-0105.md`（**completed**：地址栏整串 `SteamID:27016` → `route=SteamP2P` 进房） | — |
 | 04 Listen-Host Session Password | Implementation-Ticket04-1123 + Runtime 0047 四态日志（**completed**） | — |
 | 05 共享 1 Host + 2 Guest Runtime 验收 | `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`（**completed**,用户关单；票 03 整串输入除外。不改 RELEASES） | `2026-09-17/RuntimeAcceptance-0.2.4.8-Ticket05-2320.md`（第一轮不构成 PASS） |
 

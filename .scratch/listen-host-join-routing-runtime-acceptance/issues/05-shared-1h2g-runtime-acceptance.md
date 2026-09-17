@@ -4,14 +4,14 @@
 
 **Blocked by:** 01 僵尸重生 Listen-Host Dedicated Gate；02 物品周期生命周期 Listen-Host Dedicated Gate；03 SteamID:port 分类；04 Listen-Host Session Password。四张均须双轴 CLEAN、Release 构建与静态门禁通过。
 
-**Status:** completed（用户 2026-09-18 关单;审计 `audit/2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`。票 03 地址栏 `SteamID:port` 整串仍 pending,见该票 Status）
+**Status:** completed（用户 2026-09-18 关单;审计 `audit/2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`。票 03 地址栏整串补测 `audit/2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket03-0105.md` 亦 completed）
 
 - [x] 统一 Case ID；三端 `SteamP2PFriends.dll` SHA-256 逐字节一致。（2026-09-17 轮 C05-01 PASS，见 `audit/2026-09-17/RuntimeAcceptance-0.2.4.8-Ticket05-2320.md`）
 - [x] 普通 PEI：记录已知区域僵尸初始数量，打死满足重生条件的僵尸，等待原版窗口后该区域出现新僵尸；诊断确认走进对齐后的早退分支。（2026-09-18：`elig=True`，bound=12 `passed=91`，同局 `allPassed`→477；空 bound 的 `returned` 为原版空区早退）
 - [x] 物品：诊断记录 `generateItems` / `despawnItems` / 周期 respawn 的次数与区域；地面物品能被周期移除也能再生成；无持续刷满或无界累加。（2026-09-18：三路均带区域；`removed`/`spawned`>0；`calls` 持续增长；`spawned` 相对 `calls` 收敛，`anomaly=0`）
 - [x] 时间窗内未自然刷出不得直接判代码失败，须结合诊断计数与可重复条件区分「窗口未到」与「早退仍在」。（`cooldown`/`nospawn` 为主形态且 `calls>0`；非 `calls==0`）
 - [x] 预生成与周期处理若造成重复刷物品：本验收 FAIL，另开收缩票，不在本票重构预生成。（本轮未触发无界累加）
-- [x] Join Routing：无密码房间 SteamID 不填密码可连；有密码房间不填密码由原版产生 `PASSWORD`；填对密码可连；`SteamID:27016` 走 Steam P2P 连上。（四次 `route=SteamP2P`；`PASSWORD(6)` + 填对进入。用户确认操作是端口栏先填 27016、地址栏填裸 SteamID——识别后插件隐藏端口栏且 P2P 不读该栏。地址栏整串 `SteamID:port` 仍归票 03 pending）
+- [x] Join Routing：无密码房间 SteamID 不填密码可连；有密码房间不填密码由原版产生 `PASSWORD`；填对密码可连；`SteamID:27016` 走 Steam P2P 连上。（密码四态见 0047 审计；地址栏整串补测见 Ticket03-0105：`route=SteamP2P` 进房）
 - [x] 日志只证明 `hasPassword`、路由类型和失败枚举，无密码明文或长度。
 - [x] 本轮不专项 Horde/Beacon，也不得改变它们既有语义。（PEI/EASY，Horde/Beacon 0 命中）
 - [x] 回传 UMM 诊断包；按 Evidence Class 落盘 Runtime 审计。本票不关实施票、不改 RELEASES 批准态。（09-17 不足 + 09-18 闭合；关单归用户）
