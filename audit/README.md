@@ -28,7 +28,7 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | 02 物品周期生命周期 Listen-Host Dedicated Gate | `2026-09-12/Implementation-0.2.4.8-Ticket02-1043.md`（implemented-pending-runtime：Update 尾部守卫单点 Transpiler + 三路区域计数诊断，round 2 双轴 CLEAN） | — |
 | 03 SteamID:port 分类 | `2026-09-12/Implementation-0.2.4.8-Ticket03-1048.md`（implemented-pending-runtime：`UnifiedJoinAddressClassifier` 单冒号端口剥离，round 4 双轴 CLEAN，277/277） | — |
 | 04 Listen-Host Session Password | `2026-09-12/Implementation-0.2.4.8-Ticket04-1123.md`（implemented-pending-runtime：`SessionPassword` 缝 + 开房菜单密码框 + SteamID 路线密码传递，round 2 双轴 CLEAN，280/280；**最终指纹 A69B78AF/2ea4dbc6 接替前三票**） | — |
-| 05 共享 1 Host + 2 Guest Runtime 验收 | `2026-09-17/RuntimeAcceptance-0.2.4.8-Ticket05-2320.md`（**本轮不构成 PASS**：C05-01 指纹绑定成立；C05-02 无密码 SteamP2P 进入部分 PASS；C05-03/04 Verbose 未开探针 0 行仅肉眼；C05-05/06/07 有密码三局未跑。票仍 ready-for-human） | 执行包见 `.scratch/listen-host-join-routing-runtime-acceptance/issues/05-shared-1h2g-runtime-acceptance.md`（候选 A69B78AF、C05-01…07、三局编排） |
+| 05 共享 1 Host + 2 Guest Runtime 验收 | `2026-09-18/RuntimeAcceptance-0.2.4.8-Ticket05-0047.md`（**机制闭合,待用户关单**：C05-01…07 日志锚行齐；1H+1G 补测密码三局+主机 Verbose 探针；同房双客仍以 09-17 轮 `clients=3` 为据。不改 RELEASES） | `2026-09-17/RuntimeAcceptance-0.2.4.8-Ticket05-2320.md`（第一轮不构成 PASS：Verbose 未开、密码局未跑） |
 
 ## 历史阶段（0.2.4.0–0.2.4.4，M0–M4）
 
