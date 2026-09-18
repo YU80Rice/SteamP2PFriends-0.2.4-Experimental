@@ -25,7 +25,8 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | Ticket | 交付/最终报告 | 补充与修复 |
 |---|---|---|
 | 01 0.2.4.9 迁移基线 + Resource 表征门 | `2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`（**completed**：版本身份授予、表征门建立、生产 Writer 未变；双轴 round 1–5 最终双 CLEAN；Runtime 归票 09） | — |
-| 02–09 | 待实施 | — |
+| 02 Resource 经声明式 Demand Policy 接入共享投影引擎 | `2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`（**implemented-pending-runtime**：唯一空间事实 + 共享投影引擎落地，接缝不再持私有观察者索引；资格不合格＝暂缓；313/313 PASS、三门禁 PASS、双轴 round 1–4 最终双 CLEAN；Runtime 归票 09） | — |
+| 03–09 | 待实施 | — |
 
 ## Listen-Host Dedicated Gate 与 Join Routing 批（01–04 实施 + 共享 05 Runtime）
 

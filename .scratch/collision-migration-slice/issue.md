@@ -31,7 +31,15 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：02。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）。
+当前前沿：03。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`，投影迁移 Runtime 归票 09）。
+
+## 票 02 → 票 04 的具名交接（截获点，不在票 02 内修）
+
+票 02 复审期间暴露的**样本捕获**不变量仍归票 04（其票面 checklist 第 1–2 项，且 `Blocked by: 03`）：
+
+- `MultiObserverShadowCoordinator.CaptureSamples` 仍对单条不完整记录整体冻结本拍（`capture-incomplete` → 跳过全部 reconcile）。规格 `spec.md:61` 要求「单条不可用观察者记录不得冻结其它有效观察者的本拍更新」，该修复属票 04 第 1 项。
+- 无效样本对应的旧需求目前不是 Deferred Observer Demand；票 02 已在共享引擎实现其**原语**（资格不合格＝暂缓而非释放，见 `DemandProjectionEngine.DomainDemandProjectionState.Apply`），票 04 第 2 项只需在其上接入样本不可用路径。
+- 票 02 未修改上述捕获路径（`git diff` 可证），故不构成票 02 的行为变更。
 
 ## 测试接缝
 

@@ -5,7 +5,6 @@ using SteamP2PFriends.Core.Identity;
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Collections.Generic;
 
 namespace SteamP2PFriends.WhitelistTests
@@ -42,7 +41,8 @@ namespace SteamP2PFriends.WhitelistTests
                 && coordinator != null
                 && lifecycle != null
                 && nativeState != null
-                && seam.GetMethod("UpdateObserver") != null
+                && seam.GetMethod("UpdateObserver", BindingFlags.Instance | BindingFlags.Public, null,
+                    new[] { typeof(ulong), typeof(ulong), typeof(byte), typeof(byte) }, null) != null
                 && seam.GetMethod("RemoveObserver") != null
                 && seam.GetMethod("Tick") != null
                 && seam.GetMethod("AdvanceTime") != null
@@ -127,21 +127,7 @@ namespace SteamP2PFriends.WhitelistTests
 
         private static int FindCallOffset(MethodInfo method, string name)
         {
-            if (method == null) return -1;
-            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
-            if (il == null) return -1;
-            for (int offset = 0; offset + 4 < il.Length; offset++)
-            {
-                int token = BitConverter.ToInt32(il, offset);
-                try
-                {
-                    MethodBase called = method.Module.ResolveMethod(token);
-                    if (called != null && string.Equals(called.Name, name, StringComparison.Ordinal))
-                        return offset;
-                }
-                catch { }
-            }
-            return -1;
+            return IlContractProbe.FindCallOffset(method, name);
         }
 
         internal static bool Test_GenerationReadDoesNotUseFallbackGuess()
@@ -249,134 +235,26 @@ namespace SteamP2PFriends.WhitelistTests
                 && CountFieldLoads(configure, "SDG.Unturned.ItemManager", "ITEM_REGIONS") == 0;
         }
 
+        // IL 遍历收敛到 IlContractProbe（票 01 审计 §8-4 具名的跨文件重复）；以下薄包装
+        // 保持本文件既有调用点与断言不变。
         private static int CountMethodCalls(MethodInfo method, string declaringTypeName, string methodName)
         {
-            return CountIlTokens(method, OperandType.InlineMethod, (owner, token) =>
-            {
-                MethodBase called;
-                try { called = owner.Module.ResolveMethod(token); }
-                catch { called = null; }
-                return called?.DeclaringType?.FullName == declaringTypeName
-                    && called.Name == methodName;
-            });
+            return IlContractProbe.CountMethodCalls(method, declaringTypeName, methodName);
         }
 
         private static int CountFieldLoads(MethodInfo method, string declaringTypeName, string fieldName)
         {
-            return CountIlTokens(method, OperandType.InlineField, (owner, token) =>
-            {
-                FieldInfo field;
-                try { field = owner.Module.ResolveField(token); }
-                catch { field = null; }
-                return field?.DeclaringType?.FullName == declaringTypeName
-                    && field.Name == fieldName;
-            });
-        }
-
-        private static int CountIlTokens(
-            MethodInfo method, OperandType operandType, Func<MethodInfo, int, bool> matches)
-        {
-            if (method == null) return -1;
-            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
-            if (il == null) return 0;
-
-            int count = 0;
-            int offset = 0;
-            while (offset < il.Length)
-            {
-                ushort value = il[offset++];
-                if (value == 0xfe)
-                {
-                    if (offset >= il.Length) return -1;
-                    value = (ushort)(0xfe00 | il[offset++]);
-                }
-                if (!OpCodesByValue.TryGetValue(value, out OpCode opCode)) return -1;
-
-                if (opCode.OperandType == operandType)
-                {
-                    if (offset + 4 > il.Length) return -1;
-                    int token = BitConverter.ToInt32(il, offset);
-                    if (matches(method, token)) count++;
-                }
-
-                int operandSize = GetOperandSize(opCode.OperandType, il, offset);
-                if (operandSize < 0 || offset + operandSize > il.Length) return -1;
-                offset += operandSize;
-            }
-
-            return count;
+            return IlContractProbe.CountFieldLoads(method, declaringTypeName, fieldName);
         }
 
         private static int CountAssemblyMethodCalls(Assembly assembly, string declaringTypeName, string methodName)
         {
-            int count = 0;
-            foreach (Type type in assembly.GetTypes())
-            {
-                foreach (MethodInfo method in type.GetMethods(
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-                    | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-                {
-                    int calls = CountMethodCalls(method, declaringTypeName, methodName);
-                    if (calls < 0) return -1;
-                    count += calls;
-                }
-            }
-            return count;
+            return IlContractProbe.CountAssemblyMethodCalls(assembly, declaringTypeName, methodName);
         }
 
         private static bool ContainsStringLiteral(MethodInfo method, string expected)
         {
-            if (method == null || expected == null) return false;
-            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
-            if (il == null) return false;
-            for (int offset = 0; offset + 4 < il.Length; offset++)
-            {
-                if (il[offset] != OpCodes.Ldstr.Value) continue;
-                int token = BitConverter.ToInt32(il, offset + 1);
-                try
-                {
-                    if (string.Equals(method.Module.ResolveString(token), expected, StringComparison.Ordinal))
-                        return true;
-                }
-                catch { }
-            }
-            return false;
-        }
-
-        private static int GetOperandSize(OperandType operandType, byte[] il, int offset)
-        {
-            switch (operandType)
-            {
-                case OperandType.InlineNone: return 0;
-                case OperandType.ShortInlineBrTarget:
-                case OperandType.ShortInlineI:
-                case OperandType.ShortInlineVar: return 1;
-                case OperandType.InlineVar: return 2;
-                case OperandType.InlineI8:
-                case OperandType.InlineR: return 8;
-                case OperandType.ShortInlineR: return 4;
-                case OperandType.InlineSwitch:
-                    if (offset + 4 > il.Length) return -1;
-                    int cases = BitConverter.ToInt32(il, offset);
-                    return cases < 0 || cases > (il.Length - offset - 4) / 4 ? -1 : 4 + cases * 4;
-                default: return 4;
-            }
-        }
-
-        private static readonly Dictionary<ushort, OpCode> OpCodesByValue = CreateOpCodeMap();
-
-        private static Dictionary<ushort, OpCode> CreateOpCodeMap()
-        {
-            var result = new Dictionary<ushort, OpCode>();
-            foreach (FieldInfo field in typeof(OpCodes).GetFields(BindingFlags.Public | BindingFlags.Static))
-            {
-                if (field.FieldType == typeof(OpCode))
-                {
-                    OpCode opCode = (OpCode)field.GetValue(null);
-                    result[(ushort)opCode.Value] = opCode;
-                }
-            }
-            return result;
+            return IlContractProbe.ContainsStringLiteral(method, expected);
         }
     }
 }

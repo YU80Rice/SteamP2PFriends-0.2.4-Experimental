@@ -125,6 +125,7 @@
     <Compile Include="Adapters\Item\Patches\\ItemManagerUpdateDedicatedGatePatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
+    <Compile Include="Adapters\Resource\ResourceDemandPolicy.cs" />
     <Compile Include="Adapters\Resource\ResourceProductionControlSeam.cs" />
     <Compile Include="Adapters\Resource\ResourceRegionLifecycleAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceSnapshotAdapter.cs" />
@@ -192,6 +193,12 @@
     <Compile Include="Core\ControlPlane\MultiObserverShadowCoordinator.cs" />
     <Compile Include="Core\ControlPlane\MultiObserverShadowLedger.cs" />
     <Compile Include="Core\ControlPlane\Spatial\SpatialObserverIndex.cs" />
+    <Compile Include="Core\ControlPlane\Demand\ObserverPresence.cs" />
+    <Compile Include="Core\ControlPlane\Demand\ObserverSpatialAuthority.cs" />
+    <Compile Include="Core\ControlPlane\Demand\DemandPolicy.cs" />
+    <Compile Include="Core\ControlPlane\Demand\DomainDemand.cs" />
+    <Compile Include="Core\ControlPlane\Demand\DomainDemandProjection.cs" />
+    <Compile Include="Core\ControlPlane\Demand\DemandProjectionEngine.cs" />
     <Compile Include="Core\ControlPlane\SPI\ILifecycleDomainAdapter.cs" />
     <Compile Include="Core\ControlPlane\SPI\IStateReplicationAdapter.cs" />
     <Compile Include="Core\ControlPlane\SPI\IBoundStateReplicationAdapter.cs" />

@@ -121,6 +121,57 @@ namespace SteamP2PFriends.MultiObserver.Spatial
             }
         }
 
+        /// <summary>
+        /// 按区域统计当前活跃观察者数（去重后的需求计数）。计数从活跃集合现算，
+        /// 不另存一份会与集合漂移的计数表。
+        /// </summary>
+        public Dictionary<RegionKey, int> CountObserversPerRegion()
+        {
+            lock (_sync)
+            {
+                var counts = new Dictionary<RegionKey, int>();
+                foreach (ObserverSpatialState state in _observers.Values)
+                {
+                    foreach (RegionKey region in state.ActiveRegions)
+                    {
+                        counts.TryGetValue(region, out int current);
+                        counts[region] = current + 1;
+                    }
+                }
+                return counts;
+            }
+        }
+
+        /// <summary>该区域当前的活跃观察者数；无观察者为 0。</summary>
+        public int CountObserversInRegion(RegionKey region)
+        {
+            lock (_sync)
+            {
+                int count = 0;
+                foreach (ObserverSpatialState state in _observers.Values)
+                {
+                    if (state.ActiveRegions.Contains(region)) count++;
+                }
+                return count;
+            }
+        }
+
+        /// <summary>该观察者当前登记的连接代次；未登记时为 false（无投影状态）。</summary>
+        public bool TryGetConnectionToken(ulong observerId, out ulong connectionToken)
+        {
+            lock (_sync)
+            {
+                if (_observers.TryGetValue(observerId, out ObserverSpatialState state))
+                {
+                    connectionToken = state.ConnectionToken;
+                    return true;
+                }
+
+                connectionToken = 0UL;
+                return false;
+            }
+        }
+
         public static HashSet<RegionKey> CalculateGrid2D(
             byte centerX, byte centerY, byte radius, byte maxDimension)
         {

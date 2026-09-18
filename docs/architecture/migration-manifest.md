@@ -418,3 +418,47 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 
 - Collision 切片的三端（1 Host + 2 Guest）运行必须使用正式切换候选，三端同一 SHA-256；
 - 表征门（M6P36–M6P41、SPI05、半径来源契约）在票 02/03 迁入共享引擎前后必须保持绿，任何语义漂移都视为迁移失败。
+
+## Batch 13：Resource 接入共享 Demand Projection Engine（0.2.4.9 / 票 02）
+
+状态：**静态完成**——Control Plane 建立唯一观察者空间事实与共享投影引擎，Resource 生产接缝经声明式 Demand Policy 消费 typed Resource Demand，不再持有自己的观察者索引；租约、滞回、retry、补偿仍在接缝（票 03 迁编排引擎），生产 Writer 仍唯一。Runtime 归 Collision 切片关单票 09。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Core/ControlPlane/Demand/`（新增 6 文件） | 新增模块 | `ObserverPresence`（唯一空间事实）、`ObserverSpatialAuthority`（事实存储）、`DemandPolicy` + `EDemandRegionShape`（声明式政策）、`DomainDemand` / `DomainDemandProjection`（typed demand 与投影差异）、`DemandProjectionEngine`（枚举/裁剪/去重/计数/差异） |
+| `Adapters/Resource/ResourceDemandPolicy.cs` | 新增 | Resource 域的政策声明：Domain Id、切比雪夫方形、资源半径来源、玩法资格 |
+| `Adapters/Resource/ResourceProductionControlSeam.cs` | 已改 | 删除私有 `SpatialObserverIndex` 与 `worldSize`/`radius` 字段，改为注入 `DemandProjectionEngine` + `DemandPolicy`；构造期拒绝非 Resource 身份政策；对外新增 `ProjectedDemandRegionCount` 与带资格的重载 |
+| `Core/ControlPlane/MultiObserverShadowCoordinator.cs` | 已改 | 接线点建立唯一权威+引擎、注册 Resource 政策并注入接缝；提交样本时携带玩法资格；汇总日志新增投影需求区域数与半径来源 |
+| `Core/ControlPlane/Spatial/SpatialObserverIndex.cs` | 已扩 | 新增按区域计数（`CountObserversPerRegion` / `CountObserversInRegion`），计数从活跃集合现算，不另存会漂移的计数表 |
+| `WhitelistTests/Evidence/PureMemory/MultiObserver/DemandProjectionEngineTests.cs` | 新增 | DPE01–DPE11：唯一事实与幂等、切比雪夫裁剪、去重计数、进入退出差异、连接代次失效、领域隔离、资格暂缓（Deferred Observer Demand）、声明失败闭合、移除释放、投影还原、暂缓中代次失效 |
+| `WhitelistTests/Evidence/PureMemory/Adapters/Resource/ResourceProductionControlSeamTests.cs` | 新增 | M6P42–M6P46：事实与 typed demand 归 Control Plane、拒绝异域政策、资格由政策声明、移除清事实与投影、会话边界清事实与投影；既有 41 项经 `CreateSeam` 测试宿主接线保持原样 |
+| `WhitelistTests/Evidence/StaticIL/DemandProjectionStaticILContractTests.cs` | 新增契约 | 唯一空间事实与唯一引擎、接缝无观察者索引字段/构造、Demand 命名空间零 Unturned/Unity 依赖、无跨域共享默认半径、引擎不调用领域执行、Resource 自声明政策、资格交由政策判定 |
+| `WhitelistTests/Evidence/StaticIL/IlContractProbe.cs` | 重构 | IL 遍历探针收敛为共享实现；票 01 审计 §8-4 具名的跨文件重复在此消除 |
+| `WhitelistTests/Evidence/StaticIL/ResourceProductionControlStaticILContractTests.cs` | 已改 | 私有 IL 遍历实现改为转发共享探针（调用点与断言不变）；`UpdateObserver` 断言按 4 参重载消歧 |
+| `WhitelistTests/Program.cs` | 已改 | 注册 23 项新证据（DPE01–DPE11、M6P42–M6P46、Demand StaticIL 7 项）；唯一入口目标数 290 → 313 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | 新增 DPE01–DPE11 与 M6P42–M6P46；票 01 表征门与既有 Resource 接缝/快照/生命周期测试保持绿 |
+| StaticIL | PASS | 新增 7 项结构契约；既有 Resource 生产控制、退休、采伐注册契约保持绿（`UpdateObserver` 断言按 4 参重载消歧） |
+| BuildArtifact | PASS | `Verify-BuildFingerprintArtifact.ps1` 独立核验通过；版本身份仍为 `0.2.4.9` / `SPF-0.2.4.9-Experimental-CollisionSlice` |
+| Runtime | PENDING | 本批次不宣称 Runtime；投影迁移的三端运行验收见票 09 |
+
+### 必须保留到 Runtime 的验收项
+
+- 票 01 表征门（M6P36–M6P41、SPI05、半径来源契约）与票 02 新增投影契约在票 03 迁入编排引擎前后必须保持绿；
+- 三端日志里 `resourceDemandRegions` 与 `resourceProjectedDemandRegions` 的差异应可解释为「已物化租约」与「已投影需求」之差（暂缓/失败重试路径），不允许出现长期无解释的漂移。
+
+### 不可变语义（票 02 起生效，后续票不得回退）
+
+- 资格不合格 **不等于** 确认离开：领域投影保留既有贡献并记为 Deferred Observer Demand，只有确认离开、连接代次失效、会话重置或有界恢复策略才清理（`DemandProjectionEngine` 内注释与 DPE07/DPE11 锁定）；
+- 观察者事实只有一份：领域接缝不得再持有自己的观察者索引或空间位置（StaticIL 锁定）；
+- 不存在跨域共享默认半径：半径只经领域 Demand Policy 声明（StaticIL 锁定）。
+
+### 移交票 04（本批不修，具名）
+
+- 样本捕获层的 `capture-incomplete` 整体冻结仍在（`spec.md:61` 要求单条不可用记录不得冻结其它有效观察者的本拍更新）；票 02 已提供「资格不合格＝暂缓」的原语，票 04 需补样本不可用路径与其有界恢复策略（票 04 checklist 第 1–2 项）。

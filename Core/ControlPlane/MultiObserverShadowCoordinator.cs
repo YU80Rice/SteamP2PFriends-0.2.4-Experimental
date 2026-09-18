@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Adapters.Item.Patches;
 using SteamP2PFriends.Adapters.Resource;
+using SteamP2PFriends.MultiObserver.Demand;
 using UnityEngine;
 
 using SteamP2PFriends.Security;
@@ -86,12 +87,20 @@ namespace SteamP2PFriends.MultiObserver
         internal static void ConfigureResourceProduction(ResourceDomainAdapter adapter)
         {
             if (adapter == null) throw new ArgumentNullException(nameof(adapter));
+            // Control Plane 在唯一接线点建立唯一的观察者空间事实与共享投影引擎：
+            // 半径与世界尺寸各自读取自己的声明来源，不引入跨域共享默认半径。
+            DemandPolicy resourceDemandPolicy = ResourceDemandPolicy.Create(
+                checked((byte)LevelGround.RESOURCE_REGIONS),
+                checked((byte)Regions.WORLD_SIZE));
+            var observerAuthority = new ObserverSpatialAuthority();
+            var demandProjection = new DemandProjectionEngine(observerAuthority);
+            demandProjection.Register(resourceDemandPolicy);
             ResourceProduction = new ResourceProductionControlSeam(
                 adapter,
                 adapter,
                 ResourceRegionLifecycleAdapter.GetGeneration,
-                checked((byte)Regions.WORLD_SIZE),
-                checked((byte)LevelGround.RESOURCE_REGIONS),
+                demandProjection,
+                resourceDemandPolicy,
                 ResourceRegionLifecycleAdapter.DefaultHysteresisSeconds);
             ResourceObservers.Clear();
         }
@@ -205,12 +214,17 @@ namespace SteamP2PFriends.MultiObserver
                 if (_summaryLogCount < SessionSummaryLogLimit)
                 {
                     _summaryLogCount++;
+                    // 两个需求计数口径不同：resourceDemandRegions 是接缝已物化租约的区域数，
+                    // resourceProjectedDemandRegions 是共享投影引擎按政策算出的需求区域数。
+                    // 二者长期分叉即为「有投影、未物化」的信号（暂缓/失败重试路径），应查明原因。
                     SafeInfo(
                         $"summary={_summaryLogCount}/{SessionSummaryLogLimit} epoch={Ledger.SessionEpoch} " +
                         $"observers={Ledger.ObserverCount} pendingObservers={pendingCount} " +
                         $"itemDemandRegions={Ledger.ItemDemandRegionCount} " +
                         $"zombieDemandBounds={Ledger.ZombieDemandBoundCount} " +
                         $"resourceDemandRegions={ResourceProduction?.DemandRegionCount ?? 0} " +
+                        $"resourceProjectedDemandRegions={ResourceProduction?.ProjectedDemandRegionCount ?? 0} " +
+                        $"resourceRadiusSource={ResourceProduction?.DemandPolicy.RadiusSource ?? "none"} " +
                         $"resourceActiveLeases={ResourceProduction?.ActiveLeaseCount ?? 0} " +
                         $"resourcePendingReleases={ResourceProduction?.PendingReleaseCount ?? 0} " +
                         "controlPlane=active");
@@ -600,7 +614,9 @@ namespace SteamP2PFriends.MultiObserver
 
         private static void EndSessionIfNeeded(string reason)
         {
-            if (!Ledger.EndSession()) return;
+            bool ledgerEnded = Ledger.EndSession();
+            // Control Plane 侧的会话状态无条件收尾：即便 Ledger 已非活动（状态短暂失配或
+            // 重复/失序的会话结束通知），唯一空间事实与领域投影也必须清干净，不得跨会话残留。
             try
             {
                 ResourceProduction?.EndSession();
@@ -612,7 +628,10 @@ namespace SteamP2PFriends.MultiObserver
             finally
             {
                 ResourceObservers.Clear();
-                SafeInfo($"session-end nextEpoch={Ledger.SessionEpoch} reason={reason}");
+                if (ledgerEnded)
+                {
+                    SafeInfo($"session-end nextEpoch={Ledger.SessionEpoch} reason={reason}");
+                }
             }
         }
 
@@ -644,15 +663,20 @@ namespace SteamP2PFriends.MultiObserver
             var seen = new HashSet<ulong>();
             foreach (ObserverShadowSample sample in samples)
             {
+                // 每个进程内的有效观察者都提交事实，资格由 Resource Demand Policy 声明、由共享
+                // 投影引擎执行：不合格（未获玩法资格）只是不贡献新需求，其既有贡献进入
+                // Deferred Observer Demand 而不是被当作确认离开——「无法证明离开就不做破坏性
+                // 释放」。只有真正缺席（样本列表里没有）才走 RemoveObserver。
                 if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
-                    || !sample.GameplayAuthorized || !seen.Add(sample.ObserverId))
+                    || !seen.Add(sample.ObserverId))
                     continue;
 
                 ResourceProduction.UpdateObserver(
                     sample.ObserverId,
                     sample.ConnectionToken,
                     sample.ItemRegionX,
-                    sample.ItemRegionY);
+                    sample.ItemRegionY,
+                    sample.GameplayAuthorized);
             }
 
             var removed = new List<ulong>();

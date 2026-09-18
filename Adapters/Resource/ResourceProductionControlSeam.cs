@@ -1,4 +1,5 @@
 using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.MultiObserver.Demand;
 using SteamP2PFriends.MultiObserver.SPI;
 using SteamP2PFriends.MultiObserver.Spatial;
 using SteamP2PFriends.Shared;
@@ -11,10 +12,13 @@ namespace SteamP2PFriends.Adapters.Resource
     /// <summary>
     /// Resource 的唯一生产控制接缝。
     ///
-    /// 它把观察者的二维空间需求合并为区域引用计数，并在 0 -> 1 时向 Resource
-    /// 生命周期适配器申请租约，在 N -> 0 后等待固定滞回时间再释放。原生
-    /// ResourceManager 仍负责实际网络写入；本接缝只拥有区域生产资格、代次和
-    /// 复制适配器事件，避免新增第二个资源状态写入者。
+    /// 观察者空间事实与 typed Resource Demand 都由 Control Plane 提供：接缝把样本提交给共享
+    /// Demand Projection Engine，并按该引擎给出的领域投影差异驱动复制与租约。它不再持有自己的
+    /// 观察者索引，也没有第二份观察者位置。
+    ///
+    /// 它把领域投影差异物化为区域引用计数：0 -&gt; 1 时向 Resource 生命周期适配器申请租约，
+    /// N -&gt; 0 后等待固定滞回时间再释放。原生 ResourceManager 仍负责实际网络写入；本接缝只拥有
+    /// 区域生产资格、代次和复制适配器事件，避免新增第二个资源状态写入者。
     /// </summary>
     public sealed class ResourceProductionControlSeam
     {
@@ -42,13 +46,12 @@ namespace SteamP2PFriends.Adapters.Resource
             internal int Attempts { get; }
         }
 
-        private readonly SpatialObserverIndex _spatialIndex = new SpatialObserverIndex();
+        private readonly DemandProjectionEngine _projection;
+        private readonly DemandPolicy _policy;
         private readonly ILifecycleDomainAdapter _lifecycle;
         private readonly IReversibleRegionLifecycleAdapter _reversibleLifecycle;
         private readonly IStateReplicationAdapter _replication;
         private readonly Func<RegionKey, uint> _generationReader;
-        private readonly byte _worldSize;
-        private readonly byte _radius;
         private readonly float _hysteresisSeconds;
         private readonly Dictionary<RegionKey, int> _demand = new Dictionary<RegionKey, int>();
         private readonly Dictionary<RegionKey, RegionGeneration> _leases =
@@ -76,8 +79,8 @@ namespace SteamP2PFriends.Adapters.Resource
             ILifecycleDomainAdapter lifecycle,
             IStateReplicationAdapter replication,
             Func<RegionKey, uint> generationReader,
-            byte worldSize,
-            byte radius,
+            DemandProjectionEngine projection,
+            DemandPolicy resourceDemandPolicy,
             float hysteresisSeconds)
         {
             _lifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
@@ -87,12 +90,23 @@ namespace SteamP2PFriends.Adapters.Resource
                     nameof(lifecycle));
             _replication = replication ?? throw new ArgumentNullException(nameof(replication));
             _generationReader = generationReader ?? throw new ArgumentNullException(nameof(generationReader));
-            if (worldSize == 0) throw new ArgumentOutOfRangeException(nameof(worldSize));
+            _projection = projection ?? throw new ArgumentNullException(nameof(projection));
+            if (resourceDemandPolicy == null)
+                throw new ArgumentNullException(nameof(resourceDemandPolicy));
+            if (resourceDemandPolicy.Domain != DomainIds.Resource)
+                throw new ArgumentException(
+                    "Resource 生产接缝只消费 Resource 身份的 Demand Policy。",
+                    nameof(resourceDemandPolicy));
             if (hysteresisSeconds < 0f) throw new ArgumentOutOfRangeException(nameof(hysteresisSeconds));
-            _worldSize = worldSize;
-            _radius = radius;
+            _policy = resourceDemandPolicy;
             _hysteresisSeconds = hysteresisSeconds;
         }
+
+        /// <summary>本接缝消费的 Demand Policy（声明属于 Resource 域）。</summary>
+        public DemandPolicy DemandPolicy => _policy;
+
+        /// <summary>共享投影引擎当前为该领域算出的需求区域数（诊断用，不是租约数）。</summary>
+        public int ProjectedDemandRegionCount => _projection.GetDemandRegionCount(_policy);
 
         public bool IsSessionActive => _sessionActive;
         public SessionEpoch SessionEpoch => _sessionEpoch;
@@ -167,6 +181,10 @@ namespace SteamP2PFriends.Adapters.Resource
         {
             if (!_sessionActive)
             {
+                // 兜底：Ledger 与接缝状态短暂失配、或收到重复/失序的会话结束通知时，
+                // 也必须清干净 Control Plane 侧的会话状态——唯一空间事实与领域投影不得跨会话残留。
+                // 这里不动 repair-required：失败闭合语义仍由修复路径独占。
+                _projection.EndSession();
                 ResourceObservability.NoticeOnce("session-end-inactive", "[Shared]", "SessionEnd", "-",
                     0UL, 0UL, 0U, "Fallback", false, "skipped", "reason=session-not-active");
                 return;
@@ -204,7 +222,9 @@ namespace SteamP2PFriends.Adapters.Resource
 
         private void ClearManagedSessionState()
         {
-            _spatialIndex.Clear();
+            // 会话边界同时清空唯一空间事实与领域投影：旧 Session 的观察者不存在于新 Session，
+            // 残留事实会让「唯一事实」跨会话失真。
+            _projection.EndSession();
             _demand.Clear();
             _leases.Clear();
             _pendingReleases.Clear();
@@ -225,6 +245,16 @@ namespace SteamP2PFriends.Adapters.Resource
             byte centerX,
             byte centerY)
         {
+            return UpdateObserver(observerId, connectionToken, centerX, centerY, gameplayAuthorized: true);
+        }
+
+        public SpatialRelevanceDiff UpdateObserver(
+            ulong observerId,
+            ulong connectionToken,
+            byte centerX,
+            byte centerY,
+            bool gameplayAuthorized)
+        {
             EnsureSession();
             if (observerId == 0UL)
             {
@@ -242,7 +272,7 @@ namespace SteamP2PFriends.Adapters.Resource
             bool hadObserver = _observers.Contains(observerId);
             bool hadConnection = _connectionTokens.TryGetValue(observerId, out ulong previousConnectionToken);
             bool connectionChanged = hadConnection && previousConnectionToken != connectionToken;
-            HashSet<RegionKey> previousRegions = _spatialIndex.GetActiveRegions(observerId);
+            HashSet<RegionKey> previousRegions = _projection.GetActiveRegions(_policy, observerId);
             Dictionary<RegionKey, int> previousDemand = new Dictionary<RegionKey, int>(_demand);
             Dictionary<RegionKey, RegionGeneration> previousLeases = new Dictionary<RegionKey, RegionGeneration>(_leases);
             Dictionary<RegionKey, PendingRelease> previousPending = ClonePendingReleases();
@@ -254,18 +284,19 @@ namespace SteamP2PFriends.Adapters.Resource
                 CaptureDisconnectCompensation(
                     observerId, previousConnectionToken, hadConnection && connectionChanged, compensations);
                 _observers.Add(observerId);
-                SpatialRelevanceDiff diff = _spatialIndex.UpdateGrid2D(
-                    observerId, connectionToken, centerX, centerY, _radius, _worldSize);
+                // 空间事实与投影都归 Control Plane：接缝只提交观测值并消费领域投影差异。
+                DomainDemandProjection projection = _projection.Observe(_policy, new ObserverPresence(
+                    observerId, connectionToken, new RegionKey(centerX, centerY), gameplayAuthorized));
                 ulong exitedConnectionToken = connectionChanged ? previousConnectionToken : connectionToken;
-                ProcessExited(observerId, exitedConnectionToken, diff.ExitedRegions, compensations);
-                ProcessEntered(observerId, connectionToken, diff.EnteredRegions, compensations);
+                ProcessExited(observerId, exitedConnectionToken, projection.ExitedRegions, compensations);
+                ProcessEntered(observerId, connectionToken, projection.EnteredRegions, compensations);
                 ProcessAcquireRetries(observerId, connectionToken, compensations);
                 if (connectionChanged)
                 {
                     _lifecycle.OnObserverDisconnect(observerId, previousConnectionToken);
                 }
                 _connectionTokens[observerId] = connectionToken;
-                return diff;
+                return ToSpatialRelevanceDiff(observerId, connectionToken, projection);
             }
             catch (Exception ex)
             {
@@ -284,7 +315,7 @@ namespace SteamP2PFriends.Adapters.Resource
             EnsureSession();
             bool hadObserver = _observers.Contains(observerId);
             bool hadConnection = _connectionTokens.TryGetValue(observerId, out ulong previousConnectionToken);
-            HashSet<RegionKey> previousRegions = _spatialIndex.GetActiveRegions(observerId);
+            HashSet<RegionKey> previousRegions = _projection.GetActiveRegions(_policy, observerId);
             Dictionary<RegionKey, int> previousDemand = new Dictionary<RegionKey, int>(_demand);
             Dictionary<RegionKey, RegionGeneration> previousLeases = new Dictionary<RegionKey, RegionGeneration>(_leases);
             Dictionary<RegionKey, PendingRelease> previousPending = ClonePendingReleases();
@@ -294,7 +325,9 @@ namespace SteamP2PFriends.Adapters.Resource
             try
             {
             CaptureDisconnectCompensation(observerId, previousConnectionToken, hadConnection, compensations);
-            SpatialRelevanceDiff diff = _spatialIndex.RemoveObserver(observerId);
+            DomainDemandProjection projection = _projection.RemoveObserver(_policy, observerId);
+            SpatialRelevanceDiff diff = ToSpatialRelevanceDiff(
+                observerId, projection.ConnectionToken, projection);
             if (diff.HasChanges)
                 ProcessExited(observerId, diff.ConnectionToken, diff.ExitedRegions, compensations);
             if (_connectionTokens.TryGetValue(observerId, out ulong connectionToken))
@@ -922,8 +955,16 @@ namespace SteamP2PFriends.Adapters.Resource
             if (hadObserver) _observers.Add(observerId); else _observers.Remove(observerId);
             if (hadConnection) _connectionTokens[observerId] = previousConnectionToken;
             else _connectionTokens.Remove(observerId);
-            if (hadObserver) _spatialIndex.RestoreRegions(observerId, previousConnectionToken, previousRegions);
-            else _spatialIndex.RemoveObserver(observerId);
+            if (hadObserver) _projection.RestoreObserverRegions(_policy, observerId, previousConnectionToken, previousRegions);
+            else _projection.RemoveObserver(_policy, observerId);
+        }
+
+        /// <summary>把领域投影差异转成接缝对外的事件形状（二维区域进入/退出，无 Bound 轴）。</summary>
+        private static SpatialRelevanceDiff ToSpatialRelevanceDiff(
+            ulong observerId, ulong connectionToken, DomainDemandProjection projection)
+        {
+            return new SpatialRelevanceDiff(
+                observerId, connectionToken, projection.EnteredRegions, projection.ExitedRegions);
         }
 
         private LeaseTicket CreateTicket(RegionKey region, RegionGeneration generation, int demand)

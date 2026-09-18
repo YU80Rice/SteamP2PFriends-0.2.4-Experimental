@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using SteamP2PFriends.Core.Build;
@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 290 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 313 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -59,6 +59,18 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M13 ObserverCapacity", MultiObserverShadowTests.Test_M13_ObserverCapacityFailsClosed, ref total, ref passed, ref failed);
             RunTest("M14 InvalidZombieBound", MultiObserverShadowTests.Test_M14_InvalidZombieBoundDoesNotCreateFunctionalDemand, ref total, ref passed, ref failed);
             RunTest("M15 ConnectionGenerationOverflow", MultiObserverShadowTests.Test_M15_ConnectionGenerationOverflowFailsClosed, ref total, ref passed, ref failed);
+            // 票 02：共享投影引擎按声明式 Demand Policy 从唯一观察者事实算出 typed Domain Demand。
+            RunTest("DPE01 SharedFactSingle", DemandProjectionEngineTests.Test_DPE01_SharedFactIsSingleAndIdempotent, ref total, ref passed, ref failed);
+            RunTest("DPE02 ChebyshevClipping", DemandProjectionEngineTests.Test_DPE02_EnumerationIsChebyshevAndWorldClipped, ref total, ref passed, ref failed);
+            RunTest("DPE03 OverlapCount", DemandProjectionEngineTests.Test_DPE03_OverlappingObserversDedupAndCount, ref total, ref passed, ref failed);
+            RunTest("DPE04 EnterExitDiff", DemandProjectionEngineTests.Test_DPE04_EnterExitDiffFollowsMovement, ref total, ref passed, ref failed);
+            RunTest("DPE05 ConnectionInvalidation", DemandProjectionEngineTests.Test_DPE05_ConnectionGenerationInvalidatesOldRegions, ref total, ref passed, ref failed);
+            RunTest("DPE06 DomainIsolation", DemandProjectionEngineTests.Test_DPE06_DomainDemandIsNotGrantedAcrossDomains, ref total, ref passed, ref failed);
+            RunTest("DPE07 EligibilityDeferral", DemandProjectionEngineTests.Test_DPE07_IneligibleObserverDefersInsteadOfReleasing, ref total, ref passed, ref failed);
+            RunTest("DPE08 DeclarationsFailClosed", DemandProjectionEngineTests.Test_DPE08_DeclarationsFailClosed, ref total, ref passed, ref failed);
+            RunTest("DPE09 RemovalReleases", DemandProjectionEngineTests.Test_DPE09_RemovalReleasesDomainDemand, ref total, ref passed, ref failed);
+            RunTest("DPE10 RestoreProjection", DemandProjectionEngineTests.Test_DPE10_RestoreObserverRegionsRebuildsProjection, ref total, ref passed, ref failed);
+            RunTest("DPE11 DeferredGenerationChange", DemandProjectionEngineTests.Test_DPE11_DeferredObserverGenerationChangeReleases, ref total, ref passed, ref failed);
             #endregion
 
             #region 3. Adapters: Item Domain Tests (21 Tests)
@@ -221,6 +233,12 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6P39 ResourceFailedRetrySchedule", ResourceProductionControlSeamTests.Test_M6P39_FailedAcquireRetryScheduleDoublesThenCapsAt60, ref total, ref passed, ref failed);
             RunTest("M6P40 ResourceRetryQualificationKept", ResourceProductionControlSeamTests.Test_M6P40_SuccessPathKeepsOtherObserverRetryQualification, ref total, ref passed, ref failed);
             RunTest("M6P41 ResourceOverlapRetainsLease", ResourceProductionControlSeamTests.Test_M6P41_OverlappingObserversRetainLeaseUntilLastExit, ref total, ref passed, ref failed);
+            // 票 02：Resource 接缝经声明式 Demand Policy 消费共享投影(不再持有私有观察者索引)。
+            RunTest("M6P42 ResourceSharedProjection", ResourceProductionControlSeamTests.Test_M6P42_FactsAndDemandLiveInControlPlane, ref total, ref passed, ref failed);
+            RunTest("M6P43 ResourcePolicyIdentity", ResourceProductionControlSeamTests.Test_M6P43_SeamRejectsForeignDomainPolicy, ref total, ref passed, ref failed);
+            RunTest("M6P44 ResourceEligibilityPolicy", ResourceProductionControlSeamTests.Test_M6P44_EligibilityComesFromResourcePolicy, ref total, ref passed, ref failed);
+            RunTest("M6P45 ResourceRemovalClearsProjection", ResourceProductionControlSeamTests.Test_M6P45_RemovalClearsFactAndProjection, ref total, ref passed, ref failed);
+            RunTest("M6P46 ResourceSessionBoundaryClearsFact", ResourceProductionControlSeamTests.Test_M6P46_SessionBoundaryClearsSharedFact, ref total, ref passed, ref failed);
             RunTest("M6O01 ResourceObservabilityFields", ResourceObservabilityTests.Test_M6O01_FormatsRequiredResourceFields, ref total, ref passed, ref failed);
             RunTest("M6O02 ResourceFallbackExplicit", ResourceObservabilityTests.Test_M6O02_FallbackAndSkippedAreExplicit, ref total, ref passed, ref failed);
             RunTest("M6O03 ResourceReceiveDecisionBoundary", ResourceObservabilityTests.Test_M6O03_NativeReceiveDoesNotInventAcceptance, ref total, ref passed, ref failed);
@@ -382,6 +400,22 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Collision RC1 AnimationRestore", RemoteCollisionAnimationPolicyTests.Test_RC1_CullingPolicyIsSavedAndRestored,
                 ref total, ref passed, ref failed);
             RunTest("Collision RC2 PolicyBeforeActivation", RemoteCollisionAnimationPolicyTests.Test_RC2_CullingPolicyPrecedesRootActivation,
+                ref total, ref passed, ref failed);
+
+            // 票 02：共享投影引擎与声明式 Demand Policy 的结构门禁。
+            RunTest("Demand Projection StaticIL", DemandProjectionStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Demand Single Spatial Authority", DemandProjectionStaticILContractTests.Test_ControlPlaneOwnsSingleSpatialAuthority,
+                ref total, ref passed, ref failed);
+            RunTest("Demand No Native Dependency", DemandProjectionStaticILContractTests.Test_ProjectionEngineHasNoNativeOrUnityDependency,
+                ref total, ref passed, ref failed);
+            RunTest("Demand No Shared Default Radius", DemandProjectionStaticILContractTests.Test_NoSharedDefaultRadiusInControlPlane,
+                ref total, ref passed, ref failed);
+            RunTest("Demand Engine Does Not Write Domain", DemandProjectionStaticILContractTests.Test_ProjectionEngineDoesNotWriteDomainState,
+                ref total, ref passed, ref failed);
+            RunTest("Demand Resource Policy Declaration", DemandProjectionStaticILContractTests.Test_ResourceDomainDeclaresItsOwnDemandPolicy,
+                ref total, ref passed, ref failed);
+            RunTest("Demand Eligibility Delegated To Policy", DemandProjectionStaticILContractTests.Test_ResourceEligibilityIsDelegatedToPolicy,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

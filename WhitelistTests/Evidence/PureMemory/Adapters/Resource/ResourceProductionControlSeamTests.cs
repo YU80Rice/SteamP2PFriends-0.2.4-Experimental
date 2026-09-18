@@ -1,5 +1,6 @@
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.MultiObserver.Demand;
 using SteamP2PFriends.MultiObserver.SPI;
 using System;
 using System.Collections.Generic;
@@ -8,10 +9,42 @@ namespace SteamP2PFriends.WhitelistTests
 {
     internal static class ResourceProductionControlSeamTests
     {
+        /// <summary>
+        /// 测试宿主接线：为每个用例建立一份独立的 Control Plane（唯一空间事实 + 共享投影引擎）
+        /// 与 Resource Demand Policy，再注入生产接缝。生产接线在协调器
+        /// ConfigureResourceProduction 中完成同一组构造。
+        /// </summary>
+        private static ResourceProductionControlSeam CreateSeam(
+            ILifecycleDomainAdapter lifecycle,
+            IStateReplicationAdapter replication,
+            Func<RegionKey, uint> generationReader,
+            byte worldSize,
+            byte radius,
+            float hysteresisSeconds)
+        {
+            var engine = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            DemandPolicy policy = ResourceDemandPolicy.Create(radius, worldSize);
+            engine.Register(policy);
+            return new ResourceProductionControlSeam(
+                lifecycle, replication, generationReader, engine, policy, hysteresisSeconds);
+        }
+
+        private static bool Throws(Action action)
+        {
+            try
+            {
+                action();
+                return false;
+            }
+            catch (Exception)
+            {
+                return true;
+            }
+        }
         internal static bool Test_M6P01_ObserverUnionAcquiresOnce()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
 
@@ -27,7 +60,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P02_LastObserverSchedulesTwoSecondRelease()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -47,7 +80,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P03_ReentryCancelsReleaseWithoutSecondAcquire()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -67,7 +100,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P04_ReconnectAndSessionResetInvalidateState()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -91,7 +124,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P06_AdvanceBeforeFlushAllowsSameFrameReentry()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -110,7 +143,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var adapter = new ResourceDomainAdapter();
             adapter.OnSessionBegin(99U);
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 adapter,
                 adapter,
                 ResourceRegionLifecycleAdapter.GetGeneration,
@@ -139,7 +172,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P08_StaleRegionGenerationDelaysRelease()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -161,7 +194,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P09_ReleaseFailureRetainsRetryableState()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -186,7 +219,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Replication.ThrowOnEntered = true;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -204,7 +237,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P12_ReplicationExitFailureRetainsDemand()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -225,7 +258,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Replication.ThrowOnEnteredAfter = 1;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
 
@@ -243,7 +276,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P14_MultiRegionExitFailureCompensates()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -265,7 +298,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnAcquireAfterSideEffect = true;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -289,7 +322,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             bool failGenerationRead = false;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication,
                 _ =>
                 {
@@ -316,7 +349,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P17_DisconnectFailureRestoresObserverState()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -339,7 +372,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P18_ReleaseFailureAfterSideEffectIsCompensated()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -379,7 +412,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnAcquireAfterSideEffect = true;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -401,7 +434,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnSessionBegin = true;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
 
             bool threw = false;
@@ -415,7 +448,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P23_ReplicationFailureRestoresExactSnapshot()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -434,7 +467,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P24_AdvanceTimeRetainsLeaseOnGenerationRegression()
         {
             var fake = new FakeResourceAdapters { Generation = 5U };
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -450,7 +483,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P25_FlushRetainsPendingReleaseOnGenerationRegression()
         {
             var fake = new FakeResourceAdapters { Generation = 5U };
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -470,7 +503,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnSessionEnd = true;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -487,7 +520,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P27_EndSessionClearsStateWhenReplicationCleanupThrows()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -506,7 +539,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters { Generation = 5U };
             int readCount = 0;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication,
                 _ => readCount++ == 0 ? 5U : 4U, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
@@ -526,7 +559,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P29_ExitGenerationRegressionRetainsStoredLease()
         {
             var fake = new FakeResourceAdapters { Generation = 5U };
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -543,7 +576,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             fake.Lifecycle.ThrowOnSessionEnd = true;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             bool endThrew = false;
@@ -562,7 +595,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey failedRegion = new RegionKey(11, 10);
             fake.Lifecycle.ThrowOnCaptureRegionStateFor = failedRegion;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey center = new RegionKey(10, 10);
@@ -602,7 +635,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey deferredRegion = new RegionKey(11, 10);
             fake.Lifecycle.DeferOnCaptureRegionStateFor = deferredRegion;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey center = new RegionKey(10, 10);
@@ -635,7 +668,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey failedRegion = new RegionKey(11, 10);
             fake.Lifecycle.ThrowOnCaptureRegionStateFor = failedRegion;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -674,7 +707,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey deferredRegion = new RegionKey(11, 10);
             fake.Lifecycle.DeferOnCaptureRegionStateFor = deferredRegion;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 1, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             seam.UpdateObserver(100UL, 1001UL, 10, 10);
@@ -703,7 +736,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             var fake = new FakeResourceAdapters();
             RegionKey staleRegion = new RegionKey(10, 10);
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             fake.Lifecycle.DeferOnCaptureRegionStateFor = staleRegion;
@@ -737,7 +770,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P19_ReleaseRejectionDoesNotRunCompensation()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -755,7 +788,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P05_RegionGenerationFlowsIntoSnapshotAndRelease()
         {
             var fake = new FakeResourceAdapters { Generation = 4U };
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, key => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(9UL));
             RegionKey regionKey = new RegionKey(3, 4);
@@ -778,7 +811,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P36_ProductionRadiusProjectsChebyshevSquare()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 3, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
 
@@ -804,7 +837,7 @@ namespace SteamP2PFriends.WhitelistTests
             bool constantIsAccepted = hysteresis == 2.0f;
 
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, hysteresis);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -830,7 +863,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey regionKey = new RegionKey(10, 10);
             fake.Lifecycle.DeferOnCaptureRegionStateFor = regionKey;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
 
@@ -863,7 +896,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey regionKey = new RegionKey(10, 10);
             fake.Lifecycle.ThrowOnCaptureRegionStateFor = regionKey;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
 
@@ -901,7 +934,7 @@ namespace SteamP2PFriends.WhitelistTests
             var fake = new FakeResourceAdapters();
             RegionKey regionKey = new RegionKey(10, 10);
             fake.Lifecycle.DeferOnCaptureRegionStateFor = regionKey;
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
 
@@ -943,7 +976,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_M6P41_OverlappingObserversRetainLeaseUntilLastExit()
         {
             var fake = new FakeResourceAdapters();
-            var seam = new ResourceProductionControlSeam(
+            var seam = CreateSeam(
                 fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
             seam.BeginSession(new SessionEpoch(7UL));
             RegionKey regionKey = new RegionKey(10, 10);
@@ -1009,6 +1042,172 @@ namespace SteamP2PFriends.WhitelistTests
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// 票 02 接缝契约：观察者事实与 typed Resource Demand 都由 Control Plane 持有——
+        /// 接缝提交事实、消费投影差异，租约仍由接缝唯一写入。
+        /// </summary>
+        internal static bool Test_M6P42_FactsAndDemandLiveInControlPlane()
+        {
+            var fake = new FakeResourceAdapters();
+            var authority = new ObserverSpatialAuthority();
+            var engine = new DemandProjectionEngine(authority);
+            DemandPolicy policy = ResourceDemandPolicy.Create(0, 64);
+            engine.Register(policy);
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, engine, policy, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+
+            bool factInControlPlane = authority.Count == 1
+                && authority.TryGet(100UL, out ObserverPresence presence)
+                && presence.Center == new RegionKey(10, 10)
+                && presence.ConnectionToken == 1001UL
+                && presence.GameplayAuthorized;
+            bool demandInControlPlane = engine.TryGetDemand(policy, new RegionKey(10, 10), out DomainDemand demand)
+                && demand.Domain == DomainIds.Resource
+                && demand.ObserverCount == 1
+                && engine.GetDemandRegionCount(policy) == 1
+                && seam.ProjectedDemandRegionCount == 1;
+            bool seamStillTheWriter = seam.IsLeased(new RegionKey(10, 10))
+                && fake.Lifecycle.Acquires.Count == 1
+                && seam.GetDemand(new RegionKey(10, 10)) == 1;
+
+            return factInControlPlane && demandInControlPlane && seamStillTheWriter;
+        }
+
+        /// <summary>
+        /// 票 02 接缝契约：Resource 只声明自己的 Demand Policy；非 Resource 身份的政策
+        /// 不得驱动 Resource 执行（构造期失败闭合）。
+        /// </summary>
+        internal static bool Test_M6P43_SeamRejectsForeignDomainPolicy()
+        {
+            var fake = new FakeResourceAdapters();
+            var engine = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            DemandPolicy foreign = new DemandPolicy(DomainIds.Collision, 1, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "LevelGround.OBJECT_REGIONS", presence => true);
+            engine.Register(foreign);
+
+            bool foreignRejected = Throws(() => new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, engine, foreign, 2.0f));
+
+            DemandPolicy declared = ResourceDemandPolicy.Create(3, 64);
+            bool declarationIsResourceOwn = declared.Domain == DomainIds.Resource
+                && declared.Shape == EDemandRegionShape.ChebyshevSquare2D
+                && declared.Radius == 3
+                && declared.WorldSize == 64
+                && declared.RadiusSource == ResourceDemandPolicy.RadiusSource
+                && declared.IsEligible(new ObserverPresence(1UL, 1UL, new RegionKey(1, 1), true))
+                && !declared.IsEligible(new ObserverPresence(1UL, 1UL, new RegionKey(1, 1), false));
+
+            return foreignRejected && declarationIsResourceOwn;
+        }
+
+        /// <summary>
+        /// 票 02 接缝契约：资格由 Resource 政策声明、由共享引擎执行——不合格观察者不产生
+        /// 需求也不建租约，但空间事实保留；重新合格后正常进入。
+        /// </summary>
+        internal static bool Test_M6P44_EligibilityComesFromResourcePolicy()
+        {
+            var fake = new FakeResourceAdapters();
+            var authority = new ObserverSpatialAuthority();
+            var engine = new DemandProjectionEngine(authority);
+            DemandPolicy policy = ResourceDemandPolicy.Create(0, 64);
+            engine.Register(policy);
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, engine, policy, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y, gameplayAuthorized: false);
+            bool ineligibleProjectsNothing = !seam.IsLeased(regionKey)
+                && seam.GetDemand(regionKey) == 0
+                && seam.ProjectedDemandRegionCount == 0
+                && engine.GetDemandRegionCount(policy) == 0
+                && fake.Lifecycle.Acquires.Count == 0
+                && authority.TryGet(100UL, out ObserverPresence ineligible)
+                && !ineligible.GameplayAuthorized;
+
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            bool eligibleAcquires = seam.IsLeased(regionKey)
+                && seam.GetDemand(regionKey) == 1
+                && seam.ProjectedDemandRegionCount == 1
+                && fake.Lifecycle.Acquires.Count == 1
+                && fake.Replication.Entered.Count == 1;
+
+            return ineligibleProjectsNothing && eligibleAcquires;
+        }
+
+        /// <summary>
+        /// 票 02 接缝契约：观察者移除同时清空控制面事实与领域投影，租约仍按既有滞回语义释放。
+        /// </summary>
+        internal static bool Test_M6P45_RemovalClearsFactAndProjection()
+        {
+            var fake = new FakeResourceAdapters();
+            var authority = new ObserverSpatialAuthority();
+            var engine = new DemandProjectionEngine(authority);
+            DemandPolicy policy = ResourceDemandPolicy.Create(1, 64);
+            engine.Register(policy);
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, engine, policy, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            int projectedBefore = seam.ProjectedDemandRegionCount;
+
+            seam.RemoveObserver(100UL);
+            bool projectionReleased = projectedBefore == 9
+                && authority.Count == 0
+                && engine.GetDemandRegionCount(policy) == 0
+                && !engine.TryGetDemand(policy, regionKey, out _);
+
+            seam.Tick(2.0f);
+            bool leaseReleasedAfterHysteresis = !seam.IsLeased(regionKey)
+                && seam.PendingReleaseCount == 0
+                && fake.Lifecycle.Releases.Count == 9;
+
+            return projectionReleased && leaseReleasedAfterHysteresis;
+        }
+
+        /// <summary>
+        /// 票 02 接缝契约：会话边界同时清空唯一空间事实与领域投影——旧会话的观察者
+        /// 不存在于新会话，残留事实会让「唯一事实」跨会话失真；新会话重新观测即重建。
+        /// </summary>
+        internal static bool Test_M6P46_SessionBoundaryClearsSharedFact()
+        {
+            var fake = new FakeResourceAdapters();
+            var authority = new ObserverSpatialAuthority();
+            var engine = new DemandProjectionEngine(authority);
+            DemandPolicy policy = ResourceDemandPolicy.Create(1, 64);
+            engine.Register(policy);
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, engine, policy, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            seam.UpdateObserver(100UL, 1001UL, 10, 10);
+            bool observedInSession = authority.Count == 1
+                && seam.ProjectedDemandRegionCount == 9;
+
+            seam.EndSession();
+            bool clearedOnEnd = authority.Count == 0
+                && engine.GetDemandRegionCount(policy) == 0
+                && seam.ProjectedDemandRegionCount == 0
+                && seam.ActiveLeaseCount == 0;
+
+            seam.BeginSession(new SessionEpoch(8UL));
+            bool clearedOnBegin = authority.Count == 0 && engine.GetDemandRegionCount(policy) == 0;
+
+            seam.UpdateObserver(100UL, 2002UL, 20, 20);
+            bool rebuiltInNewSession = authority.Count == 1
+                && authority.TryGet(100UL, out ObserverPresence presence)
+                && presence.Center == new RegionKey(20, 20)
+                && presence.ConnectionToken == 2002UL
+                && seam.ProjectedDemandRegionCount == 9
+                && seam.IsLeased(new RegionKey(20, 20));
+
+            return observedInSession && clearedOnEnd && clearedOnBegin && rebuiltInNewSession;
         }
 
         private sealed class FakeResourceAdapters
