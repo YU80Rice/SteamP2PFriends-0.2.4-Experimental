@@ -771,6 +771,246 @@ namespace SteamP2PFriends.WhitelistTests
                 && fake.Lifecycle.Releases[0].RegionGeneration.Value == 4U;
         }
 
+        /// <summary>
+        /// 票 01 表征门：Resource 生产半径（原版物件区域半径 3，切比雪夫方形）投影出 7×7
+        /// 区域并全部建立租约。形状与数量在迁入共享投影引擎前后必须一致。
+        /// </summary>
+        internal static bool Test_M6P36_ProductionRadiusProjectsChebyshevSquare()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 3, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            seam.UpdateObserver(100UL, 1001UL, 30, 30);
+
+            return seam.DemandRegionCount == 49
+                && seam.ActiveLeaseCount == 49
+                && fake.Lifecycle.Acquires.Count == 49
+                && fake.Replication.Entered.Count == 49
+                && seam.GetDemand(new RegionKey(27, 27)) == 1
+                && seam.GetDemand(new RegionKey(33, 33)) == 1
+                && seam.GetDemand(new RegionKey(34, 30)) == 0
+                && seam.GetDemand(new RegionKey(30, 34)) == 0;
+        }
+
+        /// <summary>
+        /// 票 01 表征门：滞回窗口取自 Resource 领域常量 2.0s——窗口内保留租约，
+        /// 窗口到点才释放。迁入共享编排引擎后该常量与窗口语义均不得改变。
+        /// </summary>
+        internal static bool Test_M6P37_HysteresisWindowComesFromResourceConstant()
+        {
+            float hysteresis = ResourceRegionLifecycleAdapter.DefaultHysteresisSeconds;
+            bool constantIsAccepted = hysteresis == 2.0f;
+
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, hysteresis);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            seam.RemoveObserver(100UL);
+
+            seam.Tick(hysteresis - 0.01f);
+            bool heldInsideWindow = seam.IsLeased(regionKey) && fake.Lifecycle.Releases.Count == 0;
+            seam.Tick(0.01f);
+
+            return constantIsAccepted
+                && heldInsideWindow
+                && !seam.IsLeased(regionKey)
+                && fake.Lifecycle.Releases.Count == 1;
+        }
+
+        /// <summary>
+        /// 票 01 表征门：暂缓类 acquire 失败（原生 foliage 未烘焙）的重试间隔为
+        /// 2s 起步逐次加倍、上限 32s，且到达静默稳态后仍按同一节奏重试。
+        /// </summary>
+        internal static bool Test_M6P38_DeferredAcquireRetryScheduleDoublesThenCapsAt32()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey regionKey = new RegionKey(10, 10);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = regionKey;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            bool initialDeferred = !seam.IsLeased(regionKey) && seam.PendingAcquireRetryCount == 1;
+            bool scheduleMatched = ProbeAcquireRetrySchedule(
+                seam, regionKey, fake.Lifecycle, new[] { 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 32.0f });
+            int expectedAttempts = 7;
+
+            seam.AdvanceTime(40.0f);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = null;
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            expectedAttempts++;
+
+            return initialDeferred
+                && scheduleMatched
+                && fake.Lifecycle.CaptureRegionStateCalls == expectedAttempts
+                && seam.IsLeased(regionKey)
+                && seam.GetDemand(regionKey) == 1
+                && seam.PendingAcquireRetryCount == 0
+                && fake.Lifecycle.Acquires.Count == 1
+                && fake.Replication.Entered.Count == 1;
+        }
+
+        /// <summary>
+        /// 票 01 表征门：一般 acquire 失败的重试间隔为 10s 起步逐次加倍、上限 60s。
+        /// </summary>
+        internal static bool Test_M6P39_FailedAcquireRetryScheduleDoublesThenCapsAt60()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey regionKey = new RegionKey(10, 10);
+            fake.Lifecycle.ThrowOnCaptureRegionStateFor = regionKey;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            bool initialSkipped = !seam.IsLeased(regionKey) && seam.PendingAcquireRetryCount == 1;
+            bool scheduleMatched = ProbeAcquireRetrySchedule(
+                seam, regionKey, fake.Lifecycle, new[] { 10.0f, 20.0f, 40.0f, 60.0f, 60.0f });
+            int expectedAttempts = 6;
+
+            seam.AdvanceTime(70.0f);
+            fake.Lifecycle.ThrowOnCaptureRegionStateFor = null;
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            expectedAttempts++;
+
+            return initialSkipped
+                && scheduleMatched
+                && fake.Lifecycle.CaptureRegionStateCalls == expectedAttempts
+                && seam.IsLeased(regionKey)
+                && seam.GetDemand(regionKey) == 1
+                && seam.PendingAcquireRetryCount == 0
+                && fake.Lifecycle.Acquires.Count == 1
+                && fake.Lifecycle.RestoreRegionStateCalls == 0;
+        }
+
+        /// <summary>
+        /// 票 01 表征门（只锁可观察结果，不主张登记按观察者独立存储）：观察者 100 暂缓失败
+        /// 留下重试资格后，观察者 200 成功 acquire 同一区域——租约成立、demand=1，且 100 的
+        /// 重试资格仍在（登记计数 1）。100 的重试到期只补齐自己的复制贡献（100 与 200 各计
+        /// 一次 Enter），demand 变为 2，登记随后清除。
+        /// 边界（不作为已验收语义锁定）：两个观察者同区都失败时，登记仍是区域单槽、后写者
+        /// 覆盖先写者；该单槽互吞是票 04 的正式切换阻塞项，本测试不锁它。
+        /// </summary>
+        internal static bool Test_M6P40_SuccessPathKeepsOtherObserverRetryQualification()
+        {
+            var fake = new FakeResourceAdapters();
+            RegionKey regionKey = new RegionKey(10, 10);
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = regionKey;
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            bool firstObserverDeferred = !seam.IsLeased(regionKey)
+                && seam.PendingAcquireRetryCount == 1
+                && seam.GetDemand(regionKey) == 0;
+
+            fake.Lifecycle.DeferOnCaptureRegionStateFor = null;
+            seam.UpdateObserver(200UL, 2001UL, regionKey.X, regionKey.Y);
+            bool otherObserverKeepsRegistration = seam.IsLeased(regionKey)
+                && seam.GetDemand(regionKey) == 1
+                && seam.PendingAcquireRetryCount == 1;
+
+            seam.AdvanceTime(2.0f);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            int ownEntries = 0;
+            int otherEntries = 0;
+            foreach (ReplicationEvent entry in fake.Replication.Entered)
+            {
+                if (entry.RegionKey != regionKey) continue;
+                if (entry.ObserverId == 100UL) ownEntries++;
+                if (entry.ObserverId == 200UL) otherEntries++;
+            }
+
+            return firstObserverDeferred
+                && otherObserverKeepsRegistration
+                && seam.GetDemand(regionKey) == 2
+                && seam.PendingAcquireRetryCount == 0
+                && ownEntries == 1
+                && otherEntries == 1
+                && fake.Lifecycle.Acquires.Count == 1;
+        }
+
+        /// <summary>
+        /// 票 01 表征门：同区域多观察者用引用计数共享同一租约——一人离开不清拆，
+        /// 最后一个离开才进入滞回释放。
+        /// </summary>
+        internal static bool Test_M6P41_OverlappingObserversRetainLeaseUntilLastExit()
+        {
+            var fake = new FakeResourceAdapters();
+            var seam = new ResourceProductionControlSeam(
+                fake.Lifecycle, fake.Replication, _ => fake.Generation, 64, 0, 2.0f);
+            seam.BeginSession(new SessionEpoch(7UL));
+            RegionKey regionKey = new RegionKey(10, 10);
+            seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+            seam.UpdateObserver(200UL, 2001UL, regionKey.X, regionKey.Y);
+            bool unionAcquiresOnce = fake.Lifecycle.Acquires.Count == 1
+                && seam.GetDemand(regionKey) == 2;
+
+            seam.RemoveObserver(100UL);
+            bool singleExitKeepsLease = seam.GetDemand(regionKey) == 1
+                && seam.IsLeased(regionKey)
+                && seam.PendingReleaseCount == 0
+                && fake.Lifecycle.Releases.Count == 0;
+
+            seam.RemoveObserver(200UL);
+            bool lastExitSchedulesRelease = seam.GetDemand(regionKey) == 0
+                && seam.PendingReleaseCount == 1
+                && fake.Lifecycle.Releases.Count == 0;
+
+            seam.Tick(2.0f);
+
+            return unionAcquiresOnce
+                && singleExitKeepsLease
+                && lastExitSchedulesRelease
+                && !seam.IsLeased(regionKey)
+                && seam.PendingReleaseCount == 0
+                && fake.Lifecycle.Releases.Count == 1;
+        }
+
+        /// <summary>
+        /// 按 gaps 逐段推进时钟并驱动观察者 100/1001 的更新：每段先推进 90%（必须还未重试），
+        /// 再推进到累计 110%（必须恰好新增一次 acquire 尝试且仍失败）。探针把实际重试间隔
+        /// 夹在 (0.9g, 1.1g] 内，间隔被改快或改慢都会失败；每次尝试恰好调用一次
+        /// CaptureRegionState，因此尝试次数即可证明重试真的按节奏发生。10% 余量远大于
+        /// 浮点累加误差，避免落在到点边界上。
+        /// </summary>
+        private static bool ProbeAcquireRetrySchedule(
+            ResourceProductionControlSeam seam,
+            RegionKey regionKey,
+            FakeLifecycleAdapter lifecycle,
+            float[] gaps)
+        {
+            int expectedAttempts = 1;
+            if (lifecycle.CaptureRegionStateCalls != expectedAttempts) return false;
+
+            foreach (float gap in gaps)
+            {
+                seam.AdvanceTime(gap * 0.9f);
+                seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+                bool notYetDue = !seam.IsLeased(regionKey)
+                    && seam.PendingAcquireRetryCount == 1
+                    && lifecycle.CaptureRegionStateCalls == expectedAttempts;
+
+                seam.AdvanceTime(gap * 0.2f);
+                seam.UpdateObserver(100UL, 1001UL, regionKey.X, regionKey.Y);
+                expectedAttempts++;
+                bool retriedOnSchedule = !seam.IsLeased(regionKey)
+                    && seam.PendingAcquireRetryCount == 1
+                    && seam.GetDemand(regionKey) == 0
+                    && lifecycle.CaptureRegionStateCalls == expectedAttempts;
+
+                if (!notYetDue || !retriedOnSchedule) return false;
+            }
+
+            return true;
+        }
+
         private sealed class FakeResourceAdapters
         {
             internal uint Generation = 1U;
@@ -798,6 +1038,7 @@ namespace SteamP2PFriends.WhitelistTests
             internal bool ThrowOnDisconnectAfterSideEffect;
             internal RegionKey? ThrowOnCaptureRegionStateFor;
             internal RegionKey? DeferOnCaptureRegionStateFor;
+            internal int CaptureRegionStateCalls;
             internal bool ThrowOnSessionBegin;
             internal bool ThrowOnSessionEnd;
             internal int RestoreCalls;
@@ -863,6 +1104,7 @@ namespace SteamP2PFriends.WhitelistTests
 
             public object CaptureRegionState(RegionKey regionKey)
             {
+                CaptureRegionStateCalls++;
                 if (DeferOnCaptureRegionStateFor.HasValue
                     && regionKey == DeferOnCaptureRegionStateFor.Value)
                 {

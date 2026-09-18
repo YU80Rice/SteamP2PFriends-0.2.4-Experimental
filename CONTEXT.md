@@ -17,16 +17,80 @@ The central engine that tracks player presence, computes region demand unions, a
 _Avoid_: Patch pool, global ticker
 
 **Spatial Observer Index**:
-The unified spatial partitioning module calculating observer-to-region spatial presence masks and broadcasting diff events to all domain adapters.
-_Avoid_: Per-adapter distance check, polling grid
+The Control Plane store of canonical World Presence Observer spatial facts used by the Demand Projection Engine; it is not a shared business demand mask and is not owned per domain.
+_Avoid_: Per-adapter distance check, polling grid, shared coverage radius, per-domain observer registry
 
 **Domain Adapter Pipeline**:
 A declarative, pluggable registry of `ILifecycleDomainAdapter` and `IStateReplicationAdapter` implementations driven by the Control Plane.
 _Avoid_: Hardcoded switch-case, patch dispatcher
 
 **Production Control Seam**:
-The single production seam through which World Presence Observer changes reach the Control Plane and then the Domain Adapter Pipeline.
-_Avoid_: Shadow path, direct adapter call
+The production attachment of a domain to the Lifecycle Orchestration Engine; a domain may keep a thin facade, but must not own a second generic lifecycle state machine.
+_Avoid_: Shadow path, direct adapter call, copied ResourceProductionControlSeam, coordinator domain switch
+
+**Observer Spatial Authority**:
+The Control Plane role that is the only source of World Presence Observer positions, region enter/exit diffs, and the factual basis for demand counts.
+_Avoid_: Demand Authority, coverage set, RemoteCoverage, per-adapter observer scan
+
+**Domain Demand Authority**:
+The domain role that owns that domain's typed Region Demand / Region Lease produced by the Demand Projection Engine from a Demand Policy; one domain's demand never grants another domain's execution.
+_Avoid_: Demand Authority, implicit RegionKey activation, shared coverage, per-domain observer scan
+
+**Execution Authority**:
+The Domain Execution Port role that performs plugin-side native activate, release, and recovery for that domain only after the Lifecycle Orchestration Engine issues Acquire or Release; it supplements or overrides native activation and does not replace Native State Authority.
+_Avoid_: coverage owner, collision owner (when meaning demand), sole native writer, hysteresis owner, demand counter
+
+**Native State Authority**:
+Unturned native managers that hold entity state, saves, and native network protocol; a Migration Slice does not rebuild a second entity warehouse.
+_Avoid_: plugin world state, copied entity ledger
+
+**Demand Policy**:
+A domain-declared description of observer eligibility, spatial shape, radius or distance source, and DomainId; it is not an executable projector and does not scan clients or store observer positions.
+_Avoid_: shared radius, universal OBJECT_REGIONS, coverage radius (when meaning policy), per-domain projector
+
+**Demand Projection Engine**:
+The shared Control Plane executor that applies Demand Policies to canonical observer facts, performing region enumeration, world-bound clipping, demand counting, and Enter/Exit diffs, and emitting typed Domain Demand as DomainId plus RegionKey.
+_Avoid_: per-domain SpatialObserverIndex, shared demand mask, RemoteCoverage rebuild
+
+**Domain Demand Projection State**:
+Per-domain demand counts and Enter/Exit results produced by the Demand Projection Engine; it may be isolated per DomainId but must consume the same Observer Spatial Authority.
+_Avoid_: second observer registry, independent spatial index, private coverage set
+
+**Lifecycle Orchestration Engine**:
+The shared Control Plane executor that turns typed Domain Demand into Acquire and Release, owns hysteresis, identity checks, retry, compensation scheduling, and local fault isolation, and consumes Session Epoch, Connection Generation, and Region Generation without recreating them.
+_Avoid_: per-domain seam state machine, coordinator domain switch, interface-only contract
+
+**Domain Execution Port**:
+The narrow domain adapter that declares Lifecycle Policy and performs native operations, returning success, retryable failure, rejection, or a compensatable result; it does not scan observers, recompute demand, or hold orchestration state.
+_Avoid_: full-region snapshot requirement, second lifecycle writer, observer scanner
+
+**Lifecycle Policy**:
+A domain-declared description of hysteresis, retry limits, and safe-failure behaviour consumed by the Lifecycle Orchestration Engine.
+_Avoid_: hardcoded Resource constants as shared defaults, per-domain retry dictionary
+
+**Read-Only Shadow Computation**:
+A migration-period, side-effect-free comparison of new typed Domain Demand against a legacy path while that legacy path remains the only Authority Writer; it classifies differences and must not enable, disable, submit native state, or become a fallback query source.
+_Avoid_: dual writer, parallel writer, runtime fallback to old writer, equality-to-legacy gold standard, similarity threshold
+
+**Session-Boundary Cutover**:
+The rule that a deployable build chooses exactly one Collision Authority Writer at plugin start or new Session Epoch, never mid-session, never by region, player, or percentage, and never by flipping back to the legacy writer in the same process.
+_Avoid_: live traffic split, hot switch, per-region cutover, in-session rollback to RemoteCoverage
+
+**Control-Plane Readiness Gate**:
+The invariants that a Session-Boundary Cutover candidate must already satisfy; defects that violate them block official Collision wiring, while side-effect-free shadow runs may proceed earlier and cannot prove the gate.
+_Avoid_: inherit Resource path, coordinator rewrite, shadow DLL as cutover evidence, skip-bad-record-as-zero-demand
+
+**Deferred Observer Demand**:
+The holding state for an observer's previous region contributions when the current sample is unavailable; it is not confirmed exit and must not become destructive Release until leave, generation invalidation, Session Reset, or a bounded recovery policy says so.
+_Avoid_: missing sample as zero demand, freeze-all-observers, silent skip
+
+**Collision Override**:
+A lease-scoped plugin-side covering of LevelObject, door-animation, collider, or culling state acquired for Collision; releasing it returns those dimensions to Native State Authority rather than forcing the region disabled.
+_Avoid_: whole-region disable, inverse of enable, ResourceSpawnpoint write
+
+**Acquisition Receipt**:
+The identity-bound record created by a successful Acquire that lists the Collision Overrides actually taken and how they may be safely revoked; a new Acquire invalidates the previous receipt.
+_Avoid_: acquire-implies-disable, region-wide snapshot as ownership, Host scan in Execution Port
 
 **Structure Baseline**:
 The agreed repository shape, naming, metadata, evidence, and collaboration rules that must be established before functional repairs are migrated.

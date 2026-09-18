@@ -12,10 +12,12 @@
 
 | 字段 | 值 |
 |---|---|
-| Version | `0.2.4.8` |
+| Version | `0.2.4.9` |
 | Release channel | `Experimental` |
 | Plugin GUID | `com.yu80rice.steamp2pfriends` |
-| Default Case-ID | `SPF-0.2.4.8-Experimental-StructureBaseline` |
+| Default Case-ID | `SPF-0.2.4.9-Experimental-CollisionSlice` |
+
+Case-ID 末段标识当前迁移切片：`0.2.4.8` 结构基线为 `StructureBaseline`，`0.2.4.9` Collision Migration Slice 为 `CollisionSlice`，使 BuildArtifact 证据能把两个阶段分开。
 
 主项目和 `WhitelistTests` 项目都在 `CoreCompile` 前从该 props 生成本项目的 `BuildMetadata` 常量；各自的 `AssemblyInfo.cs` 用这些常量设置 AssemblyVersion、AssemblyFileVersion、InformationalVersion 和 AssemblyMetadata。`BepInPlugin`、运行时 Fingerprint、测试和审计记录均消费同一来源，测试还验证两项目的版本值一致。
 

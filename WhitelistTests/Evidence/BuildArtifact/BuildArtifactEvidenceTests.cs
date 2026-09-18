@@ -54,6 +54,29 @@ namespace SteamP2PFriends.WhitelistTests
             return string.Equals(fingerprint.DllSha256, independentlyComputedHash, StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// 票 01 身份门：本阶段（Collision Migration Slice）Metadata Source 授予 0.2.4.9，
+        /// 发布通道仍为 Experimental，默认 Case-ID 能把本切片与 0.2.4.8 结构基线分开。
+        /// 该字面量是本阶段的冻结身份，随版本推进显式更新；不做隐式漂移。
+        /// </summary>
+        internal static bool Test_SliceIdentityIsPinnedToMigrationStage()
+        {
+            const string expectedVersion = "0.2.4.9";
+            const string expectedChannel = "Experimental";
+            const string expectedCaseId = "SPF-0.2.4.9-Experimental-CollisionSlice";
+
+            PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly);
+            return string.Equals(PluginBuildMetadata.Version, expectedVersion, StringComparison.Ordinal)
+                && string.Equals(PluginBuildMetadata.ReleaseChannel, expectedChannel, StringComparison.Ordinal)
+                && string.Equals(PluginBuildMetadata.VersionIdentity,
+                    expectedVersion + "-" + expectedChannel, StringComparison.Ordinal)
+                && string.Equals(PluginBuildMetadata.DefaultCaseId, expectedCaseId, StringComparison.Ordinal)
+                && string.Equals(fingerprint.Version, expectedVersion, StringComparison.Ordinal)
+                && string.Equals(fingerprint.AssemblyVersion, expectedVersion, StringComparison.Ordinal)
+                && string.Equals(fingerprint.FileVersion, expectedVersion, StringComparison.Ordinal)
+                && string.Equals(fingerprint.BuildCaseId, expectedCaseId, StringComparison.Ordinal);
+        }
+
         internal static bool Test_CaseIdOverrideIsShared()
         {
             const string expectedCaseId = "Ticket09-Shared-Case-20260827";
@@ -119,10 +142,34 @@ namespace SteamP2PFriends.WhitelistTests
                 && script.IndexOf("$fileVersionPattern", StringComparison.Ordinal) >= 0;
         }
 
+        /// <summary>
+        /// 票 01 独立核验门：对交付 DLL 直接运行独立产物核验脚本——脚本自行读取 DLL 并重算
+        /// FileVersion、程序集版本、MVID、GUID 与 SHA-256，再与 `Build/Version.props` 比对，
+        /// 不使用运行时自报告。本测试证明 0.2.4.9 交付产物可被独立核验，且被测试程序集与
+        /// 交付 DLL 是同一构建。
+        /// </summary>
+        internal static bool Test_VerifierConfirmsBuiltArtifactIdentity()
+        {
+            string scriptPath = VerifierScriptPath();
+            string artifactPath = Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "bin", "Release", "SteamP2PFriends.dll"));
+            if (!File.Exists(scriptPath) || !File.Exists(artifactPath)) return false;
+
+            PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly);
+            string output;
+            int exitCode = RunVerifierScript(scriptPath, artifactPath, null, null, out output);
+
+            return exitCode == 0
+                && output != null
+                && output.IndexOf("INDEPENDENT_ARTIFACT_VERIFICATION_PASS", StringComparison.Ordinal) >= 0
+                && output.IndexOf(fingerprint.Mvid, StringComparison.OrdinalIgnoreCase) >= 0
+                && output.IndexOf(fingerprint.DllSha256, StringComparison.OrdinalIgnoreCase) >= 0
+                && output.IndexOf(PluginBuildMetadata.DefaultCaseId, StringComparison.Ordinal) >= 0;
+        }
+
         internal static bool Test_VerifierRejectsIncompleteLogIdentity()
         {
-            string scriptPath = Path.GetFullPath(Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Tools", "Verify-BuildFingerprintArtifact.ps1"));
+            string scriptPath = VerifierScriptPath();
             string artifactPath = typeof(SteamP2PFriendsPlugin).Assembly.Location;
             if (!File.Exists(scriptPath) || !File.Exists(artifactPath)) return false;
 
@@ -130,24 +177,10 @@ namespace SteamP2PFriends.WhitelistTests
             try
             {
                 File.WriteAllText(logPath, "caseId=" + PluginBuildMetadata.DefaultCaseId + " version=" + PluginBuildMetadata.Version);
-                string arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
-                    QuotePowerShell(scriptPath) +
-                    " -Path " + QuotePowerShell(artifactPath) +
-                    " -ExpectedCaseId " + QuotePowerShell(PluginBuildMetadata.DefaultCaseId) +
-                    " -LogPath " + QuotePowerShell(logPath);
-                var startInfo = new ProcessStartInfo("powershell.exe", arguments)
-                {
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-                using (Process process = Process.Start(startInfo))
-                {
-                    if (process == null) return false;
-                    process.WaitForExit(15000);
-                    return process.HasExited && process.ExitCode != 0;
-                }
+                string output;
+                int exitCode = RunVerifierScript(scriptPath, artifactPath,
+                    PluginBuildMetadata.DefaultCaseId, logPath, out output);
+                return exitCode > 0;
             }
             finally
             {
@@ -156,9 +189,58 @@ namespace SteamP2PFriends.WhitelistTests
             }
         }
 
+        private static string VerifierScriptPath()
+        {
+            return Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Tools", "Verify-BuildFingerprintArtifact.ps1"));
+        }
+
+        private static int RunVerifierScript(
+            string scriptPath,
+            string artifactPath,
+            string expectedCaseId,
+            string logPath,
+            out string output)
+        {
+            string arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
+                QuotePowerShell(scriptPath) +
+                " -Path " + QuotePowerShell(artifactPath);
+            if (!string.IsNullOrWhiteSpace(expectedCaseId))
+                arguments += " -ExpectedCaseId " + QuotePowerShell(expectedCaseId);
+            if (!string.IsNullOrWhiteSpace(logPath))
+                arguments += " -LogPath " + QuotePowerShell(logPath);
+
+            var startInfo = new ProcessStartInfo("powershell.exe", arguments)
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using (Process process = Process.Start(startInfo))
+            {
+                if (process == null)
+                {
+                    output = null;
+                    return -1;
+                }
+
+                process.WaitForExit(30000);
+                bool exited = process.HasExited;
+                output = exited
+                    ? process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd()
+                    : null;
+                return exited ? process.ExitCode : -1;
+            }
+        }
+
+        /// <summary>
+        /// 命令行参数引号：`-File` 与脚本参数都不剥离单引号（单引号会被当作路径字符，
+        /// 导致 `不支持给定路径的格式` 而脚本从未执行），必须用双引号包裹。
+        /// </summary>
         private static string QuotePowerShell(string value)
         {
-            return "'" + value.Replace("'", "''") + "'";
+            return "\"" + value.Replace("\"", "\\\"") + "\"";
         }
 
         private static bool HasAssemblyMetadata(Assembly assembly, string key, string expectedValue)

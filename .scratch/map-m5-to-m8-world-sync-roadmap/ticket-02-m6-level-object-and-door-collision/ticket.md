@@ -1,5 +1,11 @@
 # Ticket 02: M6 场景物件、树木矿石资源与权限门碰撞统一接入 SPI（含 70 版本技术债归并）
 
+## Superseded / 历史结论失效
+
+本票保持 `wayfinder:done` 归档，不篡改 0.2.4.6 当时的文件、接口与账本交付历史。当前生产调用图否定了本票可被读成「私有轮询已退役、Collision 已生产接线」：`LevelObjectRemoteCollisionPatch` 仍以 `RemoteCoverage` 每帧扫描 `Provider.clients` 为 enable/disable 权威；`LevelObjectCollisionAdapter` 仅 Registration Closure 登记，无 Production Control Seam。
+
+Collision Migration Slice 的当前权威路线是 [Collision Migration Slice 权威边界与共享控制面准入](../../map-collision-migration-slice/map.md)。本票仅作历史资产索引，不再作为生产接线证据。不从本图继承 Animal-first 或把 Resource 已完成内容重新纳入 Collision 交付。
+
 ## Question
 
 如何彻底解决历史遗留的 `LevelObjectRemoteCollisionPatch` 私有轮询技术债，将 70 版本修复的“远区刷卡门/钥匙门（`InteractableObjectBinaryState`）碰撞动画剔除失效”以及“树木/矿石可采集资源（`ResourceManager` / `ObjectManager`）物理碰撞与采伐同步”统一归并重构为标准的 `Adapters/Collision/LevelObjectCollisionAdapter` 并挂载至 `SpatialObserverIndex`？

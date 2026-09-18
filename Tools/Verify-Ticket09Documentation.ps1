@@ -19,12 +19,19 @@ $releaseChannel = Get-PropertyValue 'SteamP2PFriendsReleaseChannel'
 $pluginGuid = Get-PropertyValue 'SteamP2PFriendsPluginGuid'
 $defaultCaseId = (Get-PropertyValue 'SteamP2PFriendsDefaultCaseId').Replace('$(SteamP2PFriendsVersion)', $version).Replace('$(SteamP2PFriendsReleaseChannel)', $releaseChannel)
 
+# 结构基线 Ticket 09 文档门禁。0.2.4.8 基线验收后本脚本按两类文档校验：
+#   1) 当前版本展示文档：期望值取自 Build/Version.props（Metadata Source 唯一来源）；
+#   2) 0.2.4.8 历史记录：冻结在当时的版本与 Case-ID，禁止把后续版本号写进历史审计文件。
+# 判定与输出标记保持不变，历史审计中的「PASS(TICKET09_DOCUMENTATION_METADATA_PASS)」引用继续有效。
+$frozenBaselineVersion = '0.2.4.8'
+$frozenBaselineCaseId = 'SPF-0.2.4.8-Experimental-StructureBaseline'
+
 $documents = @(
-    @{ Path = 'README.md'; Required = @($version, 'Runtime 状态仍为 `PENDING`', '历史运行证据（不属于 0.2.4.8 当前验收）') },
+    @{ Path = 'README.md'; Required = @($version, 'Runtime 状态仍为 `PENDING`', "历史运行证据（不属于 $version 当前验收）") },
     @{ Path = 'docs\architecture\build-fingerprint-artifact-evidence.md'; Required = @('Build/Version.props', $version, $pluginGuid, $defaultCaseId, 'evidence=self-reported', 'independent-artifact-verification', 'Runtime 仍需真实') },
     @{ Path = 'docs\architecture\migration-manifest.md'; Required = @($version, $pluginGuid, 'Batch 9：Build Fingerprint 与独立产物关联', 'Runtime | PENDING') },
-    @{ Path = '.scratch\structure-baseline-0-2-4-8\issues\09-build-fingerprint-artifact-evidence.md'; Required = @($version, 'BuildArtifact 测试、Release 构建和独立审核通过') },
-    @{ Path = 'audit\2026-08-27\Implementation-0.2.4.8-1234.md'; Required = @($version, $pluginGuid, $defaultCaseId, 'Runtime：`PENDING`', '元数据来源：`Build/Version.props`') }
+    @{ Path = '.scratch\structure-baseline-0-2-4-8\issues\09-build-fingerprint-artifact-evidence.md'; Required = @($frozenBaselineVersion, 'BuildArtifact 测试、Release 构建和独立审核通过') },
+    @{ Path = 'audit\2026-08-27\Implementation-0.2.4.8-1234.md'; Required = @($frozenBaselineVersion, $pluginGuid, $frozenBaselineCaseId, 'Runtime：`PENDING`', '元数据来源：`Build/Version.props`') }
 )
 
 foreach ($document in $documents) {
@@ -50,6 +57,8 @@ foreach ($document in $documents) {
     ReleaseChannel = $releaseChannel
     PluginGuid = $pluginGuid
     DefaultCaseId = $defaultCaseId
+    FrozenBaselineVersion = $frozenBaselineVersion
+    FrozenBaselineCaseId = $frozenBaselineCaseId
     DocumentsChecked = $documents.Count
     Result = 'PASS'
 } | Format-List

@@ -6,11 +6,11 @@
     Assembly attributes and runtime fingerprint wiring are generated from this source.
   -->
   <PropertyGroup>
-    <SteamP2PFriendsVersion>0.2.4.8</SteamP2PFriendsVersion>
+    <SteamP2PFriendsVersion>0.2.4.9</SteamP2PFriendsVersion>
     <SteamP2PFriendsReleaseChannel>Experimental</SteamP2PFriendsReleaseChannel>
     <SteamP2PFriendsVersionIdentity>$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)</SteamP2PFriendsVersionIdentity>
     <SteamP2PFriendsPluginGuid>com.yu80rice.steamp2pfriends</SteamP2PFriendsPluginGuid>
-    <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-StructureBaseline</SteamP2PFriendsDefaultCaseId>
+    <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-CollisionSlice</SteamP2PFriendsDefaultCaseId>
     <SteamP2PFriendsU3SdkCommit>ea7b4973af5ba10f62baad2bfde36ab2e5b060eb</SteamP2PFriendsU3SdkCommit>
   </PropertyGroup>
 </Project>

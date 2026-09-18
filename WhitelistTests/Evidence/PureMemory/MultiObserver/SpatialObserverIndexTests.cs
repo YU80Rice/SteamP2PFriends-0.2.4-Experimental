@@ -52,6 +52,39 @@ namespace SteamP2PFriends.WhitelistTests
             return diff.HasChanges && diff.EnteredRegions.Length == 0 && diff.ExitedRegions.Length == 9;
         }
 
+        internal static bool Test_SPI05_Grid2DProjectionIsChebyshevAndWorldClipped()
+        {
+            // 票 01 表征门：二维投影形状 = 切比雪夫方形（|dx| <= r 且 |dy| <= r），
+            // 并按世界边界裁剪。本方法只锁形状与裁剪语义，不锁具体领域半径值。
+            HashSet<RegionKey> interior = SpatialObserverIndex.CalculateGrid2D(30, 30, 3, 64);
+            bool square = interior.Count == 49
+                && interior.Contains(new RegionKey(27, 27))
+                && interior.Contains(new RegionKey(33, 33))
+                && !interior.Contains(new RegionKey(34, 30))
+                && !interior.Contains(new RegionKey(30, 34))
+                && !interior.Contains(new RegionKey(26, 30));
+
+            HashSet<RegionKey> single = SpatialObserverIndex.CalculateGrid2D(10, 10, 0, 64);
+            bool radiusZero = single.Count == 1 && single.Contains(new RegionKey(10, 10));
+
+            HashSet<RegionKey> minCorner = SpatialObserverIndex.CalculateGrid2D(0, 0, 3, 64);
+            bool clippedLow = minCorner.Count == 16
+                && minCorner.Contains(new RegionKey(0, 0))
+                && minCorner.Contains(new RegionKey(3, 3));
+
+            HashSet<RegionKey> maxCorner = SpatialObserverIndex.CalculateGrid2D(63, 63, 3, 64);
+            bool clippedHigh = maxCorner.Count == 16
+                && maxCorner.Contains(new RegionKey(60, 60))
+                && maxCorner.Contains(new RegionKey(63, 63));
+
+            HashSet<RegionKey> edge = SpatialObserverIndex.CalculateGrid2D(0, 30, 3, 64);
+            bool clippedEdge = edge.Count == 28
+                && edge.Contains(new RegionKey(0, 30))
+                && edge.Contains(new RegionKey(3, 27));
+
+            return square && radiusZero && clippedLow && clippedHigh && clippedEdge;
+        }
+
         internal static bool Test_SPI04_ReconnectTokenInvalidatesOldState()
         {
             var index = new SpatialObserverIndex();

@@ -3,7 +3,7 @@
 > Unturned listen-host 联机插件的实验线：无 U3DS 开房，并正在把世界状态从旧补丁切到 Multi-Observer 区域租约架构。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.4.8--experimental-blue.svg)](./Build/Version.props)
+[![Version](https://img.shields.io/badge/version-0.2.4.9--experimental-blue.svg)](./Build/Version.props)
 [![Status](https://img.shields.io/badge/status-experimental--no--release-orange.svg)](./ARCHITECTURE-REVIEW-0.2.4-Experimental.md)
 
 > **版本来源**：徽章与「当前版本」表中的版本号以 [`Build/Version.props`](./Build/Version.props) 为唯一来源；展示值须与其一致。
@@ -27,14 +27,15 @@ IP 只负责寻址。玩家身份、审批与白名单始终使用 Steam Network
 
 | 项目 | 值 |
 |---|---|
-| BepInPlugin / AssemblyVersion | `0.2.4.8` |
+| BepInPlugin / AssemblyVersion | `0.2.4.9` |
 | 通道 | Experimental，无发布标识 |
-| 已验证 | Resource 域 Multi-Observer 三端 Runtime（区域租约、采伐、滞回释放）；SteamID P2P 与 IPv4 直连开房/审批隔离 |
+| 当前阶段 | Collision Migration Slice 基线（0.2.4.9：版本身份 + Resource 表征门）；Collision 尚未接线，生产 Writer 未变 |
+| 已验证（属 0.2.4.8 已验收构建，本版不重新背书） | Resource 域 Multi-Observer 三端 Runtime（区域租约、采伐、滞回释放）；SteamID P2P 与 IPv4 直连开房/审批隔离 |
 | 已知未修（玩家会碰到） | 僵尸被打死后不重生（ticket01 已实现，待 Runtime 验收）；地面掉落物不按专用服节奏消失/再生（ticket02 已实现，待 Runtime 验收）；SteamID 路线密码传递（ticket04 已实现，待 Runtime 验收）；`SteamID:端口` 粘贴（ticket03 已实现，待 Runtime 验收） |
 | 分发 | **只从源码构建**；本仓库不提供 Release zip |
 | 旧实现 | 0.2.3 已归档，只作来时路，不再开发 |
 
-静态测试全绿不等于运行时可用。本仓库把证据分成 PureMemory / StaticIL / BuildArtifact / Runtime 四类，互不升级替代；没有真实多机日志，不得宣称 Runtime PASS。本轮 Listen-Host Dedicated Gate / Join Routing 的静态证据闭环后，其 Runtime 状态仍为 `PENDING`（共享验收票：`.scratch/listen-host-join-routing-runtime-acceptance/issues/05-shared-1h2g-runtime-acceptance.md`）；`Develop-Stage/` 与 `Archive/` 内的旧版本运行记录属历史运行证据（不属于 0.2.4.8 当前验收）。
+静态测试全绿不等于运行时可用。本仓库把证据分成 PureMemory / StaticIL / BuildArtifact / Runtime 四类，互不升级替代；没有真实多机日志，不得宣称 Runtime PASS。`0.2.4.9` 本轮只闭版本身份与 Resource 表征门，自身尚未取得三端运行日志，不重新宣称 Resource Runtime PASS；表中「已验证」一栏指的是 0.2.4.8 已验收构建的既有结论。本轮 Listen-Host Dedicated Gate / Join Routing 的静态证据闭环后，其 Runtime 状态仍为 `PENDING`（共享验收票：`.scratch/listen-host-join-routing-runtime-acceptance/issues/05-shared-1h2g-runtime-acceptance.md`）；`Develop-Stage/` 与 `Archive/` 内的旧版本运行记录属历史运行证据（不属于 0.2.4.9 当前验收）。
 
 ## 安装（从源码）
 

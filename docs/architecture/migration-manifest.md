@@ -385,3 +385,36 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 - 新增 `ResourceAuthorityRetirementStaticILContractTests` 并接入单一测试入口；
 - 证明旧租约释放调用退出，同时明确原生协议执行器仍需 Runtime 验收，避免“删除旧 writer”造成未验证的协议回归；
 - 详细报告：见 `audit/2026-08-27/Implementation-0.2.4.8-Ticket11.md`。
+
+## Batch 12：Collision Migration Slice 基线（0.2.4.9）
+
+状态：**静态完成**——Metadata Source 授予 `0.2.4.9`，Resource 表征门建立；Collision 未接线、生产 Writer 未变；Runtime 归 Collision 切片关单票 09。
+
+版本：`0.2.4.9` / `Experimental`；默认 Case-ID：`SPF-0.2.4.9-Experimental-CollisionSlice`（末段标识迁移切片，与 `0.2.4.8` 的 `StructureBaseline` 区分）。不创建 git tag，不发 GitHub Release。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Build/Version.props` | 已更新 | 版本 `0.2.4.8` → `0.2.4.9`；默认 Case-ID 末段 `StructureBaseline` → `CollisionSlice`；发布通道仍为 `Experimental` |
+| `ResourceProductionControlSeamTests.cs`（PureMemory） | 新增表征门 | M6P36 生产半径切比雪夫方形投影、M6P37 滞回常量与窗口、M6P38/M6P39 暂缓与一般失败的重试节奏及上限、M6P40 重试登记按观察者归属、M6P41 同区引用计数租约 |
+| `SpatialObserverIndexTests.cs`（PureMemory） | 新增表征门 | SPI05 二维投影形状与世界边界裁剪 |
+| `ResourceProductionControlStaticILContractTests.cs` | 新增契约 | 生产接缝半径读原版物件区域常量、世界尺寸读 `Regions.WORLD_SIZE`，不读 `ItemManager.ITEM_REGIONS`（半径不得升格为共享默认值） |
+| `BuildArtifactEvidenceTests.cs` | 新增身份门 | 本阶段版本/通道/默认 Case-ID 冻结字面量与程序集自报身份一致 |
+| `README.md`、`build-fingerprint-artifact-evidence.md`、本文件 | 已同步 | 展示文档与 Metadata Source 一致 |
+| `Tools/Verify-Ticket09Documentation.ps1` | 已解耦 | 当前版本展示文档按 `Build/Version.props` 校验；`0.2.4.8` 历史记录按冻结版本校验，不再要求历史审计文件出现新版本号 |
+| 生产源码（Resource/Collision 补丁与适配器） | 未触碰 | 本批次不是生产行为变更；Collision 仍不接线 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | Resource 表征门 6 项 + 空间投影表征 1 项；Resource 既有接缝/生命周期/快照/采伐测试全绿 |
+| StaticIL | PASS | 半径来源契约；既有 Resource 生产控制、退休与采伐注册契约保持绿 |
+| BuildArtifact | PASS | `Verify-BuildFingerprintArtifact.ps1` 独立核验版本、FileVersion、MVID、GUID、SHA-256 与 Case-ID |
+| Runtime | PENDING | 本批次不宣称 Runtime；Collision 切片三端运行验收见票 09，影子与正式候选指纹区分见票 05/07 |
+
+### 必须保留到 Runtime 的验收项
+
+- Collision 切片的三端（1 Host + 2 Guest）运行必须使用正式切换候选，三端同一 SHA-256；
+- 表征门（M6P36–M6P41、SPI05、半径来源契约）在票 02/03 迁入共享引擎前后必须保持绿，任何语义漂移都视为迁移失败。

@@ -234,7 +234,47 @@ namespace SteamP2PFriends.WhitelistTests
                     "get_StaleDeltaRejectCount") >= 2;
         }
 
+        /// <summary>
+        /// 票 01 表征门：生产接缝的半径与世界尺寸各自读取声明源——半径读原版物件区域
+        /// 常量（LevelGround.RESOURCE_REGIONS），世界尺寸读 Regions.WORLD_SIZE。该断言锁
+        /// 「半径来源」契约：物件半径不得升格为跨域共享默认半径（迁入共享引擎后仍须成立）。
+        /// </summary>
+        internal static bool Test_ProductionRadiusComesFromVanillaObjectRegionSource()
+        {
+            MethodInfo configure = typeof(MultiObserverShadowCoordinator).GetMethod(
+                "ConfigureResourceProduction", BindingFlags.Static | BindingFlags.NonPublic);
+            return configure != null
+                && CountFieldLoads(configure, "SDG.Unturned.LevelGround", "RESOURCE_REGIONS") == 1
+                && CountFieldLoads(configure, "SDG.Unturned.Regions", "WORLD_SIZE") == 1
+                && CountFieldLoads(configure, "SDG.Unturned.ItemManager", "ITEM_REGIONS") == 0;
+        }
+
         private static int CountMethodCalls(MethodInfo method, string declaringTypeName, string methodName)
+        {
+            return CountIlTokens(method, OperandType.InlineMethod, (owner, token) =>
+            {
+                MethodBase called;
+                try { called = owner.Module.ResolveMethod(token); }
+                catch { called = null; }
+                return called?.DeclaringType?.FullName == declaringTypeName
+                    && called.Name == methodName;
+            });
+        }
+
+        private static int CountFieldLoads(MethodInfo method, string declaringTypeName, string fieldName)
+        {
+            return CountIlTokens(method, OperandType.InlineField, (owner, token) =>
+            {
+                FieldInfo field;
+                try { field = owner.Module.ResolveField(token); }
+                catch { field = null; }
+                return field?.DeclaringType?.FullName == declaringTypeName
+                    && field.Name == fieldName;
+            });
+        }
+
+        private static int CountIlTokens(
+            MethodInfo method, OperandType operandType, Func<MethodInfo, int, bool> matches)
         {
             if (method == null) return -1;
             byte[] il = method.GetMethodBody()?.GetILAsByteArray();
@@ -252,18 +292,11 @@ namespace SteamP2PFriends.WhitelistTests
                 }
                 if (!OpCodesByValue.TryGetValue(value, out OpCode opCode)) return -1;
 
-                if (opCode.OperandType == OperandType.InlineMethod)
+                if (opCode.OperandType == operandType)
                 {
                     if (offset + 4 > il.Length) return -1;
                     int token = BitConverter.ToInt32(il, offset);
-                    MethodBase called;
-                    try { called = method.Module.ResolveMethod(token); }
-                    catch { called = null; }
-                    if (called?.DeclaringType?.FullName == declaringTypeName
-                        && called.Name == methodName)
-                    {
-                        count++;
-                    }
+                    if (matches(method, token)) count++;
                 }
 
                 int operandSize = GetOperandSize(opCode.OperandType, il, offset);

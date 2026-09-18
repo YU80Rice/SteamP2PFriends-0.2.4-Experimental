@@ -14,6 +14,10 @@
 
 - [Step 1 ~ Step 5 顶层架构重构完成](../map-top-level-architecture-blueprint/map.md): 完成了 5 大核心重构步骤，建立 SPI 契约、控制面/数据面分离、Plugin.cs 瘦身至 267 行及领域镜像测试套件（118/118 PASS）。
 
+## Historical note (Collision)
+
+[Ticket 02: M6 场景物件与门碰撞](ticket-02-m6-level-object-and-door-collision/ticket.md) 的归档状态不变，但其「私有轮询已退役、Collision 已生产接线」的含义已被当前生产调用图否定。Collision Migration Slice 的当前权威路线是 [Collision Migration Slice 权威边界与共享控制面准入](../map-collision-migration-slice/map.md)。本图不再作为 Collision 接线证据，也不再向新图输出 Animal-first / M7 / M8 依赖顺序。
+
 ## Frontier (Takeable Tickets)
 
 - [Ticket 01: M5 野生动物（Animal/Fauna）多观察者生成与漫游租约适配器](ticket-01-m5-animal-lifecycle-adapter/ticket.md) (`wayfinder:done`, archived in 0.2.4.5)

@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 255 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 290 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -43,6 +43,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("SPI02 Bound1DDiff", SpatialObserverIndexTests.Test_SPI02_Bound1DDiffCalculation, ref total, ref passed, ref failed);
             RunTest("SPI03 DisconnectReleasesAll", SpatialObserverIndexTests.Test_SPI03_ObserverDisconnectReleasesAll, ref total, ref passed, ref failed);
             RunTest("SPI04 ReconnectInvalidation", SpatialObserverIndexTests.Test_SPI04_ReconnectTokenInvalidatesOldState, ref total, ref passed, ref failed);
+            RunTest("SPI05 Grid2DShapeClipping", SpatialObserverIndexTests.Test_SPI05_Grid2DProjectionIsChebyshevAndWorldClipped, ref total, ref passed, ref failed);
             RunTest("M01 PendingIsObserver", MultiObserverShadowTests.Test_M01_PendingAuthorizationDoesNotRemoveWorldPresence, ref total, ref passed, ref failed);
             RunTest("M02 DemandRefCount", MultiObserverShadowTests.Test_M02_OverlappingDemandUsesReferenceCounts, ref total, ref passed, ref failed);
             RunTest("M03 ConnectionGeneration", MultiObserverShadowTests.Test_M03_ConnectionGenerationIsSessionMonotonic, ref total, ref passed, ref failed);
@@ -213,6 +214,13 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6P33 ResourceRollbackRestoresRetryRegistration", ResourceProductionControlSeamTests.Test_M6P33_RollbackRestoresAcquireRetryRegistration, ref total, ref passed, ref failed);
             RunTest("M6P34 ResourceDeferredOnlyRegionExit", ResourceProductionControlSeamTests.Test_M6P34_DeferredOnlyRegionExitSkipsDemand, ref total, ref passed, ref failed);
             RunTest("M6P35 ResourceStaleExitTolerated", ResourceProductionControlSeamTests.Test_M6P35_StaleExitWithoutDemandIsTolerated, ref total, ref passed, ref failed);
+            // 票 01 表征门(Collision Migration Slice 迁入前行为等价基线,SPF-0.2.4.9)
+            RunTest("M6P36 ResourceProductionRadiusShape", ResourceProductionControlSeamTests.Test_M6P36_ProductionRadiusProjectsChebyshevSquare, ref total, ref passed, ref failed);
+            RunTest("M6P37 ResourceHysteresisConstant", ResourceProductionControlSeamTests.Test_M6P37_HysteresisWindowComesFromResourceConstant, ref total, ref passed, ref failed);
+            RunTest("M6P38 ResourceDeferredRetrySchedule", ResourceProductionControlSeamTests.Test_M6P38_DeferredAcquireRetryScheduleDoublesThenCapsAt32, ref total, ref passed, ref failed);
+            RunTest("M6P39 ResourceFailedRetrySchedule", ResourceProductionControlSeamTests.Test_M6P39_FailedAcquireRetryScheduleDoublesThenCapsAt60, ref total, ref passed, ref failed);
+            RunTest("M6P40 ResourceRetryQualificationKept", ResourceProductionControlSeamTests.Test_M6P40_SuccessPathKeepsOtherObserverRetryQualification, ref total, ref passed, ref failed);
+            RunTest("M6P41 ResourceOverlapRetainsLease", ResourceProductionControlSeamTests.Test_M6P41_OverlappingObserversRetainLeaseUntilLastExit, ref total, ref passed, ref failed);
             RunTest("M6O01 ResourceObservabilityFields", ResourceObservabilityTests.Test_M6O01_FormatsRequiredResourceFields, ref total, ref passed, ref failed);
             RunTest("M6O02 ResourceFallbackExplicit", ResourceObservabilityTests.Test_M6O02_FallbackAndSkippedAreExplicit, ref total, ref passed, ref failed);
             RunTest("M6O03 ResourceReceiveDecisionBoundary", ResourceObservabilityTests.Test_M6O03_NativeReceiveDoesNotInventAcceptance, ref total, ref passed, ref failed);
@@ -330,6 +338,8 @@ namespace SteamP2PFriends.WhitelistTests
                 ref total, ref passed, ref failed);
             RunTest("Resource Generation Reader No Guess", ResourceProductionControlStaticILContractTests.Test_GenerationReadDoesNotUseFallbackGuess,
                 ref total, ref passed, ref failed);
+            RunTest("Resource Radius Source No Shared Default", ResourceProductionControlStaticILContractTests.Test_ProductionRadiusComesFromVanillaObjectRegionSource,
+                ref total, ref passed, ref failed);
             RunTest("Resource Failure Classification", ResourceProductionControlStaticILContractTests.Test_FailureClassificationDoesNotParseExceptionText,
                 ref total, ref passed, ref failed);
             RunTest("Resource Acquire Failure Helper Message", ResourceProductionControlStaticILContractTests.Test_AcquireFailureHelperEmbedsExceptionMessage,
@@ -378,6 +388,10 @@ namespace SteamP2PFriends.WhitelistTests
             Console.WriteLine("\n=== Evidence Class: BuildArtifact ===");
             Console.WriteLine("  Self-reported Fingerprint: " + BuildFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly).ToLogString());
             RunTest("BuildArtifact Fingerprint Shape", BuildArtifactEvidenceTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Slice Identity", BuildArtifactEvidenceTests.Test_SliceIdentityIsPinnedToMigrationStage,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Independent Verifier", BuildArtifactEvidenceTests.Test_VerifierConfirmsBuiltArtifactIdentity,
                 ref total, ref passed, ref failed);
             RunTest("BuildArtifact Shared Case-ID", BuildArtifactEvidenceTests.Test_CaseIdOverrideIsShared,
                 ref total, ref passed, ref failed);
