@@ -767,8 +767,9 @@ namespace SteamP2PFriends.WhitelistTests
 
         /// <summary>
         /// 制造「区域在投影里、无需求、无 retry 登记」的失衡残留：接缝已不再持有 retry 登记，
-        /// 登记归共享编排引擎的每域状态。沿 engine -> per-domain state -> retry 表两级反射取出
-        /// 登记字典并移除该区域，不新增只为测试存在的生产 API。
+        /// 登记归共享编排引擎的每域状态，且自票 04 起键是「区域 + 观察者 + 连接代次」的事务
+        /// 身份（不再是区域单槽）。沿 engine -> per-domain state -> retry 表三级反射取出登记表，
+        /// 按键上的 Region 字段匹配后移除，不新增只为测试存在的生产 API。
         /// </summary>
         private static void RemoveAcquireRetryRegistration(ResourceProductionControlSeam seam, RegionKey region)
         {
@@ -778,12 +779,19 @@ namespace SteamP2PFriends.WhitelistTests
                 .GetValue(seam);
             System.Collections.IDictionary domains = (System.Collections.IDictionary)
                 engine.GetType().GetField("_domains", InstanceNonPublic).GetValue(engine);
-            foreach (System.Collections.DictionaryEntry entry in domains)
+            foreach (System.Collections.DictionaryEntry domainEntry in domains)
             {
-                object domainState = entry.Value;
+                object domainState = domainEntry.Value;
                 System.Collections.IDictionary retries = (System.Collections.IDictionary)
                     domainState.GetType().GetField("AcquireRetries", InstanceNonPublic).GetValue(domainState);
-                retries.Remove(region);
+                var matched = new System.Collections.Generic.List<object>();
+                foreach (System.Collections.DictionaryEntry entry in retries)
+                {
+                    object keyRegion = entry.Key.GetType()
+                        .GetProperty("Region", InstanceNonPublic)?.GetValue(entry.Key, null);
+                    if (keyRegion is RegionKey candidate && candidate == region) matched.Add(entry.Key);
+                }
+                foreach (object key in matched) retries.Remove(key);
             }
         }
 

@@ -27,6 +27,10 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
         private SessionEpoch _sessionEpoch;
         private bool _sessionActive;
+        private float _clock;
+        private bool _writesSuspended;
+        private string _writeSuspensionReason = string.Empty;
+        private BoundedHeartbeat _suspensionHeartbeat;
 
         public LifecycleOrchestrationEngine(
             DemandProjectionEngine projection,
@@ -73,16 +77,6 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
         public void BeginSession(SessionEpoch sessionEpoch)
         {
-            DomainLifecycleState repairing = FindRepairRequiredDomain();
-            if (repairing != null)
-            {
-                Report(repairing, LifecycleEvents.SessionBegin, ELifecycleOutcome.Rejected,
-                    ELifecyclePath.Fallback, sessionEpoch.Value,
-                    "reason=repair-required failClosed=true",
-                    severity: ELifecycleSeverity.Error);
-                throw new InvalidOperationException(
-                    "领域需要先修复才能开始新会话：" + repairing.Port.DisplayName);
-            }
             if (_sessionActive && _sessionEpoch == sessionEpoch)
             {
                 _diagnostics.TransitionOnce("lifecycle-session-already-active",
@@ -94,9 +88,23 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             if (_sessionActive) EndSession();
 
             uint adapterEpoch = ToAdapterEpoch(sessionEpoch);
-            ClearManagedSessionState();
+            ClearManagedSessionState(recoverFaults: false);
+            int participating = 0;
             foreach (DomainLifecycleState state in _domains.Values)
             {
+
+
+                if (state.RepairRequired)
+                {
+                    // 故障隔离单元含 Domain Id：熔断中的领域不参与新会话，但不得因此挡住其它
+                    // 领域开始会话（那就是跨域熔断）。它保持熔断、拒绝写入，并继续有界心跳。
+                    Report(state, LifecycleEvents.DomainFault, ELifecycleOutcome.Skipped,
+                        ELifecyclePath.Fallback, sessionEpoch.Value,
+                        "reason=repair-required failClosed=true joined=false", role: "Shared",
+                        severity: ELifecycleSeverity.Error);
+                    continue;
+                }
+
                 try
                 {
                     state.Port.OnSessionBegin(adapterEpoch);
@@ -105,7 +113,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 catch (Exception ex)
                 {
                     CleanupAfterFailedBegin(state, sessionEpoch, adapterEpoch, ex);
-                    ClearManagedSessionState();
+                    ClearManagedSessionState(recoverFaults: false);
                     Report(state, LifecycleEvents.SessionBegin, ELifecycleOutcome.Failed,
                         ELifecyclePath.Fallback, sessionEpoch.Value,
                         "reason=external-session-initialization-failed failClosed=true exception="
@@ -113,11 +121,34 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     throw;
                 }
                 state.SessionEpoch = sessionEpoch;
-                state.RepairRequired = false;
+                participating++;
+            }
+
+            if (participating == 0)
+            {
+                // 没有可参与的领域＝没有可用会话。保持失败闭合，不产生一个「空会话」让调用方
+                // 误以为已经就绪。
+                DomainLifecycleState first = FirstRegisteredDomain();
+                ClearManagedSessionState(recoverFaults: false);
+                Report(first, LifecycleEvents.SessionBegin, ELifecycleOutcome.Rejected,
+                    ELifecyclePath.Fallback, sessionEpoch.Value,
+                    "reason=repair-required failClosed=true participatingDomains=0",
+                    severity: ELifecycleSeverity.Error);
+                throw new InvalidOperationException(
+                    "领域需要先修复才能开始新会话："
+                    + (first == null ? "none" : first.Port.DisplayName));
             }
 
             _sessionEpoch = sessionEpoch;
             _sessionActive = true;
+            // 新会话建立即身份重新确认：会话级挂起随会话边界解除并写闭环记录。
+            ResumeWrites("session-begin");
+        }
+
+        private DomainLifecycleState FirstRegisteredDomain()
+        {
+            foreach (DomainLifecycleState state in _domains.Values) return state;
+            return null;
         }
 
         /// <summary>
@@ -177,6 +208,13 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             uint adapterEpoch = ToAdapterEpoch(endingEpoch);
             Exception cleanupFailure = null;
             List<DomainLifecycleState> cleanupFailed = null;
+            List<DomainLifecycleState> faultedBeforeEnd = null;
+            foreach (DomainLifecycleState state in _domains.Values)
+            {
+                if (!state.RepairRequired) continue;
+                if (faultedBeforeEnd == null) faultedBeforeEnd = new List<DomainLifecycleState>();
+                faultedBeforeEnd.Add(state);
+            }
             foreach (DomainLifecycleState state in _domains.Values)
             {
                 try
@@ -214,17 +252,34 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             if (cleanupFailed != null)
             {
                 // 清理失败只熔断对应领域：状态已清干净，但该领域在修复前不得再写入。
-                foreach (DomainLifecycleState state in cleanupFailed) state.RepairRequired = true;
+                foreach (DomainLifecycleState state in cleanupFailed) MarkRepairRequired(state);
             }
+
+            // 会话收尾是熔断领域的有限恢复点：本次收尾成功的领域退出熔断并写闭环记录，
+            // 收尾再次失败的领域重新熔断——恢复与熔断都留痕，不静默。
+            if (faultedBeforeEnd != null)
+            {
+                foreach (DomainLifecycleState state in faultedBeforeEnd)
+                {
+                    if (state.RepairRequired) continue;
+                    Report(state, LifecycleEvents.DomainFault, ELifecycleOutcome.Success,
+                        ELifecyclePath.Spi, endingEpoch.Value,
+                        "reason=domain-fault-cleared cause=session-end-recovered failClosed=false",
+                        role: "Shared");
+                }
+            }
+
+            ResumeWrites("session-end");
             if (cleanupFailure != null) throw cleanupFailure;
         }
 
-        private void ClearManagedSessionState()
+        private void ClearManagedSessionState(bool recoverFaults = true)
         {
             // 会话边界同时清空唯一空间事实与全部领域投影：旧 Session 的观察者不存在于新会话，
-            // 残留事实会让「唯一事实」跨会话失真。
+            // 残留事实会让「唯一事实」跨会话失真。熔断标记默认随会话收尾恢复；开始新会话时
+            // 必须保留（熔断领域不参与新会话，等它自己的收尾成功才算修复）。
             _projection.EndSession();
-            foreach (DomainLifecycleState state in _domains.Values) state.Clear();
+            foreach (DomainLifecycleState state in _domains.Values) state.Clear(recoverFaults);
             _sessionEpoch = default(SessionEpoch);
             _sessionActive = false;
         }
@@ -282,9 +337,24 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 ProcessAcquireRetries(state, observerId, connectionToken, compensations);
                 if (connectionChanged)
                 {
+                    // 连接代次失效是允许的清理触发：旧代次的未完成事务登记不得继续替新连接
+                    // 提交（旧代次没有写入资格）。登记撤销必须进补偿列表，回滚时原样放回。
+                    List<KeyValuePair<AcquireRetryKey, AcquireRetry>> staleRegistrations =
+                        state.RemoveAcquireRetriesForGeneration(observerId, connectionToken);
+                    compensations.Add(() => state.RestoreAcquireRetries(staleRegistrations));
+                    if (staleRegistrations.Count > 0)
+                    {
+                        Report(state, LifecycleEvents.ObserverUpdate, ELifecycleOutcome.Rejected,
+                            ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                            "reason=stale-connection-retry-dropped failClosed=true dropped="
+                            + staleRegistrations.Count + " previousConnection=" + previousConnectionToken
+                            + " observer=" + observerId);
+                    }
                     state.Port.OnObserverDisconnected(observerId, previousConnectionToken);
                 }
                 state.ConnectionTokens[observerId] = connectionToken;
+                // 本拍拿到了可用样本：该观察者退出 Deferred Observer Demand 并留闭环记录。
+                ClearDeferred(state, observerId, "observer-sample-available");
                 return projection;
             }
             catch (Exception ex)
@@ -333,6 +403,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     state.ObserverCount = state.Observers.Count;
                     state.DropAcquireRetriesOwnedBy(observerId);
                 }
+                // 确认离开：暂缓标记随之清除（放在事务尾部，失败回滚时标记原样保留）。
+                ClearDeferred(state, observerId, "observer-confirmed-exit");
                 return projection;
             }
             catch (Exception ex)
@@ -351,18 +423,27 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         public void AdvanceTime(float deltaTime)
         {
             if (deltaTime < 0f) throw new ArgumentOutOfRangeException(nameof(deltaTime));
+            _clock += deltaTime;
+            if (_writesSuspended)
+            {
+                // 身份不确定期间不做任何推进：既不放行写入，也不提交破坏性释放；租约原样保留。
+                ReportSuspensionHeartbeat();
+                return;
+            }
             foreach (DomainLifecycleState state in _domains.Values)
             {
                 // 时间轴与刷新是引擎内部驱动的推进，不是调用方发起的写入：熔断中的领域被跳过并
                 // 留下有界诊断，其它领域照常推进时间、retry 与滞回——否则一个领域的
                 // repair-required 就会变成跨域熔断。
                 EnsureSessionActive(state);
+                // 时间轴先推进：熔断领域的推进被跳过，但它自己的有界心跳仍要按间隔走，
+                // 否则首条之后永远到不了下一个间隔，又退回「一条日志后静默」。
+                state.Clock += deltaTime;
                 if (state.RepairRequired)
                 {
                     ReportSkippedFaultedDomain(state);
                     continue;
                 }
-                state.Clock += deltaTime;
                 foreach (RegionKey region in state.LeaseKeys())
                 {
                     try
@@ -392,6 +473,11 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
         public void Flush(float deltaTime)
         {
+            if (_writesSuspended)
+            {
+                ReportSuspensionHeartbeat();
+                return;
+            }
             foreach (DomainLifecycleState state in _domains.Values)
             {
                 EnsureSessionActive(state);
@@ -415,16 +501,176 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         }
 
         /// <summary>
-        /// 熔断领域被推进路径跳过时的有界诊断：首次跳过写出一条，此后按 key 去重，
-        /// 既不会逐帧淹没日志，也不会静默失明。跳过只影响该领域——其它领域照常推进；
+        /// 熔断领域被推进路径跳过时的有界心跳：首条立即写出，此后按领域政策间隔重复，
+        /// 重复次数受有界上限约束，用尽时写出一条显式终止记录——既不会逐帧淹没日志，
+        /// 也不是「一条去重日志之后永久静默」。跳过只影响该领域：其它领域照常推进；
         /// 熔断领域自己的显式写入仍由 <see cref="EnsureWritable"/> 拒绝。
         /// </summary>
         private void ReportSkippedFaultedDomain(DomainLifecycleState state)
         {
-            _diagnostics.TransitionOnce("lifecycle-repair-required-" + state.Port.DomainId,
-                Build(state.Port.DomainId, LifecycleEvents.SessionState, ELifecycleOutcome.Skipped,
-                    ELifecyclePath.Fallback, 0UL,
-                    "reason=repair-required failClosed=true skipped=advance", "Shared"));
+            EBoundedHeartbeat kind = NextFaultHeartbeat(state);
+            if (kind == EBoundedHeartbeat.Suppressed) return;
+            Report(state, LifecycleEvents.DomainFault,
+                kind == EBoundedHeartbeat.Exhausted ? ELifecycleOutcome.Skipped : ELifecycleOutcome.Rejected,
+                ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                "reason=repair-required failClosed=true skipped=advance heartbeat=" + kind
+                + " attempts=" + state.FaultHeartbeat.EmittedCount,
+                role: "Shared",
+                severity: kind == EBoundedHeartbeat.Exhausted
+                    ? ELifecycleSeverity.Warn
+                    : ELifecycleSeverity.Error);
+        }
+
+        /// <summary>
+        /// 熔断该领域并起搏它的有界心跳。只有「进入熔断」才重新起搏：持续熔断的心跳有界，
+        /// 重复用尽后写出显式终止记录并静默等待状态变化，不再按周期重启刷屏。
+        /// </summary>
+        private static void MarkRepairRequired(DomainLifecycleState state)
+        {
+            if (state.RepairRequired) return;
+            state.RepairRequired = true;
+            state.FaultHeartbeat = new BoundedHeartbeat(state.Policy.Heartbeat, state.Clock);
+        }
+
+        private static EBoundedHeartbeat NextFaultHeartbeat(DomainLifecycleState state)
+        {
+            return state.FaultHeartbeat.Next(state.Clock);
+        }
+
+        /// <summary>
+        /// 进入该领域的暂缓观察者：本拍观测不可用（记录读不全、身份不可判定）却无法证明离开。
+        /// 既有贡献原样保留，不递减需求、不登记释放、不触达领域释放——「无法证明离开就不做
+        /// 破坏性释放」。持续暂缓按领域政策写出有界心跳，恢复（收到可用样本或确认离开）时写闭环记录。
+        /// </summary>
+        public void DeferObserver(DomainId domain, ulong observerId, string reason)
+        {
+            DomainLifecycleState state = EnsureDomain(domain);
+            if (observerId == 0UL) return;
+            bool newlyDeferred = !state.DeferredObservers.ContainsKey(observerId);
+            if (newlyDeferred)
+            {
+                state.DeferredObservers.Add(observerId, new DeferredObserver(reason, _clock));
+                Report(state, LifecycleEvents.ObserverDeferred, ELifecycleOutcome.Deferred,
+                    ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                    "reason=" + (reason ?? "unspecified") + " deferredObservers="
+                    + state.DeferredObservers.Count + " contributionRetained=true",
+                    observerId: observerId, role: "Shared", severity: ELifecycleSeverity.Warn);
+            }
+
+            // 只有新观察者进入暂缓才重新起搏：持续暂缓的心跳有界，终止后不自动重启——
+            // 否则「有界心跳」会退化成按周期无限刷屏。清空后再次进入暂缓时自然重新起搏。
+            if (newlyDeferred) StartDeferredHeartbeat(state);
+            ReportDeferredHeartbeat(state, NextDeferredHeartbeat(state));
+        }
+
+        private static void StartDeferredHeartbeat(DomainLifecycleState state)
+        {
+            if (state.DeferredHeartbeat.IsRunning) return;
+            state.DeferredHeartbeat = new BoundedHeartbeat(state.Policy.Heartbeat, state.Clock);
+        }
+
+        /// <summary>书面一条暂缓心跳记录；未到间隔或被有界上限终止时静默。</summary>
+        private void ReportDeferredHeartbeat(DomainLifecycleState state, EBoundedHeartbeat kind)
+        {
+            if (kind == EBoundedHeartbeat.Suppressed) return;
+            Report(state, LifecycleEvents.ObserverDeferred,
+                kind == EBoundedHeartbeat.Exhausted ? ELifecycleOutcome.Skipped : ELifecycleOutcome.Deferred,
+                ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                "heartbeat=" + kind + " deferredObservers=" + state.DeferredObservers.Count
+                + " contributionRetained=true",
+                attempt: state.DeferredHeartbeat.EmittedCount,
+                role: "Shared",
+                severity: kind == EBoundedHeartbeat.Exhausted
+                    ? ELifecycleSeverity.Warn
+                    : ELifecycleSeverity.Info);
+        }
+
+        private static EBoundedHeartbeat NextDeferredHeartbeat(DomainLifecycleState state)
+        {
+            if (!state.DeferredHeartbeat.IsRunning) return EBoundedHeartbeat.Suppressed;
+            return state.DeferredHeartbeat.Next(state.Clock);
+        }
+
+        /// <summary>
+        /// 清除该观察者的暂缓标记并写闭环记录：观测恢复可用或已确认离开。只有确认离开、
+        /// 代次失效、会话重置才会走到这里——暂缓本身不会清理任何贡献。
+        /// </summary>
+        private void ClearDeferred(DomainLifecycleState state, ulong observerId, string cause)
+        {
+            if (!state.DeferredObservers.Remove(observerId)) return;
+            Report(state, LifecycleEvents.ObserverDeferred,
+                ELifecycleOutcome.Success, ELifecyclePath.Spi, state.SessionEpoch.Value,
+                "reason=deferred-cleared cause=" + cause + " deferredObservers="
+                + state.DeferredObservers.Count,
+                observerId: observerId, role: "Shared");
+            if (state.DeferredObservers.Count == 0)
+            {
+                state.DeferredHeartbeat.Stop();
+            }
+        }
+
+        /// <summary>该领域当前处于暂缓的观察者数。</summary>
+        public int DeferredObserverCount(DomainId domain) => EnsureDomain(domain).DeferredObservers.Count;
+
+        public bool IsObserverDeferred(DomainId domain, ulong observerId) =>
+            EnsureDomain(domain).DeferredObservers.ContainsKey(observerId);
+
+        /// <summary>
+        /// 挂起写入：会话身份不确定或共享面故障恢复期间，拒绝新写入与破坏性释放，但保留全部
+        /// 租约、需求与暂缓态（身份不确定时不得清空其它领域）。持续挂起按领域政策写出有界心跳。
+        /// </summary>
+        public void SuspendWrites(string reason)
+        {
+            if (_writesSuspended)
+            {
+                ReportSuspensionHeartbeat();
+                return;
+            }
+
+            _writesSuspended = true;
+            _writeSuspensionReason = reason ?? "unspecified";
+            _suspensionHeartbeat = new BoundedHeartbeat(SharedHeartbeatPolicy(), _clock);
+            ReportSuspensionHeartbeat();
+        }
+
+        /// <summary>恢复写入并写闭环记录：会话身份重新确认或共享面故障已确认恢复。</summary>
+        public void ResumeWrites(string reason)
+        {
+            if (!_writesSuspended) return;
+            _writesSuspended = false;
+            _suspensionHeartbeat.Stop();
+            _diagnostics.Transition(Build(default(DomainId), LifecycleEvents.SessionSuspended,
+                ELifecycleOutcome.Success, ELifecyclePath.Spi,
+                _sessionActive ? _sessionEpoch.Value : 0UL,
+                "reason=writes-resumed cause=" + (reason ?? "unspecified")
+                + " previousCause=" + _writeSuspensionReason, "Shared"));
+            _writeSuspensionReason = string.Empty;
+        }
+
+        public bool IsWriteSuspended => _writesSuspended;
+
+        public string WriteSuspensionReason => _writeSuspensionReason;
+
+        private void ReportSuspensionHeartbeat()
+        {
+            if (!_suspensionHeartbeat.IsRunning) return;
+            EBoundedHeartbeat kind = _suspensionHeartbeat.Next(_clock);
+            if (kind == EBoundedHeartbeat.Suppressed) return;
+            _diagnostics.Transition(Build(default(DomainId), LifecycleEvents.SessionSuspended,
+                kind == EBoundedHeartbeat.Exhausted ? ELifecycleOutcome.Skipped : ELifecycleOutcome.Rejected,
+                ELifecyclePath.Fallback, _sessionActive ? _sessionEpoch.Value : 0UL,
+                "reason=writes-suspended cause=" + _writeSuspensionReason + " failClosed=true heartbeat="
+                + kind + " attempts=" + _suspensionHeartbeat.EmittedCount, "Shared"));
+        }
+
+        /// <summary>
+        /// 引擎级心跳的节奏来源：取本会话任一领域声明的政策，避免引擎内置跨域默认值。
+        /// 没有注册领域时（会话尚未接线）用最小可用节奏，保证挂起本身仍可观测。
+        /// </summary>
+        private HeartbeatPolicy SharedHeartbeatPolicy()
+        {
+            foreach (DomainLifecycleState state in _domains.Values) return state.Policy.Heartbeat;
+            return new HeartbeatPolicy(5f, 3);
         }
 
         public void Tick(float deltaTime)
@@ -447,12 +693,13 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         {
             foreach (RegionKey region in regions)
             {
-                AcquireRetry leavingRetry;
-                if (state.AcquireRetries.TryGetValue(region, out leavingRetry)
-                    && leavingRetry.ObserverId == observerId)
+                if (state.HasAcquireRetryFor(region, observerId))
                 {
-                    state.AcquireRetries.Remove(region);
-                    compensations.Add(() => state.AcquireRetries[region] = leavingRetry);
+                    // 该观察者在此区域只留下未完成的事务：撤销它的全部登记（含陈旧连接代次），
+                    // 不递减需求——暂缓/失败中的区域从未完成进入、需求也未计入。
+                    List<KeyValuePair<AcquireRetryKey, AcquireRetry>> removed =
+                        state.RemoveAcquireRetriesFor(region, observerId);
+                    compensations.Add(() => state.RestoreAcquireRetries(removed));
                     continue;
                 }
                 // 兜底：过时退出容忍——区域在投影里却既无需求也无本观察者登记，属历史失衡残留
@@ -589,7 +836,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                             "reason=region-demand-entered authority=" + state.Port.DisplayName
                             + " demand=" + (previous + 1),
                             region, connectionToken, observerId, acquiredGeneration.Value,
-                            attempt: AcquireAttemptCount(state, region, observerId));
+                            attempt: AcquireAttemptCount(state, region, observerId, connectionToken));
                     }
                 }
                 catch (Exception ex)
@@ -605,21 +852,21 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                         ? EDomainFailureKind.Failed
                         : state.Port.ClassifyRegionFailure(acquireFailure);
                     bool deferred = kind == EDomainFailureKind.Deferred;
+                    AcquireRetryKey retryKey = TransactionKey(region, observerId, connectionToken);
                     bool quietSteadyState = deferred
-                        && state.AcquireRetries.TryGetValue(region, out AcquireRetry currentRetry)
-                        && currentRetry.ObserverId == observerId
+                        && state.AcquireRetries.TryGetValue(retryKey, out AcquireRetry currentRetry)
                         && currentRetry.Attempts >= state.Policy.DeferredRetry.QuietAttempts;
-                    ScheduleAcquireRetry(state, region, observerId, deferred);
+                    ScheduleAcquireRetry(state, region, observerId, connectionToken, deferred);
                     if (!quietSteadyState)
                     {
                         Report(state, LifecycleEvents.RegionAcquire,
                             deferred ? ELifecycleOutcome.Deferred : ELifecycleOutcome.Skipped,
                             ELifecyclePath.Fallback, state.SessionEpoch.Value,
                             "reason=" + (deferred ? "region-snapshot-deferred" : failureReason)
-                            + " attempts=" + state.AcquireRetries[region].Attempts
+                            + " attempts=" + state.AcquireRetries[retryKey].Attempts
                             + (acquireFailure == null ? string.Empty : " exception=" + DescribeFailure(acquireFailure)),
                             region, connectionToken, observerId, state.GetStoredGeneration(region).Value,
-                            attempt: state.AcquireRetries[region].Attempts,
+                            attempt: state.AcquireRetries[retryKey].Attempts,
                             role: "Host",
                             // 暂缓是预期内的短延迟等待（常规信息）；一般失败是跳过（错误）。
                             severity: deferred ? ELifecycleSeverity.Info : ELifecycleSeverity.Error);
@@ -656,49 +903,61 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     region, connectionToken, observerId, state.Port.ReadRegionGeneration(region).Value);
             }
 
-            // 只清除当前观察者自己的登记：其他观察者对该区域的待重试登记仍然有效。
-            // 清除必须登记补偿——登记清除若游离在事务补偿之外，任何一次回滚都会留下
-            //「区域在投影里、无需求、无 retry 登记」的失衡态。
+            // 只清除当前事务（本观察者 + 本连接代次）自己的登记：其他观察者、其他连接代次
+            // 对该区域的待重试登记仍然有效。清除必须登记补偿——登记清除若游离在事务补偿之外，
+            // 任何一次回滚都会留下「区域在投影里、无需求、无 retry 登记」的失衡态。
+            AcquireRetryKey ownKey = TransactionKey(region, observerId, connectionToken);
             AcquireRetry ownRetry;
-            if (state.AcquireRetries.TryGetValue(region, out ownRetry) && ownRetry.ObserverId == observerId)
+            if (state.AcquireRetries.TryGetValue(ownKey, out ownRetry))
             {
-                state.AcquireRetries.Remove(region);
-                compensations.Add(() => state.AcquireRetries[region] = ownRetry);
+                state.AcquireRetries.Remove(ownKey);
+                compensations.Add(() => state.AcquireRetries[ownKey] = ownRetry);
             }
         }
 
         /// <summary>
-        /// 本区域这次 acquire 是第几次尝试：沿用该观察者已登记的失败次数（+1），
+        /// 本区域这次 acquire 是第几次尝试：沿用该观察者本连接代次已登记的失败次数（+1），
         /// 没有登记即为首次尝试。诊断用它区分「一次成功」与「重试后成功」。
         /// </summary>
         private static int AcquireAttemptCount(
-            DomainLifecycleState state, RegionKey region, ulong observerId)
+            DomainLifecycleState state, RegionKey region, ulong observerId, ulong connectionToken)
         {
-            return NextAttemptNumber(state, region, observerId);
+            return NextAttemptNumber(state, TransactionKey(region, observerId, connectionToken));
         }
 
-        /// <summary>该观察者在该区域的下一个尝试序号：首次为 1，已失败过则在既有次数上 +1。</summary>
-        private static int NextAttemptNumber(
-            DomainLifecycleState state, RegionKey region, ulong observerId)
+        private static AcquireRetryKey TransactionKey(
+            RegionKey region, ulong observerId, ulong connectionToken)
         {
-            AcquireRetry previous;
-            return state.AcquireRetries.TryGetValue(region, out previous)
-                && previous.ObserverId == observerId
-                    ? previous.Attempts + 1
-                    : 1;
+            return new AcquireRetryKey(region, observerId, connectionToken);
         }
 
         /// <summary>
-        /// 登记失败区域的重试：按类别取政策声明的起步间隔并温和倍增到各自上限。
-        /// 成功即清除，不设次数上限——区域在本观察者离开前始终保留重试资格。
+        /// 该事务的下一个尝试序号：首次为 1，同一连接代次内失败过则在既有次数上 +1。
+        /// 连接代次是事务身份的一部分，因此换连接即为新事务，尝试序号从头计。
+        /// </summary>
+        private static int NextAttemptNumber(DomainLifecycleState state, AcquireRetryKey key)
+        {
+            return state.AcquireRetries.TryGetValue(key, out AcquireRetry previous)
+                ? previous.Attempts + 1
+                : 1;
+        }
+
+        /// <summary>
+        /// 登记失败事务的重试：按类别取政策声明的起步间隔并温和倍增到各自上限。
+        /// 成功即清除，不设次数上限——该事务在其观察者离开或连接代次失效前始终保留重试资格。
         /// </summary>
         private static void ScheduleAcquireRetry(
-            DomainLifecycleState state, RegionKey region, ulong observerId, bool deferred)
+            DomainLifecycleState state,
+            RegionKey region,
+            ulong observerId,
+            ulong connectionToken,
+            bool deferred)
         {
-            int attempts = NextAttemptNumber(state, region, observerId);
+            AcquireRetryKey key = TransactionKey(region, observerId, connectionToken);
+            int attempts = NextAttemptNumber(state, key);
             RetrySchedule schedule = deferred ? state.Policy.DeferredRetry : state.Policy.FailedRetry;
-            state.AcquireRetries[region] = new AcquireRetry(
-                observerId, state.Clock + schedule.IntervalFor(attempts), attempts);
+            state.AcquireRetries[key] = new AcquireRetry(
+                state.Clock + schedule.IntervalFor(attempts), attempts);
         }
 
         /// <summary>
@@ -714,13 +973,15 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         {
             if (state.AcquireRetries.Count == 0) return;
             List<RegionKey> dueRegions = null;
-            foreach (KeyValuePair<RegionKey, AcquireRetry> pair in state.AcquireRetries)
+            foreach (KeyValuePair<AcquireRetryKey, AcquireRetry> pair in state.AcquireRetries)
             {
-                if (pair.Value.ObserverId == observerId && state.Clock >= pair.Value.NextRetryAt)
-                {
-                    if (dueRegions == null) dueRegions = new List<RegionKey>();
-                    dueRegions.Add(pair.Key);
-                }
+                // 只有当前事务（本观察者 + 本连接代次）到点才重试：陈旧连接代次的登记没有
+                // 提交资格，它的处置见 Observe 的连接代次失效分支。
+                if (pair.Key.ObserverId != observerId
+                    || pair.Key.ConnectionToken != connectionToken
+                    || state.Clock < pair.Value.NextRetryAt) continue;
+                if (dueRegions == null) dueRegions = new List<RegionKey>();
+                dueRegions.Add(pair.Key.Region);
             }
 
             if (dueRegions == null) return;
@@ -911,7 +1172,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             }
             catch (Exception ex)
             {
-                state.RepairRequired = true;
+                MarkRepairRequired(state);
                 Report(state, LifecycleEvents.RegionReleaseCompensation, ELifecycleOutcome.Failed,
                     ELifecyclePath.Fallback, state.SessionEpoch.Value,
                     "reason=region-state-restore-failed failClosed=true exception=" + ex.GetType().Name,
@@ -966,7 +1227,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 catch (Exception ex)
                 {
                     clean = false;
-                    state.RepairRequired = true;
+                    MarkRepairRequired(state);
                     Report(state, LifecycleEvents.ObserverCompensation, ELifecycleOutcome.Failed,
                         ELifecyclePath.Fallback, state.SessionEpoch.Value,
                         "transactionRolledBack=false compensationFailed=true original="
@@ -1068,6 +1329,17 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 throw new InvalidOperationException(
                     "共享编排引擎没有活动会话：" + state.Port.DisplayName);
             }
+            if (_writesSuspended)
+            {
+                // 会话身份不确定（或共享面故障恢复中）时阻止新写入与破坏性释放，但保留全部
+                // 已建立的租约与需求——不确定不等于终止，更不等于清空其它领域。
+                Report(state, LifecycleEvents.SessionSuspended, ELifecycleOutcome.Rejected,
+                    ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                    "reason=writes-suspended cause=" + _writeSuspensionReason + " failClosed=true",
+                    role: "Shared");
+                throw new InvalidOperationException(
+                    "会话身份不确定期间拒绝写入：" + state.Port.DisplayName);
+            }
             if (state.RepairRequired)
             {
                 Report(state, LifecycleEvents.SessionState, ELifecycleOutcome.Failed,
@@ -1135,6 +1407,13 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
         public int PendingAcquireRetryCount(DomainId domain) => EnsureDomain(domain).AcquireRetries.Count;
 
+        /// <summary>
+        /// 该区域当前有效的重试资格数（事务粒度）：同一区域两个观察者各自失败时各占一份，
+        /// 不存在「后写者覆盖先写者」的区域单槽互吞。
+        /// </summary>
+        public int AcquireRetryQualificationCount(DomainId domain, RegionKey regionKey) =>
+            EnsureDomain(domain).AcquireRetryQualificationCount(regionKey);
+
         public int ObserverCount(DomainId domain) => EnsureDomain(domain).ObserverCount;
 
         public int ReentryCount(DomainId domain) => EnsureDomain(domain).ReentryCount;
@@ -1156,19 +1435,62 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         }
 
         /// <summary>
-        /// acquire 失败区域的重试登记：由观察者的下一次更新驱动重试。登记带 observer 归属，
-        /// 成功路径只清除自己的登记，不吞并他人的重试资格。
+        /// 暂缓观察者的事实：为什么暂缓、从什么时候开始。贡献不在这里——它原样留在投影、
+        /// 需求计数与租约里，暂缓只阻止「把它当成零需求」。
+        /// </summary>
+        private readonly struct DeferredObserver
+        {
+            internal DeferredObserver(string reason, float since)
+            {
+                Reason = reason ?? string.Empty;
+                Since = since;
+            }
+
+            internal string Reason { get; }
+            internal float Since { get; }
+        }
+
+        /// <summary>
+        /// acquire retry 的事务身份。领域由每域状态承载、会话由会话边界承载，这里补齐
+        /// 区域 + 观察者 + 连接代次——即「观察者贡献事务」的粒度。区域单槽会让两个观察者
+        /// 互相吞并重试资格，因此键必须是事务，而不是区域。
+        /// </summary>
+        private readonly struct AcquireRetryKey : IEquatable<AcquireRetryKey>
+        {
+            internal AcquireRetryKey(RegionKey region, ulong observerId, ulong connectionToken)
+            {
+                Region = region;
+                ObserverId = observerId;
+                ConnectionToken = connectionToken;
+            }
+
+            internal RegionKey Region { get; }
+            internal ulong ObserverId { get; }
+            internal ulong ConnectionToken { get; }
+
+            public bool Equals(AcquireRetryKey other) =>
+                Region == other.Region
+                && ObserverId == other.ObserverId
+                && ConnectionToken == other.ConnectionToken;
+
+            public override bool Equals(object obj) => obj is AcquireRetryKey other && Equals(other);
+
+            public override int GetHashCode() =>
+                ((Region.Packed * 397) ^ ObserverId.GetHashCode()) * 397 ^ ConnectionToken.GetHashCode();
+        }
+
+        /// <summary>
+        /// 观察者的下一次更新驱动的重试登记。登记带事务身份，成功路径只清除自己那一份，
+        /// 不吞并同一区域里其它观察者（或其它连接代次）的登记。
         /// </summary>
         private readonly struct AcquireRetry
         {
-            internal AcquireRetry(ulong observerId, float nextRetryAt, int attempts)
+            internal AcquireRetry(float nextRetryAt, int attempts)
             {
-                ObserverId = observerId;
                 NextRetryAt = nextRetryAt;
                 Attempts = attempts;
             }
 
-            internal ulong ObserverId { get; }
             internal float NextRetryAt { get; }
             internal int Attempts { get; }
         }
@@ -1195,10 +1517,23 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 new Dictionary<RegionKey, RegionGeneration>();
             internal readonly Dictionary<RegionKey, PendingRelease> PendingReleases =
                 new Dictionary<RegionKey, PendingRelease>();
-            internal readonly Dictionary<RegionKey, AcquireRetry> AcquireRetries =
-                new Dictionary<RegionKey, AcquireRetry>();
+            internal readonly Dictionary<AcquireRetryKey, AcquireRetry> AcquireRetries =
+                new Dictionary<AcquireRetryKey, AcquireRetry>();
             internal readonly HashSet<ulong> Observers = new HashSet<ulong>();
             internal readonly Dictionary<ulong, ulong> ConnectionTokens = new Dictionary<ulong, ulong>();
+
+            /// <summary>
+            /// Deferred Observer Demand：本拍观测不可用（记录读不全、身份不可判定）但无法证明
+            /// 已离开的观察者。它们的既有贡献原样保留——暂缓不是零需求，也不是破坏性释放。
+            /// </summary>
+            internal readonly Dictionary<ulong, DeferredObserver> DeferredObservers =
+                new Dictionary<ulong, DeferredObserver>();
+
+            /// <summary>持续暂缓的有界心跳：首条 + 按间隔重复 + 显式终止；清空时写闭环记录。</summary>
+            internal BoundedHeartbeat DeferredHeartbeat;
+
+            /// <summary>熔断领域的有界心跳：被推进路径跳过时按它写出，而不是一条去重日志后静默。</summary>
+            internal BoundedHeartbeat FaultHeartbeat;
 
             internal SessionEpoch SessionEpoch;
             internal int ObserverCount;
@@ -1216,7 +1551,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
             internal List<RegionKey> LeaseKeys() => new List<RegionKey>(Leases.Keys);
 
-            internal void Clear()
+            internal void Clear(bool recoverFaults = true)
             {
                 Demand.Clear();
                 Leases.Clear();
@@ -1224,11 +1559,16 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 AcquireRetries.Clear();
                 Observers.Clear();
                 ConnectionTokens.Clear();
+                DeferredObservers.Clear();
+                DeferredHeartbeat.Stop();
+                FaultHeartbeat.Stop();
                 ObserverCount = 0;
                 ReentryCount = 0;
                 Clock = 0f;
                 SessionEpoch = default(SessionEpoch);
-                RepairRequired = false;
+                // 会话边界是熔断领域的有限恢复点：会话收尾成功即视为修复；收尾失败会在
+                // EndSession 里重新标记，不在这里静默清掉。
+                if (recoverFaults) RepairRequired = false;
             }
 
             internal int DecrementDemand(RegionKey region)
@@ -1247,18 +1587,90 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 return count - 1;
             }
 
-            /// <summary>撤销属于该观察者的重试登记——观察者已离开，其重试资格随之作废。</summary>
+            /// <summary>撤销属于该观察者的全部重试登记——观察者已离开，它的重试资格随之作废。</summary>
             internal void DropAcquireRetriesOwnedBy(ulong observerId)
             {
-                List<RegionKey> orphaned = null;
-                foreach (KeyValuePair<RegionKey, AcquireRetry> pair in AcquireRetries)
-                {
-                    if (pair.Value.ObserverId != observerId) continue;
-                    if (orphaned == null) orphaned = new List<RegionKey>();
-                    orphaned.Add(pair.Key);
-                }
+                List<AcquireRetryKey> orphaned = MatchingKeys(key => key.ObserverId == observerId);
                 if (orphaned == null) return;
-                foreach (RegionKey region in orphaned) AcquireRetries.Remove(region);
+                foreach (AcquireRetryKey key in orphaned) AcquireRetries.Remove(key);
+            }
+
+            /// <summary>
+            /// 连接代次失效：撤销该观察者遗留的陈旧代次登记并返回被撤销的条目（供补偿还回）。
+            /// 陈旧代次没有提交资格，它不能继续替新连接驱动重试；新连接按自己的事务在
+            /// <see cref="ProcessSingleRegionEntry"/> 里重新登记。
+            /// </summary>
+            internal List<KeyValuePair<AcquireRetryKey, AcquireRetry>> RemoveAcquireRetriesForGeneration(
+                ulong observerId, ulong connectionToken)
+            {
+                List<AcquireRetryKey> stale = MatchingKeys(key =>
+                    key.ObserverId == observerId && key.ConnectionToken != connectionToken);
+                var removed = new List<KeyValuePair<AcquireRetryKey, AcquireRetry>>();
+                if (stale == null) return removed;
+                foreach (AcquireRetryKey key in stale)
+                {
+                    removed.Add(new KeyValuePair<AcquireRetryKey, AcquireRetry>(key, AcquireRetries[key]));
+                    AcquireRetries.Remove(key);
+                }
+                return removed;
+            }
+
+            /// <summary>该区域是否留有该观察者的未完成事务登记（含陈旧连接代次）。</summary>
+            internal bool HasAcquireRetryFor(RegionKey region, ulong observerId)
+            {
+                foreach (AcquireRetryKey key in AcquireRetries.Keys)
+                {
+                    if (key.Region == region && key.ObserverId == observerId) return true;
+                }
+                return false;
+            }
+
+            /// <summary>撤销该观察者在该区域的全部未完成事务登记，返回被撤销的条目供补偿还原。</summary>
+            internal List<KeyValuePair<AcquireRetryKey, AcquireRetry>> RemoveAcquireRetriesFor(
+                RegionKey region, ulong observerId)
+            {
+                List<AcquireRetryKey> keys = MatchingKeys(key =>
+                    key.Region == region && key.ObserverId == observerId);
+                var removed = new List<KeyValuePair<AcquireRetryKey, AcquireRetry>>();
+                if (keys == null) return removed;
+                foreach (AcquireRetryKey key in keys)
+                {
+                    removed.Add(new KeyValuePair<AcquireRetryKey, AcquireRetry>(key, AcquireRetries[key]));
+                    AcquireRetries.Remove(key);
+                }
+                return removed;
+            }
+
+            /// <summary>补偿路径：把被撤销的登记原样放回。</summary>
+            internal void RestoreAcquireRetries(
+                List<KeyValuePair<AcquireRetryKey, AcquireRetry>> removed)
+            {
+                if (removed == null) return;
+                foreach (KeyValuePair<AcquireRetryKey, AcquireRetry> pair in removed)
+                    AcquireRetries[pair.Key] = pair.Value;
+            }
+
+            /// <summary>该区域当前有效的重试资格数（事务粒度）：同区多观察者各占一份。</summary>
+            internal int AcquireRetryQualificationCount(RegionKey region)
+            {
+                int count = 0;
+                foreach (AcquireRetryKey key in AcquireRetries.Keys)
+                {
+                    if (key.Region == region) count++;
+                }
+                return count;
+            }
+
+            private List<AcquireRetryKey> MatchingKeys(Func<AcquireRetryKey, bool> matches)
+            {
+                List<AcquireRetryKey> matched = null;
+                foreach (AcquireRetryKey key in AcquireRetries.Keys)
+                {
+                    if (!matches(key)) continue;
+                    if (matched == null) matched = new List<AcquireRetryKey>();
+                    matched.Add(key);
+                }
+                return matched;
             }
 
             internal RegionSnapshot CaptureRegionSnapshot() => new RegionSnapshot(this);
@@ -1275,7 +1687,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 private readonly Dictionary<RegionKey, int> _demand;
                 private readonly Dictionary<RegionKey, RegionGeneration> _leases;
                 private readonly Dictionary<RegionKey, PendingRelease> _pendingReleases;
-                private readonly Dictionary<RegionKey, AcquireRetry> _acquireRetries;
+                private readonly Dictionary<AcquireRetryKey, AcquireRetry> _acquireRetries;
 
                 internal RegionSnapshot(DomainLifecycleState state)
                 {
@@ -1292,14 +1704,14 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                             Deadline = pair.Value.Deadline
                         };
                     }
-                    _acquireRetries = new Dictionary<RegionKey, AcquireRetry>(state.AcquireRetries);
+                    _acquireRetries = new Dictionary<AcquireRetryKey, AcquireRetry>(state.AcquireRetries);
                 }
 
                 internal void ApplyTo(
                     Dictionary<RegionKey, int> demand,
                     Dictionary<RegionKey, RegionGeneration> leases,
                     Dictionary<RegionKey, PendingRelease> pendingReleases,
-                    Dictionary<RegionKey, AcquireRetry> acquireRetries)
+                    Dictionary<AcquireRetryKey, AcquireRetry> acquireRetries)
                 {
                     demand.Clear();
                     foreach (KeyValuePair<RegionKey, int> pair in _demand) demand[pair.Key] = pair.Value;
@@ -1310,7 +1722,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     foreach (KeyValuePair<RegionKey, PendingRelease> pair in _pendingReleases)
                         pendingReleases[pair.Key] = pair.Value;
                     acquireRetries.Clear();
-                    foreach (KeyValuePair<RegionKey, AcquireRetry> pair in _acquireRetries)
+                    foreach (KeyValuePair<AcquireRetryKey, AcquireRetry> pair in _acquireRetries)
                         acquireRetries[pair.Key] = pair.Value;
                 }
             }

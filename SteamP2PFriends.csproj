@@ -202,6 +202,9 @@
     <Compile Include="Core\ControlPlane\Demand\DomainDemand.cs" />
     <Compile Include="Core\ControlPlane\Demand\DomainDemandProjection.cs" />
     <Compile Include="Core\ControlPlane\Demand\DemandProjectionEngine.cs" />
+    <Compile Include="Core\ControlPlane\Demand\ObserverSampleAdmission.cs" />
+    <Compile Include="Core\ControlPlane\Lifecycle\BoundedHeartbeat.cs" />
+    <Compile Include="Core\ControlPlane\Lifecycle\SessionIdentityGate.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecycleDiagnostic.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecycleEvents.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\ILifecycleDiagnostics.cs" />

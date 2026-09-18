@@ -242,6 +242,637 @@ namespace SteamP2PFriends.WhitelistTests
                 && noLeakFromFaultedDomain;
         }
 
+        /// <summary>
+        /// 票 04：单条不可用样本只暂缓它自己的观察者，不冻结其它观察者、其它区域或其它领域。
+        /// 暂缓不是零需求，也不是离开——被暂缓观察者的既有需求与租约原样保留，其它观察者仍能
+        /// 在本拍提交并在新区域建立租约。
+        /// </summary>
+        internal static bool Test_ARI01_UnusableSampleDefersOnlyThatObserver()
+        {
+            FakeDomainPort primary;
+            FakeDomainPort secondary;
+            DemandProjectionEngine projection;
+            LifecycleOrchestrationEngine engine = CreateEngine(
+                out primary, out secondary, out projection, radius: 1, registerSecondary: true);
+            engine.BeginSession(new SessionEpoch(31UL));
+
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, 10, 10, true);
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, 20, 20, true);
+            engine.Observe(SecondaryDomain, 100UL, 1001UL, 10, 10, true);
+            int secondaryLeases = engine.ActiveLeaseCount(SecondaryDomain);
+
+            // 观察者 100 本拍记录读不全（引擎在最高接缝上只收到「暂缓」这一事实）。
+            engine.DeferObserver(PrimaryDomain, 100UL, "invalid-observer-record");
+
+            // 其它观察者照常提交本拍更新：200 移动到新区域后立即建立租约。
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, 30, 30, true);
+
+            bool onlyThatObserverDeferred = engine.DeferredObserverCount(PrimaryDomain) == 1
+                && engine.IsObserverDeferred(PrimaryDomain, 100UL)
+                && !engine.IsObserverDeferred(PrimaryDomain, 200UL);
+            bool otherObserverStillUpdates = engine.IsLeased(PrimaryDomain, new RegionKey(30, 30))
+                && engine.GetDemand(PrimaryDomain, new RegionKey(30, 30)) == 1
+                // 9 个来自被暂缓观察者（贡献保留）+ 9 个来自另一观察者旧区的滞回保留 + 9 个新租约。
+                && engine.ActiveLeaseCount(PrimaryDomain) == 27;
+            bool deferredContributionRetained = engine.IsLeased(PrimaryDomain, new RegionKey(10, 10))
+                && engine.GetDemand(PrimaryDomain, new RegionKey(10, 10)) == 1
+                && primary.Releases.Count == 0;
+            bool otherDomainUntouched = engine.ActiveLeaseCount(SecondaryDomain) == secondaryLeases
+                && engine.DeferredObserverCount(SecondaryDomain) == 0
+                && secondary.Releases.Count == 0;
+
+            return Expect(onlyThatObserverDeferred, otherObserverStillUpdates,
+                deferredContributionRetained, otherDomainUntouched,
+                "deferred=" + engine.DeferredObserverCount(PrimaryDomain)
+                + " otherDeferred=" + engine.DeferredObserverCount(SecondaryDomain)
+                + " primaryLeases=" + engine.ActiveLeaseCount(PrimaryDomain)
+                + " secondaryLeases=" + engine.ActiveLeaseCount(SecondaryDomain)
+                + " demandNew=" + engine.GetDemand(PrimaryDomain, new RegionKey(30, 30))
+                + " demandOld=" + engine.GetDemand(PrimaryDomain, new RegionKey(10, 10))
+                + " releases=" + primary.Releases.Count + "/" + secondary.Releases.Count);
+        }
+
+        /// <summary>
+        /// 票 04：暂缓不触发破坏性释放。持续多拍的暂缓记录在时间推进与刷新之后仍不递减需求、
+        /// 不登记待释放、不调用领域释放；而真正的确认离开（RemoveObserver）仍走滞回释放。
+        /// </summary>
+        internal static bool Test_ARI02_DeferredDemandNeverReleases()
+        {
+            FakeDomainPort port;
+            LifecycleOrchestrationEngine engine = CreateSingleEngine(out port, radius: 1);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey center = new RegionKey(10, 10);
+
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, center.X, center.Y, true);
+            for (int frame = 0; frame < 20; frame++)
+            {
+                engine.DeferObserver(PrimaryDomain, 100UL, "invalid-observer-record");
+                engine.AdvanceTime(1.0f);
+                engine.Flush(0f);
+            }
+
+            bool nothingReleased = port.Releases.Count == 0
+                && engine.PendingReleaseCount(PrimaryDomain) == 0
+                && engine.ActiveLeaseCount(PrimaryDomain) == 9
+                && engine.GetDemand(PrimaryDomain, center) == 1
+                && engine.ObserverCount(PrimaryDomain) == 1
+                && port.ReplicationExited.Count == 0;
+
+            // 确认离开仍必须能清理其贡献：暂缓只挡住「无法证明离开」的推断，不挡住确认离开。
+            engine.RemoveObserver(PrimaryDomain, 100UL);
+            engine.AdvanceTime(engine.GetLifecyclePolicy(PrimaryDomain).HysteresisSeconds);
+            engine.Flush(0f);
+
+            bool confirmedExitStillReleases = engine.DeferredObserverCount(PrimaryDomain) == 0
+                && port.Releases.Count == 9
+                && engine.ActiveLeaseCount(PrimaryDomain) == 0;
+
+            return Expect(nothingReleased, confirmedExitStillReleases,
+                "releasesWhileDeferred=" + port.Releases.Count
+                + " releasedRegions=" + port.Releases.Count
+                + " pending=" + engine.PendingReleaseCount(PrimaryDomain)
+                + " leases=" + engine.ActiveLeaseCount(PrimaryDomain)
+                + " exited=" + port.ReplicationExited.Count
+                + " deferred=" + engine.DeferredObserverCount(PrimaryDomain));
+        }
+
+        /// <summary>
+        /// 票 04：持续暂缓的心跳有界且必留闭环。首条立即写出，此后按领域声明的间隔重复到上限，
+        /// 再写一条显式终止记录后停止刷屏——不是「一条去重日志后永久静默」；观测恢复可用时
+        /// 写闭环记录并重新起搏。
+        /// </summary>
+        internal static bool Test_ARI03_DeferredHeartbeatIsBoundedAndCloses()
+        {
+            var sink = new RecordingDiagnostics();
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var engine = new LifecycleOrchestrationEngine(projection, sink);
+            DemandPolicy policy = new DemandPolicy(PrimaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-primary", presence => presence.GameplayAuthorized);
+            projection.Register(policy);
+            HeartbeatPolicy heartbeat = new FakeDomainPort(PrimaryDomain, 2.0f).LifecyclePolicy.Heartbeat;
+            var port = new FakeDomainPort(PrimaryDomain, 2.0f);
+            engine.Register(policy, port);
+            engine.BeginSession(new SessionEpoch(31UL));
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, 10, 10, true);
+
+            for (int second = 0; second < 40; second++)
+            {
+                engine.DeferObserver(PrimaryDomain, 100UL, "invalid-observer-record");
+                engine.AdvanceTime(1.0f);
+            }
+
+            int entryRecords = CountEntries(sink, withMarker: false);
+            int heartbeatRecords = CountEntries(sink, withMarker: true);
+            LifecycleDiagnostic terminal = sink.Find(LifecycleEvents.ObserverDeferred, ELifecycleOutcome.Skipped);
+            bool bounded = entryRecords == 1
+                && heartbeatRecords == 1 + heartbeat.MaxRepeats
+                && terminal != null
+                && terminal.Detail.Contains("heartbeat=Exhausted");
+
+            for (int second = 0; second < 40; second++)
+            {
+                engine.DeferObserver(PrimaryDomain, 100UL, "invalid-observer-record");
+                engine.AdvanceTime(1.0f);
+            }
+
+            bool noFloodAfterTerminal = CountEntries(sink, withMarker: false) == entryRecords
+                && CountEntries(sink, withMarker: true) == heartbeatRecords
+                && engine.DeferredObserverCount(PrimaryDomain) == 1
+                && engine.IsLeased(PrimaryDomain, new RegionKey(10, 10));
+
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, 10, 10, true);
+            LifecycleDiagnostic closed = sink.Find(LifecycleEvents.ObserverDeferred, ELifecycleOutcome.Success);
+            bool closesOnRecovery = closed != null
+                && closed.Detail.Contains("cause=observer-sample-available")
+                && engine.DeferredObserverCount(PrimaryDomain) == 0;
+
+            engine.DeferObserver(PrimaryDomain, 200UL, "invalid-observer-record");
+            bool reopensForNewDeferral = CountEntries(sink, withMarker: true) == heartbeatRecords + 1
+                && CountEntries(sink, withMarker: false) == entryRecords + 1;
+
+            return Expect(bounded, noFloodAfterTerminal, closesOnRecovery, reopensForNewDeferral,
+                "entries=" + entryRecords + " heartbeats=" + heartbeatRecords
+                + " terminal=" + (terminal != null) + " maxRepeats=" + heartbeat.MaxRepeats
+                + " deferred=" + engine.DeferredObserverCount(PrimaryDomain)
+                + " detail=" + Describe(terminal) + " trail=" + DescribeDeferredTrail(sink));
+        }
+
+        /// <summary>统计暂缓诊断里带/不带心跳标记的记录数（进入暂缓 vs 心跳）。</summary>
+        private static int CountEntries(RecordingDiagnostics sink, bool withMarker)
+        {
+            int count = 0;
+            foreach (LifecycleDiagnostic entry in sink.Entries)
+            {
+                if (entry.EventName != LifecycleEvents.ObserverDeferred) continue;
+                if (entry.Outcome != ELifecycleOutcome.Deferred) continue;
+                bool hasMarker = entry.Detail != null && entry.Detail.Contains("heartbeat=");
+                if (hasMarker == withMarker) count++;
+            }
+            return count;
+        }
+
+        /// <summary>暂缓诊断序列的取证串：失败时能直接看出心跳的节奏与终止点。</summary>
+        private static string DescribeDeferredTrail(RecordingDiagnostics sink)
+        {
+            var trail = new System.Text.StringBuilder();
+            foreach (LifecycleDiagnostic entry in sink.Entries)
+            {
+                if (entry.EventName != LifecycleEvents.ObserverDeferred) continue;
+                trail.Append('[').Append(entry.Outcome).Append('|');
+                int marker = entry.Detail == null ? -1 : entry.Detail.IndexOf("heartbeat=");
+                trail.Append(marker < 0 ? "entry" : entry.Detail.Substring(marker));
+                trail.Append("|attempt=").Append(entry.Attempt).Append(']');
+            }
+            return trail.ToString();
+        }
+
+        /// <summary>
+        /// 票 04：retry 身份与观察者贡献事务粒度一致——同一区域的两个观察者各自失败时，
+        /// 两份重试资格并存、互不吞并（区域单槽退出），各自到点只补齐自己的复制贡献。
+        /// </summary>
+        internal static bool Test_ARI05_AcquireRetryIsTransactionScoped()
+        {
+            FakeDomainPort port;
+            LifecycleOrchestrationEngine engine = CreateSingleEngine(out port);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey region = new RegionKey(10, 10);
+            port.FailAcquireFor = region;
+
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, region.X, region.Y, true);
+
+            bool bothQualified = engine.PendingAcquireRetryCount(PrimaryDomain) == 2
+                && engine.AcquireRetryQualificationCount(PrimaryDomain, region) == 2
+                && port.Acquires.Count == 2
+                && !engine.IsLeased(PrimaryDomain, region);
+
+            port.FailAcquireFor = default(RegionKey);
+            float retryAfter = engine.GetLifecyclePolicy(PrimaryDomain).FailedRetry.BaseIntervalSeconds;
+            engine.AdvanceTime(retryAfter);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+
+            bool ownRetryKeepsOther = engine.IsLeased(PrimaryDomain, region)
+                && engine.GetDemand(PrimaryDomain, region) == 1
+                && engine.AcquireRetryQualificationCount(PrimaryDomain, region) == 1
+                && CountReplicationEntries(port, region, 100UL) == 1
+                && CountReplicationEntries(port, region, 200UL) == 0;
+
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, region.X, region.Y, true);
+
+            return Expect(bothQualified, ownRetryKeepsOther,
+                engine.GetDemand(PrimaryDomain, region) == 2,
+                engine.AcquireRetryQualificationCount(PrimaryDomain, region) == 0,
+                CountReplicationEntries(port, region, 200UL) == 1,
+                port.Acquires.Count == 3,
+                "qualifications=" + engine.AcquireRetryQualificationCount(PrimaryDomain, region)
+                + " demand=" + engine.GetDemand(PrimaryDomain, region)
+                + " acquires=" + port.Acquires.Count
+                + " entries100=" + CountReplicationEntries(port, region, 100UL)
+                + " entries200=" + CountReplicationEntries(port, region, 200UL));
+        }
+
+        private static int CountReplicationEntries(FakeDomainPort port, RegionKey region, ulong observerId)
+        {
+            int count = 0;
+            foreach (ObserverReplicationEvent entry in port.EnteredByObserver)
+            {
+                if (entry.RegionKey == region && entry.ObserverId == observerId) count++;
+            }
+            return count;
+        }
+
+        /// <summary>按观察者归属的复制贡献登记：用于证明「只补齐自己的贡献」。</summary>
+        private readonly struct ObserverReplicationEvent
+        {
+            internal ObserverReplicationEvent(ulong observerId, RegionKey regionKey)
+            {
+                ObserverId = observerId;
+                RegionKey = regionKey;
+            }
+
+            internal ulong ObserverId { get; }
+            internal RegionKey RegionKey { get; }
+        }
+
+        /// <summary>
+        /// 票 04：陈旧代次没有写入资格。观察者换连接后，旧连接代次留下的未完成事务登记不得
+        /// 继续替新连接提交重试，也不得把尝试次数继承给新事务；撤销必须留诊断，回滚时原样还回。
+        /// </summary>
+        internal static bool Test_ARI06_StaleConnectionRetryHasNoWriteEligibility()
+        {
+            var sink = new RecordingDiagnostics();
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var engine = new LifecycleOrchestrationEngine(projection, sink);
+            DemandPolicy policy = new DemandPolicy(PrimaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-primary", presence => presence.GameplayAuthorized);
+            projection.Register(policy);
+            var port = new FakeDomainPort(PrimaryDomain, 2.0f);
+            engine.Register(policy, port);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey region = new RegionKey(10, 10);
+            port.FailAcquireFor = region;
+
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            bool registeredUnderOldGeneration = engine.AcquireRetryQualificationCount(PrimaryDomain, region) == 1
+                && engine.PendingAcquireRetryCount(PrimaryDomain) == 1;
+
+            // 换连接且仍旧失败：旧代次的登记被撤销（不得替新连接提交），新事务从第 1 次起算，
+            // 不继承旧代次的尝试次数。
+            engine.AdvanceTime(engine.GetLifecyclePolicy(PrimaryDomain).FailedRetry.BaseIntervalSeconds);
+            engine.Observe(PrimaryDomain, 100UL, 1002UL, region.X, region.Y, true);
+
+            LifecycleDiagnostic latest = sink.Last(LifecycleEvents.RegionAcquire);
+            bool freshTransactionRestarts = latest != null
+                && latest.ConnectionGeneration == 1002UL
+                && latest.Attempt == 1
+                && latest.ObserverId == 100UL
+                && latest.HasRegion && latest.Region == region;
+            bool staleRegistrationWithdrawn = engine.AcquireRetryQualificationCount(PrimaryDomain, region) == 1
+                && engine.PendingAcquireRetryCount(PrimaryDomain) == 1
+                && !engine.IsLeased(PrimaryDomain, region)
+                && engine.GetDemand(PrimaryDomain, region) == 0;
+
+            // 到点重试由新代次驱动并成功：租约成立、登记清除，全程不产生补偿恢复。
+            port.FailAcquireFor = default(RegionKey);
+            engine.AdvanceTime(engine.GetLifecyclePolicy(PrimaryDomain).FailedRetry.BaseIntervalSeconds);
+            engine.Observe(PrimaryDomain, 100UL, 1002UL, region.X, region.Y, true);
+            bool newGenerationDrivesRetry = engine.IsLeased(PrimaryDomain, region)
+                && engine.AcquireRetryQualificationCount(PrimaryDomain, region) == 0
+                && port.Acquires.Count == 3
+                && port.RestoreRegionStateCalls == 0;
+
+            return Expect(registeredUnderOldGeneration, freshTransactionRestarts,
+                staleRegistrationWithdrawn, newGenerationDrivesRetry,
+                "latest=" + Describe(latest) + " qualification="
+                + engine.AcquireRetryQualificationCount(PrimaryDomain, region)
+                + " pending=" + engine.PendingAcquireRetryCount(PrimaryDomain)
+                + " acquires=" + port.Acquires.Count
+                + " leases=" + engine.ActiveLeaseCount(PrimaryDomain));
+        }
+
+        /// <summary>
+        /// 票 04：会话身份不确定时阻止新写入与破坏性释放，但保留全部租约、需求与暂缓态，
+        /// 并按领域政策写出有界心跳；身份重新确认后写闭环记录并恢复写入。
+        /// </summary>
+        internal static bool Test_ARI07_IdentityUncertaintyGatesWritesAndKeepsLeases()
+        {
+            FakeDomainPort port;
+            LifecycleOrchestrationEngine engine = CreateSingleEngine(out port, radius: 1);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey center = new RegionKey(10, 10);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, center.X, center.Y, true);
+
+            engine.SuspendWrites("host-session-identity-Recovering");
+            bool suspended = engine.IsWriteSuspended;
+
+            // 挂起期间：新写入被拒绝，破坏性释放不发生，租约与需求原样保留。
+            bool writesRejected = Throws(() =>
+                engine.Observe(PrimaryDomain, 200UL, 2001UL, center.X, center.Y, true));
+            bool removalRejected = Throws(() => engine.RemoveObserver(PrimaryDomain, 100UL));
+            for (int frame = 0; frame < 30; frame++)
+            {
+                engine.AdvanceTime(1.0f);
+                engine.Flush(0f);
+            }
+
+            bool stateRetained = port.Releases.Count == 0
+                && engine.ActiveLeaseCount(PrimaryDomain) == 9
+                && engine.GetDemand(PrimaryDomain, center) == 1
+                && engine.PendingReleaseCount(PrimaryDomain) == 0
+                && engine.ObserverCount(PrimaryDomain) == 1;
+            bool sessionSurvives = engine.IsSessionActive && !engine.IsRepairRequired(PrimaryDomain);
+
+            engine.ResumeWrites("host-session-identity-Ready");
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, center.X, center.Y, true);
+
+            return Expect(suspended, writesRejected, removalRejected, stateRetained, sessionSurvives,
+                !engine.IsWriteSuspended && engine.GetDemand(PrimaryDomain, center) == 2
+                && port.Releases.Count == 0,
+                "suspended=" + suspended + " releases=" + port.Releases.Count
+                + " leases=" + engine.ActiveLeaseCount(PrimaryDomain)
+                + " demand=" + engine.GetDemand(PrimaryDomain, center)
+                + " observers=" + engine.ObserverCount(PrimaryDomain)
+                + " active=" + engine.IsSessionActive);
+        }
+
+        /// <summary>
+        /// 票 04：会话身份不可恢复时显式熔断——熔断期间同样拒绝写入与破坏性释放并持续有界心跳；
+        /// 只有新建会话才重新开放写入，旧 Session Epoch 与旧代次不得再写入。
+        /// </summary>
+        internal static bool Test_ARI08_IdentityCircuitBreakRequiresNewSession()
+        {
+            var sink = new RecordingDiagnostics();
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var engine = new LifecycleOrchestrationEngine(projection, sink);
+            DemandPolicy policy = new DemandPolicy(PrimaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-primary", presence => presence.GameplayAuthorized);
+            projection.Register(policy);
+            var port = new FakeDomainPort(PrimaryDomain, 2.0f);
+            engine.Register(policy, port);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey region = new RegionKey(10, 10);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.DeferObserver(PrimaryDomain, 100UL, "invalid-observer-record");
+
+            // 熔断态的语义与挂起一致：拒绝写入、保留贡献、不破坏性释放。
+            engine.SuspendWrites("host-session-identity-CircuitBroken");
+            bool circuitBrokenRefusesWrites = Throws(() =>
+                engine.Observe(PrimaryDomain, 300UL, 3001UL, region.X, region.Y, true));
+            engine.AdvanceTime(30.0f);
+            engine.Flush(0f);
+            bool contributionKept = port.Releases.Count == 0
+                && engine.IsLeased(PrimaryDomain, region)
+                && engine.GetDemand(PrimaryDomain, region) == 1
+                && engine.ObserverCount(PrimaryDomain) == 1;
+
+            // 挂起/熔断持续时按领域政策留痕：挂起记录 + 有界心跳，不是一条去重日志后静默。
+            int gateRecords = 0;
+            foreach (LifecycleDiagnostic entry in sink.Entries)
+            {
+                if (entry.EventName == LifecycleEvents.SessionSuspended) gateRecords++;
+            }
+            bool heartbeatObservable = gateRecords >= 2;
+
+            // 失明期间的旧 epoch 与旧代次在重建后没有写入资格：重建清空一切，
+            // 旧观察者事实与投影贡献都不得残留。
+            engine.EndSession();
+            bool clearedForReuse = engine.DeferredObserverCount(PrimaryDomain) == 0
+                && engine.ActiveLeaseCount(PrimaryDomain) == 0
+                && !engine.IsWriteSuspended
+                && !engine.IsSessionActive;
+            engine.BeginSession(new SessionEpoch(32UL));
+            engine.Observe(PrimaryDomain, 100UL, 4004UL, region.X, region.Y, true);
+
+            return Expect(circuitBrokenRefusesWrites, contributionKept, heartbeatObservable,
+                clearedForReuse,
+                engine.SessionEpoch.Value == 32UL
+                && engine.GetDemand(PrimaryDomain, region) == 1
+                && port.Acquires.Count == 2
+                && sink.Find(LifecycleEvents.SessionSuspended, ELifecycleOutcome.Success) != null,
+                "gateRecords=" + gateRecords + " releases=" + port.Releases.Count
+                + " leases=" + engine.ActiveLeaseCount(PrimaryDomain)
+                + " deferred=" + engine.DeferredObserverCount(PrimaryDomain)
+                + " acquires=" + port.Acquires.Count
+                + " active=" + engine.IsSessionActive);
+        }
+
+        /// <summary>
+        /// 票 04：故障隔离单元至少是 Domain Id + Region Key + Transition。同域一个区域的
+        /// acquire 失败不牵动同域其它区域、也不牵动另一领域的同区需求；一个区域的释放失败
+        /// 只保留该区域的待释放登记，另一领域的释放照常提交——释放失败本身不升级成领域熔断。
+        /// </summary>
+        internal static bool Test_ARI09_FaultUnitIsDomainRegionTransition()
+        {
+            FakeDomainPort primary;
+            FakeDomainPort secondary;
+            DemandProjectionEngine projection;
+            LifecycleOrchestrationEngine engine = CreateEngine(
+                out primary, out secondary, out projection, registerSecondary: true);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey regionA = new RegionKey(10, 10);
+            RegionKey regionB = new RegionKey(20, 20);
+
+            primary.FailAcquireFor = regionA;
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, regionA.X, regionA.Y, true);
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, regionB.X, regionB.Y, true);
+            engine.Observe(SecondaryDomain, 100UL, 1001UL, regionA.X, regionA.Y, true);
+            primary.FailAcquireFor = default(RegionKey);
+
+            bool acquireTransitionIsolated = !engine.IsLeased(PrimaryDomain, regionA)
+                && engine.AcquireRetryQualificationCount(PrimaryDomain, regionA) == 1
+                && engine.IsLeased(PrimaryDomain, regionB)
+                && engine.IsLeased(SecondaryDomain, regionA)
+                && engine.ActiveLeaseCount(SecondaryDomain) == 1
+                && secondary.Releases.Count == 0;
+            Expect(acquireTransitionIsolated,
+                "leaseA=" + engine.IsLeased(PrimaryDomain, regionA)
+                + " qualificationA=" + engine.AcquireRetryQualificationCount(PrimaryDomain, regionA)
+                + " leaseB=" + engine.IsLeased(PrimaryDomain, regionB)
+                + " secondaryLease=" + engine.IsLeased(SecondaryDomain, regionA)
+                + " secondaryLeases=" + engine.ActiveLeaseCount(SecondaryDomain)
+                + " secondaryReleases=" + secondary.Releases.Count);
+
+            primary.ThrowOnRelease = true;
+            engine.RemoveObserver(PrimaryDomain, 200UL);
+            engine.RemoveObserver(SecondaryDomain, 100UL);
+            engine.AdvanceTime(engine.GetLifecyclePolicy(PrimaryDomain).HysteresisSeconds);
+            engine.Flush(0f);
+
+            // 主域只有 B 区建立了租约（A 区 acquire 从未成功），因此只有一处待释放登记。
+            bool releaseTransitionIsolated = primary.Releases.Count == 0
+                && engine.PendingReleaseCount(PrimaryDomain) == 1
+                && secondary.Releases.Count == 1
+                && engine.PendingReleaseCount(SecondaryDomain) == 0
+                && engine.ActiveLeaseCount(SecondaryDomain) == 0;
+            bool failureDoesNotEscalateToDomainFault = engine.IsSessionActive
+                && !engine.IsRepairRequired(PrimaryDomain)
+                && !engine.IsRepairRequired(SecondaryDomain);
+            Expect(releaseTransitionIsolated, failureDoesNotEscalateToDomainFault,
+                "primaryReleases=" + primary.Releases.Count
+                + " pendingPrimary=" + engine.PendingReleaseCount(PrimaryDomain)
+                + " secondaryReleases=" + secondary.Releases.Count
+                + " pendingSecondary=" + engine.PendingReleaseCount(SecondaryDomain)
+                + " secondaryLeases=" + engine.ActiveLeaseCount(SecondaryDomain)
+                + " repair=" + engine.IsRepairRequired(PrimaryDomain) + "/"
+                + engine.IsRepairRequired(SecondaryDomain));
+
+            primary.ThrowOnRelease = false;
+            engine.AdvanceTime(engine.GetLifecyclePolicy(PrimaryDomain).HysteresisSeconds);
+            engine.Flush(0f);
+
+            return Expect(acquireTransitionIsolated, releaseTransitionIsolated,
+                failureDoesNotEscalateToDomainFault,
+                primary.Releases.Count == 1 && engine.PendingReleaseCount(PrimaryDomain) == 0,
+                "primaryLeasesA=" + engine.IsLeased(PrimaryDomain, regionA)
+                + " qualificationA=" + engine.AcquireRetryQualificationCount(PrimaryDomain, regionA)
+                + " primaryLeasesB=" + engine.IsLeased(PrimaryDomain, regionB)
+                + " secondaryLeases=" + engine.ActiveLeaseCount(SecondaryDomain)
+                + " primaryReleases=" + primary.Releases.Count
+                + " secondaryReleases=" + secondary.Releases.Count
+                + " pendingPrimary=" + engine.PendingReleaseCount(PrimaryDomain)
+                + " repair=" + engine.IsRepairRequired(PrimaryDomain) + "/"
+                + engine.IsRepairRequired(SecondaryDomain));
+        }
+
+        /// <summary>
+        /// 票 04：熔断领域的持续异常具备有界心跳（首条 + 重复到上限 + 显式终止），
+        /// 会话收尾成功即恢复并写闭环记录——恢复不是静默的，新会话也不再被它挡住。
+        /// </summary>
+        internal static bool Test_ARI10_FaultHeartbeatIsBoundedAndClosesOnRecovery()
+        {
+            var sink = new RecordingDiagnostics();
+            var engine = CreateEngineWithDiagnostics(sink, out FakeDomainPort primary, out FakeDomainPort secondary);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey region = new RegionKey(10, 10);
+
+            primary.ThrowOnReplicationEnter = true;
+            primary.ThrowOnReplicationRestore = true;
+            bool faulted = Throws(() =>
+                engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true))
+                && engine.IsRepairRequired(PrimaryDomain);
+
+            engine.Observe(SecondaryDomain, 200UL, 2001UL, region.X, region.Y, true);
+            for (int second = 0; second < 40; second++) engine.AdvanceTime(1.0f);
+            engine.Flush(0f);
+
+            int faultRecords = CountFaultRecords(sink);
+            LifecycleDiagnostic terminal = sink.Find(LifecycleEvents.DomainFault, ELifecycleOutcome.Skipped);
+            int maxRepeats = primary.LifecyclePolicy.Heartbeat.MaxRepeats;
+            bool bounded = faultRecords == 1 + 1 + maxRepeats && terminal != null
+                && terminal.Detail.Contains("heartbeat=Exhausted");
+            bool otherDomainUnaffected = engine.IsLeased(SecondaryDomain, region)
+                && engine.GetDemand(SecondaryDomain, region) == 1
+                && !engine.IsRepairRequired(SecondaryDomain)
+                && engine.IsSessionActive;
+            Expect(faulted, bounded, otherDomainUnaffected,
+                "faulted=" + faulted + " faultRecords=" + faultRecords
+                + " terminal=" + Describe(terminal)
+                + " secondaryLease=" + engine.IsLeased(SecondaryDomain, region));
+
+            // 会话收尾失败＝熔断未被修复：熔断领域在下一局不参与，但不得挡住其它领域开始会话。
+            primary.ThrowOnSessionEnd = true;
+            bool endFailedClosed = Throws(() => engine.EndSession())
+                && engine.IsRepairRequired(PrimaryDomain)
+                && !engine.IsSessionActive;
+
+            int primaryBeginsBefore = primary.SessionBeginCalls;
+            int secondaryBeginsBefore = secondary.SessionBeginCalls;
+            engine.BeginSession(new SessionEpoch(32UL));
+            bool healthyDomainStillBegins = engine.IsSessionActive
+                && engine.IsRepairRequired(PrimaryDomain)
+                // 熔断领域不参与本局：它拿不到新 Session Epoch，因此旧代次的写入资格不被延续。
+                && primary.SessionBeginCalls == primaryBeginsBefore
+                && secondary.SessionBeginCalls == secondaryBeginsBefore + 1
+                && Throws(() => engine.Observe(PrimaryDomain, 100UL, 2002UL, region.X, region.Y, true));
+            engine.Observe(SecondaryDomain, 200UL, 2002UL, region.X, region.Y, true);
+            bool isolatedDomainStaysIsolated = engine.IsLeased(SecondaryDomain, region);
+            Expect(endFailedClosed, healthyDomainStillBegins, isolatedDomainStaysIsolated,
+                "repair=" + engine.IsRepairRequired(PrimaryDomain)
+                + " secondaryLease=" + engine.IsLeased(SecondaryDomain, region)
+                + " active=" + engine.IsSessionActive);
+
+            // 会话收尾成功＝有限恢复：熔断清除并写闭环记录，下一局该领域重新参与。
+            primary.ThrowOnSessionEnd = false;
+            engine.EndSession();
+            bool recovered = !engine.IsRepairRequired(PrimaryDomain)
+                && sink.Find(LifecycleEvents.DomainFault, ELifecycleOutcome.Success) != null;
+            engine.BeginSession(new SessionEpoch(33UL));
+            primary.ThrowOnReplicationEnter = false;
+            primary.ThrowOnReplicationRestore = false;
+            engine.Observe(PrimaryDomain, 100UL, 3003UL, region.X, region.Y, true);
+            bool recoversIntoService = engine.IsLeased(PrimaryDomain, region)
+                && engine.GetDemand(PrimaryDomain, region) == 1
+                && !engine.IsRepairRequired(PrimaryDomain);
+
+            return Expect(recovered, recoversIntoService,
+                "recovered=" + recovered + " repair=" + engine.IsRepairRequired(PrimaryDomain)
+                + " primaryLease=" + engine.IsLeased(PrimaryDomain, region)
+                + " demand=" + engine.GetDemand(PrimaryDomain, region));
+        }
+
+        private static int CountFaultRecords(RecordingDiagnostics sink)
+        {
+            int count = 0;
+            foreach (LifecycleDiagnostic entry in sink.Entries)
+            {
+                if (entry.EventName == LifecycleEvents.DomainFault
+                    && entry.Outcome != ELifecycleOutcome.Success) count++;
+            }
+            return count;
+        }
+
+        /// <summary>两份领域状态各自独立的引擎，用于跨域隔离类断言（两个领域都注册）。</summary>
+        private static LifecycleOrchestrationEngine CreateEngineWithDiagnostics(
+            RecordingDiagnostics sink, out FakeDomainPort primary, out FakeDomainPort secondary)
+        {
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var engine = new LifecycleOrchestrationEngine(projection, sink);
+            DemandPolicy primaryPolicy = new DemandPolicy(PrimaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-primary", presence => presence.GameplayAuthorized);
+            DemandPolicy secondaryPolicy = new DemandPolicy(SecondaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-secondary", presence => presence.GameplayAuthorized);
+            projection.Register(primaryPolicy);
+            projection.Register(secondaryPolicy);
+            primary = new FakeDomainPort(PrimaryDomain, 2.0f);
+            secondary = new FakeDomainPort(SecondaryDomain, 2.0f);
+            engine.Register(primaryPolicy, primary);
+            engine.Register(secondaryPolicy, secondary);
+            return engine;
+        }
+
+        /// <summary>
+        /// 票 04：被暂缓观察者的贡献不是零需求。同区另一观察者离开后，需求引用计数只降到
+        /// 暂缓者仍占的那一份，租约不会因为「暂缓被当成零需求」而提前进入滞回释放。
+        /// </summary>
+        internal static bool Test_ARI04_DeferredContributionStillCountsAsDemand()
+        {
+            FakeDomainPort port;
+            LifecycleOrchestrationEngine engine = CreateSingleEngine(out port);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey region = new RegionKey(10, 10);
+
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.Observe(PrimaryDomain, 200UL, 2001UL, region.X, region.Y, true);
+            engine.DeferObserver(PrimaryDomain, 100UL, "invalid-observer-record");
+            engine.RemoveObserver(PrimaryDomain, 200UL);
+
+            bool demandSurvivesThroughDeferred = engine.GetDemand(PrimaryDomain, region) == 1
+                && engine.PendingReleaseCount(PrimaryDomain) == 0
+                && engine.IsLeased(PrimaryDomain, region)
+                && engine.ProjectedDemandRegionCount(PrimaryDomain) == 1;
+
+            engine.AdvanceTime(engine.GetLifecyclePolicy(PrimaryDomain).HysteresisSeconds * 2f);
+            engine.Flush(0f);
+
+            return Expect(demandSurvivesThroughDeferred,
+                port.Releases.Count == 0 && engine.ActiveLeaseCount(PrimaryDomain) == 1,
+                "demand=" + engine.GetDemand(PrimaryDomain, region)
+                + " pending=" + engine.PendingReleaseCount(PrimaryDomain)
+                + " releases=" + port.Releases.Count
+                + " leases=" + engine.ActiveLeaseCount(PrimaryDomain)
+                + " projected=" + engine.ProjectedDemandRegionCount(PrimaryDomain));
+        }
+
         /// <summary>记录全部转换诊断的测试出口：只观察，不参与任何控制流。</summary>
         private sealed class RecordingDiagnostics : ILifecycleDiagnostics
         {
@@ -257,6 +888,17 @@ namespace SteamP2PFriends.WhitelistTests
                 return Entries.Find(entry =>
                     entry.EventName == eventName && entry.Outcome == outcome);
             }
+
+            /// <summary>该事件名最近一条记录：用于核对「新事务从第 1 次起算」这类时序断言。</summary>
+            internal LifecycleDiagnostic Last(string eventName)
+            {
+                LifecycleDiagnostic last = null;
+                foreach (LifecycleDiagnostic entry in Entries)
+                {
+                    if (entry.EventName == eventName) last = entry;
+                }
+                return last;
+            }
         }
 
         /// <summary>
@@ -268,14 +910,21 @@ namespace SteamP2PFriends.WhitelistTests
             internal readonly List<LeaseTicket> Acquires = new List<LeaseTicket>();
             internal readonly List<LeaseTicket> Releases = new List<LeaseTicket>();
             internal readonly List<RegionKey> ReplicationEntered = new List<RegionKey>();
+            internal readonly List<ObserverReplicationEvent> EnteredByObserver =
+                new List<ObserverReplicationEvent>();
             internal readonly List<RegionKey> ReplicationExited = new List<RegionKey>();
             internal uint Generation = 1U;
             internal bool ThrowOnAcquire;
             internal bool ThrowOnRelease;
+            internal bool ThrowOnSessionEnd;
             internal bool ThrowOnReplicationEnter;
             internal bool ThrowOnReplicationRestore;
             internal RegionKey FailAcquireFor;
             internal int RestoreReplicationCalls;
+            internal int RestoreRegionStateCalls;
+
+            /// <summary>本域收到过几次会话开始：熔断领域不得参与新会话，靠它取证。</summary>
+            internal int SessionBeginCalls;
 
             internal FakeDomainPort(DomainId domainId, float hysteresisSeconds)
             {
@@ -284,6 +933,7 @@ namespace SteamP2PFriends.WhitelistTests
                     hysteresisSeconds,
                     new RetrySchedule(2.0f, 32f, 5),
                     new RetrySchedule(10.0f, 60f, int.MaxValue),
+                    new HeartbeatPolicy(5f, 2),
                     "test-domain");
             }
 
@@ -291,8 +941,11 @@ namespace SteamP2PFriends.WhitelistTests
             public string DisplayName => DomainId.Value;
             public LifecyclePolicy LifecyclePolicy { get; }
 
-            public void OnSessionBegin(uint sessionEpoch) { }
-            public void OnSessionEnd() { }
+            public void OnSessionBegin(uint sessionEpoch) => SessionBeginCalls++;
+            public void OnSessionEnd()
+            {
+                if (ThrowOnSessionEnd) throw new InvalidOperationException("test session-end failure");
+            }
             public void ResetReplication(uint sessionEpoch) { }
 
             public void OnAcquire(LeaseTicket ticket)
@@ -321,6 +974,7 @@ namespace SteamP2PFriends.WhitelistTests
                     throw new InvalidOperationException("test replication enter failure");
                 }
                 ReplicationEntered.Add(regionKey);
+                EnteredByObserver.Add(new ObserverReplicationEvent(observerId, regionKey));
             }
 
             public void OnObserverReplicationExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
@@ -340,7 +994,7 @@ namespace SteamP2PFriends.WhitelistTests
                 EDomainFailureKind.Failed;
 
             public object CaptureRegionState(RegionKey regionKey) => new object();
-            public void RestoreRegionState(RegionKey regionKey, object state) { }
+            public void RestoreRegionState(RegionKey regionKey, object state) => RestoreRegionStateCalls++;
             public object CaptureObserverReplicationState(ulong observerId, ulong connectionToken) => new object();
             public void RestoreObserverReplicationState(
                 ulong observerId, ulong connectionToken, object state)

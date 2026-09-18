@@ -15,6 +15,15 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         public const string ObserverRemove = "ObserverRemove";
         public const string ObserverCompensation = "ObserverCompensation";
 
+        /// <summary>样本暂缓（Deferred Observer Demand）与它的有界心跳/闭环记录共用的事件名。</summary>
+        public const string ObserverDeferred = "ObserverDeferred";
+
+        /// <summary>会话级写入闸门：挂起、持续挂起的心跳与恢复闭环。</summary>
+        public const string SessionSuspended = "LifecycleWriteGate";
+
+        /// <summary>领域熔断及其有界心跳（被推进路径跳过时的持续异常记录）。</summary>
+        public const string DomainFault = "LifecycleDomainFault";
+
         public const string RegionAcquire = "LeaseAcquire";
         public const string RegionAcquireRetry = "LeaseAcquireRetry";
         public const string RegionReleaseScheduled = "LeaseReleaseScheduled";

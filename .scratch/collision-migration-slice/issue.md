@@ -31,23 +31,18 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：04（与 05 并行）。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`）；票 03 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`）。两张票的 Runtime 验收均归票 09。
+当前前沿：04 静态闭环（`implemented-pending-runtime`），票 05 可并行认领。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`）；票 03 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`）；票 04 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md`）。三张票的 Runtime 验收均归票 09。
 
-## 票 03 → 票 04 的具名交接（截获点，不在票 03 内修）
+## 票 03/02 → 票 04 的具名交接（已在本票收口）
 
-票 03 以**行为保持**方式把资源生产接缝迁入共享编排引擎，因此以下三项仍是票 04 的准入阻塞项，且都已在引擎里预留了收口位置：
+- **retry 登记已改为事务粒度**：键从「区域单槽 + 拥有者观察者」改为「区域 + 观察者 + 连接代次」，区域单槽互吞退出（M6P40 注释具名的边界已消除）；陈旧连接代次的登记不再具备写入资格。
+- **样本捕获层 `capture-incomplete` 整体冻结已解除**：改为逐条准入（`ObserverSampleAdmission`），单条不可用记录只暂缓它自己的观察者，整批不可判定才整批暂缓；无效样本进入 Deferred Observer Demand，不触发破坏性释放。
+- **会话身份已具备有界恢复与显式熔断**：`SessionIdentityGate` 有限窗口 + 有界心跳 + 熔断；身份不确定时阻断写入与破坏性释放但保留全部领域状态，恢复后要求重建会话。
 
-- **retry 仍按「区域单槽 + 拥有者观察者」登记**：`spec.md` 要求观察者贡献事务区分领域、区域、观察者、连接代次、会话，禁止区域单槽互吞。票 01 表征门 M6P38/M6P39/M6P40 锁定的正是当前语义，票 03 未改（`M6P40` 注释已列明该边界不属已验收语义）。登记已收进引擎的每域状态（`DomainLifecycleState.AcquireRetries`），票 04 改键为事务粒度即可，不需要再动引擎结构。
-- **样本捕获层 `capture-incomplete` 整体冻结**与「无效样本未进入 Deferred Observer Demand」仍归票 04 第 1–2 项；票 03 未触碰 `MultiObserverShadowCoordinator.CaptureSamples`（`git diff` 可证）。
-- **会话身份的有界恢复/显式熔断**仍归票 04 第 4 项：票 03 保留既有失败闭合语义（会话收尾失败 → `repair-required` + 拒绝新写入），未新增有界恢复策略。
+## 票 04 → 票 05/06/07/08 的具名移交
 
-## 票 02 → 票 04 的具名交接（截获点，不在票 02 内修）
-
-票 02 复审期间暴露的**样本捕获**不变量仍归票 04（其票面 checklist 第 1–2 项，且 `Blocked by: 03`）：
-
-- `MultiObserverShadowCoordinator.CaptureSamples` 仍对单条不完整记录整体冻结本拍（`capture-incomplete` → 跳过全部 reconcile）。规格 `spec.md:61` 要求「单条不可用观察者记录不得冻结其它有效观察者的本拍更新」，该修复属票 04 第 1 项。
-- 无效样本对应的旧需求目前不是 Deferred Observer Demand；票 02 已在共享引擎实现其**原语**（资格不合格＝暂缓而非释放，见 `DemandProjectionEngine.DomainDemandProjectionState.Apply`），票 04 第 2 项只需在其上接入样本不可用路径。
-- 票 02 未修改上述捕获路径（`git diff` 可证），故不构成票 02 的行为变更。
+- Collision Demand Policy 与只读影子（票 05）、Execution Port 与 Acquisition Receipt（票 06）接在已加固的共享引擎上；本票未新增任何 Collision 执行类型、未切换 Authority Writer。
+- 票 07 的准入 Go/No-Go 需消费本票结论：准入门静态不变量已落地，但 Runtime 证据仍归票 09。
 
 ## 测试接缝
 

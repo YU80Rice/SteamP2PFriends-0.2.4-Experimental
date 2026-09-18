@@ -26,7 +26,13 @@ namespace SteamP2PFriends.Adapters.Resource
         public const float FailedAcquireRetryIntervalSeconds = 10.0f;
 
         /// <summary>一般 acquire 失败的重试间隔上限（秒）。</summary>
-        public const float FailedAcquireRetryCapSeconds = 60.0f;
+        public const float FailedAcquireRetryCapSeconds = 60f;
+
+        /// <summary>持续状态（样本暂缓、领域熔断、写入挂起）的心跳间隔（秒）：不逐帧淹没日志。</summary>
+        public const float PersistentStateHeartbeatSeconds = 5f;
+
+        /// <summary>持续状态心跳的重复上限：用尽后写出显式终止记录，等待状态变化重新起搏。</summary>
+        public const int PersistentStateHeartbeatRepeats = 6;
 
         /// <summary>
         /// 声明 Resource 的 Lifecycle Policy。滞回窗口由调用方从资源域自己的常量读入后传入
@@ -45,6 +51,9 @@ namespace SteamP2PFriends.Adapters.Resource
                     FailedAcquireRetryIntervalSeconds,
                     FailedAcquireRetryCapSeconds,
                     int.MaxValue),
+                new HeartbeatPolicy(
+                    PersistentStateHeartbeatSeconds,
+                    PersistentStateHeartbeatRepeats),
                 Source);
         }
     }

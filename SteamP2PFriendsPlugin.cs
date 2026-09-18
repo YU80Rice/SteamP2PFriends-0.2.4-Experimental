@@ -249,15 +249,8 @@ namespace SteamP2PFriends
             if (P2PWorldStatusBroadcaster.ShouldSuspendPluginUpdate)
                 return;
 
-            try
-            {
-                MultiObserverShadowCoordinator.Tick(EnableMultiObserverShadow?.Value == true);
-                Adapters.Zombie.ZombieRegionLifecycleAdapter.Tick();
-            }
-            catch (System.Exception ex)
-            {
-                MultiObserverShadowCoordinator.HandleTickFailure(ex);
-            }
+            TickMultiObserverShadowIsolated();
+            TickZombieIsolated();
 
             if (!EnsureRouteBLifecycleHooksOnGameThread())
                 return;
@@ -272,6 +265,38 @@ namespace SteamP2PFriends
 
             ThreadUtil.assertIsGameThread();
             TickActiveComponents();
+        }
+
+        /// <summary>
+        /// 共享观察者面（含资源生产编排）的独立故障边界：它自己的失败只进自己的故障入口，
+        /// 不再与僵尸域共用同一个外层捕获。
+        /// </summary>
+        private void TickMultiObserverShadowIsolated()
+        {
+            try
+            {
+                MultiObserverShadowCoordinator.Tick(EnableMultiObserverShadow?.Value == true);
+            }
+            catch (System.Exception ex)
+            {
+                MultiObserverShadowCoordinator.HandleTickFailure(ex);
+            }
+        }
+
+        /// <summary>
+        /// 僵尸域的独立故障边界：僵尸 tick 抛错只能落在这里，不得经共享外层捕获去结束
+        /// 其它领域（资源/碰撞）的会话。
+        /// </summary>
+        private void TickZombieIsolated()
+        {
+            try
+            {
+                Adapters.Zombie.ZombieRegionLifecycleAdapter.Tick();
+            }
+            catch (System.Exception ex)
+            {
+                Adapters.Zombie.ZombieRegionLifecycleAdapter.ReportTickFailure(ex);
+            }
         }
 
         private void OnDestroy()

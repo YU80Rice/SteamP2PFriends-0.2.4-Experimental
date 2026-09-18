@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 335 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 360 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -88,6 +88,24 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("LOE13 RegistrationClosure", LifecycleOrchestrationEngineTests.Test_LOE13_RegistrationClosureFreezesDomainSet, ref total, ref passed, ref failed);
             RunTest("LOE14 AcquireObservable", LifecycleOrchestrationEngineTests.Test_LOE14_SuccessfulAcquireIsObservable, ref total, ref passed, ref failed);
             RunTest("LOE15 FaultedDomainIsolation", LifecycleOrchestrationEngineTests.Test_LOE15_FaultedDomainDoesNotStallOthers, ref total, ref passed, ref failed);
+            // 票 04：共享控制面正式切换准入不变量（暂缓不冻结/不释放、身份有界恢复或熔断、
+            // retry 事务粒度、故障隔离单元与有界心跳）。
+            RunTest("ARI01 DeferredSampleDoesNotFreeze", LifecycleOrchestrationEngineTests.Test_ARI01_UnusableSampleDefersOnlyThatObserver, ref total, ref passed, ref failed);
+            RunTest("ARI02 DeferredNeverReleases", LifecycleOrchestrationEngineTests.Test_ARI02_DeferredDemandNeverReleases, ref total, ref passed, ref failed);
+            RunTest("ARI03 DeferredHeartbeatBounded", LifecycleOrchestrationEngineTests.Test_ARI03_DeferredHeartbeatIsBoundedAndCloses, ref total, ref passed, ref failed);
+            RunTest("ARI04 DeferredStillCountsDemand", LifecycleOrchestrationEngineTests.Test_ARI04_DeferredContributionStillCountsAsDemand, ref total, ref passed, ref failed);
+            RunTest("ARI05 RetryTransactionScope", LifecycleOrchestrationEngineTests.Test_ARI05_AcquireRetryIsTransactionScoped, ref total, ref passed, ref failed);
+            RunTest("ARI06 StaleRetryNoEligibility", LifecycleOrchestrationEngineTests.Test_ARI06_StaleConnectionRetryHasNoWriteEligibility, ref total, ref passed, ref failed);
+            RunTest("ARI07 IdentityGatesWrites", LifecycleOrchestrationEngineTests.Test_ARI07_IdentityUncertaintyGatesWritesAndKeepsLeases, ref total, ref passed, ref failed);
+            RunTest("ARI08 IdentityCircuitBreak", LifecycleOrchestrationEngineTests.Test_ARI08_IdentityCircuitBreakRequiresNewSession, ref total, ref passed, ref failed);
+            RunTest("ARI09 FaultUnitDomainRegionTransition", LifecycleOrchestrationEngineTests.Test_ARI09_FaultUnitIsDomainRegionTransition, ref total, ref passed, ref failed);
+            RunTest("ARI10 FaultHeartbeatBounded", LifecycleOrchestrationEngineTests.Test_ARI10_FaultHeartbeatIsBoundedAndClosesOnRecovery, ref total, ref passed, ref failed);
+            RunTest("SAM01 PerRecordAdmission", ObserverSampleAdmissionTests.Test_SAM01_SingleUnusableRecordOnlyDefersItsObserver, ref total, ref passed, ref failed);
+            RunTest("SAM02 BatchRejection", ObserverSampleAdmissionTests.Test_SAM02_BatchFailureDefersEveryone, ref total, ref passed, ref failed);
+            RunTest("SAM03 UnknownIdentityAndDuplicates", ObserverSampleAdmissionTests.Test_SAM03_UnknownIdentityAndDuplicatesKeepOtherRecords, ref total, ref passed, ref failed);
+            RunTest("SIG01 IdentityRecoversInWindow", SessionIdentityGateTests.Test_SIG01_RecoversInsideWindow, ref total, ref passed, ref failed);
+            RunTest("SIG02 IdentityCircuitBreak", SessionIdentityGateTests.Test_SIG02_CircuitBreaksAfterWindowWithBoundedHeartbeat, ref total, ref passed, ref failed);
+            RunTest("SIG03 CircuitRecoveryResync", SessionIdentityGateTests.Test_SIG03_CircuitBrokenRecoveryRequiresResynchronization, ref total, ref passed, ref failed);
             #endregion
 
             #region 3. Adapters: Item Domain Tests (21 Tests)
@@ -449,6 +467,26 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Lifecycle Single Domain Registration", LifecycleOrchestrationStaticILContractTests.Test_SingleDomainRegistrationSiteIsResource,
                 ref total, ref passed, ref failed);
             RunTest("Lifecycle No Domain Branch", LifecycleOrchestrationStaticILContractTests.Test_EngineHasNoDomainBranch,
+                ref total, ref passed, ref failed);
+
+            // 票 04：共享控制面正式切换准入不变量的结构门禁。
+            RunTest("Control Plane Readiness StaticIL", ControlPlaneReadinessStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Retry Transaction Scope", ControlPlaneReadinessStaticILContractTests.Test_AcquireRetryIsTransactionScoped,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Deferred Demand Never Releases", ControlPlaneReadinessStaticILContractTests.Test_DeferredDemandNeverReleases,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Session Identity Gate", ControlPlaneReadinessStaticILContractTests.Test_SessionIdentityGateIsPureAndBounded,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Per-Record Sample Admission", ControlPlaneReadinessStaticILContractTests.Test_SampleAdmissionIsPerRecord,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Outer Catch Does Not End Session", ControlPlaneReadinessStaticILContractTests.Test_SharedOuterCatchDoesNotEndSession,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Bounded Fault Heartbeat", ControlPlaneReadinessStaticILContractTests.Test_PersistentFaultHeartbeatIsNotOneShot,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Zombie Fault Bypasses Log Quota", ControlPlaneReadinessStaticILContractTests.Test_ZombieFaultClosureBypassesSharedLogQuota,
+                ref total, ref passed, ref failed);
+            RunTest("Readiness Shared Fault Channel", ControlPlaneReadinessStaticILContractTests.Test_SharedFaultChannelIsBoundedAndCloses,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

@@ -71,6 +71,17 @@ namespace SteamP2PFriends.WhitelistTests
             });
         }
 
+        /// <summary>
+        /// 方法体声明的异常处理子句数（try/catch/finally）。用于证明某个域 tick 处于自己的
+        /// 故障边界内，而不是躲在共享外层捕获后面：没有边界就没有独立故障隔离。
+        /// </summary>
+        internal static int CountExceptionHandlers(MethodBase method)
+        {
+            if (method == null) return -1;
+            MethodBody body = method.GetMethodBody();
+            return body == null ? 0 : body.ExceptionHandlingClauses.Count;
+        }
+
         internal static int CountAssemblyMethodCalls(Assembly assembly, string declaringTypeName, string methodName)
         {
             return SumOverDeclaredMethods(assembly, method => CountMethodCalls(method, declaringTypeName, methodName));

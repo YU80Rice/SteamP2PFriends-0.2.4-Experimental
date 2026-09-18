@@ -1,6 +1,7 @@
 using SDG.Unturned;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
+using SteamP2PFriends.MultiObserver.Lifecycle;
 using SteamP2PFriends.Adapters.Zombie.Patches;
 using SteamP2PFriends.Shared;
 using SteamP2PFriends.Core.Identity;
@@ -132,6 +133,12 @@ namespace SteamP2PFriends.Adapters.Zombie
     {
         private const float ReleaseHysteresisSeconds = 2f;
         private const int LogLimit = 48;
+
+        /// <summary>本域 tick 故障的有界心跳节奏（僵尸域自己的声明，不借用引擎默认值）。</summary>
+        private static readonly HeartbeatPolicy TickFaultHeartbeat = new HeartbeatPolicy(5f, 6);
+
+        private static BoundedHeartbeat _tickFaultHeartbeat;
+        private static bool _tickFaulted;
         private static readonly ZombieRegionLifecycleLedger Ledger = new ZombieRegionLifecycleLedger();
         private static readonly Dictionary<BoundKey, ZombieRegion> RegionIdentity = new Dictionary<BoundKey, ZombieRegion>();
         private static bool _registrationReady;
@@ -197,6 +204,9 @@ namespace SteamP2PFriends.Adapters.Zombie
                 Ledger.CommitRelease(lease);
                 SafeInfo($"release-commit bound={lease.Bound} generation={lease.RegionGeneration} demand=0 hysteresis={ReleaseHysteresisSeconds:0.0}s");
             }
+
+            // 本域 tick 完整走通：若此前有过故障，写恢复闭环并结束心跳。
+            ReportTickRecovered();
         }
 
         internal static bool TryAcquireForRemote(Player player, byte oldBound, byte newBound)
@@ -445,10 +455,60 @@ namespace SteamP2PFriends.Adapters.Zombie
             try { RoleLogger.Info("[Host]", "[MultiObserver/M3-Zombie] " + message); } catch { }
         }
 
+        /// <summary>
+        /// 故障通道出口：不受普通日志配额（<see cref="LogLimit"/>）约束。它的量由有界心跳本身
+        /// 约束（每次故障episode 最多 首条 + 重复上限 + 终止 再加一条恢复闭环），因此不会变成刷屏。
+        /// </summary>
+        private static void SafeFault(string message)
+        {
+            try { RoleLogger.Warn("[Shared]", "[MultiObserver/M3-Zombie] " + message); } catch { }
+        }
+
         private static void SafeWarn(string message)
         {
             if (_logCount++ >= LogLimit) return;
             try { RoleLogger.Warn("[Shared]", "[MultiObserver/M3-Zombie] " + message); } catch { }
+        }
+
+        /// <summary>
+        /// 僵尸域自己的故障入口：本域 tick 抛错时由插件在该域自己的故障边界内调用。
+        /// 它只记录本域失败、保持本域状态不变——僵尸失败不构成结束资源/碰撞会话的理由，
+        /// 因此这里既不结束会话，也不清空其它领域。
+        ///
+        /// 持续故障按本域声明的节奏写出有界心跳（首条 + 按间隔重复 + 显式终止），
+        /// 不是「打到上限就永久静默」；本域 tick 重新走通时写恢复闭环并重新起搏。
+        /// </summary>
+        internal static void ReportTickFailure(Exception exception)
+        {
+            try
+            {
+                float now = Time.realtimeSinceStartup;
+                if (!_tickFaulted)
+                {
+                    _tickFaulted = true;
+                    _tickFaultHeartbeat = new BoundedHeartbeat(TickFaultHeartbeat, now);
+                }
+
+                EBoundedHeartbeat kind = _tickFaultHeartbeat.IsRunning
+                    ? _tickFaultHeartbeat.Next(now)
+                    : EBoundedHeartbeat.Suppressed;
+                if (kind == EBoundedHeartbeat.Suppressed) return;
+                // 故障心跳走独立出口：普通日志配额被打满也不能把持续异常与恢复闭环一起静默掉，
+                // 否则「有界心跳」就只是状态机在空转。
+                SafeFault($"tick-fault heartbeat={kind} type="
+                    + (exception?.GetType().Name ?? "unknown")
+                    + " sessionEnded=false otherDomainsUntouched=true");
+            }
+            catch { }
+        }
+
+        /// <summary>本域 tick 恢复走通：写闭环记录，故障计数与心跳一并归零。</summary>
+        private static void ReportTickRecovered()
+        {
+            if (!_tickFaulted) return;
+            _tickFaulted = false;
+            _tickFaultHeartbeat.Stop();
+            SafeFault("tick-fault-cleared recovered=true otherDomainsUntouched=true");
         }
 
         internal static ZombieRegionLifecycleLedger CreateLedgerForTests() => new ZombieRegionLifecycleLedger();

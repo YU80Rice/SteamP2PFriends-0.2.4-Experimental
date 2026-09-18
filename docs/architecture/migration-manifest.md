@@ -546,3 +546,115 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 6. 诊断去重键为字符串拼接（第 2 轮具名）——沿用本文件既有 `TransitionOnce` 键模式，未新增长期形态；
 7. 生产接缝现为薄门面（Middle Man 形状，第 1 轮具名）——ADR 0011 明确要求保留兼容门面，不构成违规；
 8. `ResourceProductionControlSeamTests` 的失衡残留辅助走三级反射（第 1 轮具名）——为不新增「仅供测试」的生产 API，接受该耦合；引擎结构再变时需同步该辅助。
+
+## Batch 15：共享控制面正式切换准入不变量（0.2.4.9 / 票 04）
+
+状态：**静态完成**——正式切换所需的控制面不变量已在共享引擎上落地：坏样本只暂缓它自己的观察者、暂缓不触发破坏性释放、暂缓/熔断/挂起都有有界心跳与恢复闭环、会话身份有界恢复或显式熔断、retry 与观察者贡献事务粒度一致（区域单槽退出）、故障隔离单元至少是 Domain Id + Region Key + Transition、共享外层捕获不再跨域结束会话。**本批不切换 Collision Authority Writer，也不宣称准入门 Runtime 通过**（Collision 执行端口与切换分别归票 06/08，Runtime 归票 09）。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Core/ControlPlane/Lifecycle/BoundedHeartbeat.cs` | 新增 | `HeartbeatPolicy`（间隔 + 重复上限）与 `BoundedHeartbeat` 状态机：首条 → 按间隔重复 → 用尽写显式终止记录 → 等待状态变化重新起搏；持续状态既有间隔下限又不无限刷屏 |
+| `Core/ControlPlane/Lifecycle/SessionIdentityGate.cs` | 新增 | `ESessionIdentityState`（Ready/Recovering/CircuitBroken）与身份门：身份缺失或不一致先有限恢复（自带心跳），窗口耗尽显式熔断，熔断后恢复要求重建会话；它只产出决策，不结束任何会话 |
+| `Core/ControlPlane/Demand/ObserverSampleAdmission.cs` | 新增 | 逐条样本准入策略：单条记录不可用只暂缓该观察者，整批不可判定才整批暂缓；身份不可读会关上本拍的缺席移除资格；重复记录不改变结论 |
+| `Core/ControlPlane/Lifecycle/LifecyclePolicy.cs` | 已改 | 新增领域声明的 `HeartbeatPolicy`（持续状态诊断节奏）；滞回与 retry 语义不变 |
+| `Core/ControlPlane/Lifecycle/LifecycleEvents.cs` | 已改 | 新增 `ObserverDeferred`（样本暂缓及其心跳/闭环）、`SessionSuspended`（写入闸门）、`DomainFault`（熔断及其心跳/恢复） |
+| `Core/ControlPlane/Lifecycle/LifecycleOrchestrationEngine.cs` | 已改 | ①retry 登记键由「区域」改为「区域 + 观察者 + 连接代次」事务身份，连接代次失效时撤销陈旧登记（进补偿列表）；②新增 `DeferObserver`（Deferred Observer Demand：贡献原样保留、不递减需求、不登记释放、不触达领域释放，持续时有界心跳、恢复时闭环）；③新增 `SuspendWrites`/`ResumeWrites`（会话身份不确定或共享面故障恢复期间拒绝写入与破坏性释放，租约/需求/暂缓态全部保留，持续时有界心跳）；④熔断领域的有界心跳与「会话收尾即有限恢复」闭环；⑤`BeginSession` 按 Domain Id 隔离熔断领域（不参与新会话，但不再挡住其它领域；无任何领域可参与时仍失败闭合）；⑥熔断标记只由会话收尾恢复，不在开始新会话时静默清除 |
+| `Core/ControlPlane/MultiObserverShadowCoordinator.cs` | 已改 | ⓪共享面故障通道改为有界心跳 + 走通时写 `fault-cleared` 闭环（替换「计数器封顶后永久静默」），退避等待期与身份不确定期推进引擎时钟；①样本捕获改为逐条准入：单条记录不可用（含连接代次不可得）只暂缓该观察者，整批不可判定才整批暂缓且不移除任何人；暂缓观察者的连接身份与令牌在提交时被显式续用（不因本拍没读到而作废）；②`ReconcileResourceProduction` 只对「既缺席又不在暂缓集」的观察者走 `RemoveObserver`，且**仅在本拍具备缺席移除资格（无身份不可读记录）时**才执行移除，不具备资格时保留既有追踪集合留待下一拍判定；③宿主会话身份改由身份门裁决（有界心跳 → 显式熔断），身份不确定时挂起写入并保留租约，不再只打一条去重日志后静默；④共享面故障恢复不再 `EndSession`，改为挂起写入并保留会话；⑤熔断后身份重新可用时重建会话（旧 Session Epoch 与旧代次无写入资格）；⑥汇总日志新增 `resourceDeferredObservers` 与 `resourceWritesSuspended` 两个运行时可观测字段 |
+| `SteamP2PFriendsPlugin.cs` | 已改 | 更新入口拆成两个独立故障边界（`TickMultiObserverShadowIsolated` / `TickZombieIsolated`）：僵尸 tick 抛错只落僵尸域自己的故障入口，不再经共享外层捕获去结束其它领域的会话 |
+| `Adapters/Zombie/ZombieRegionLifecycleAdapter.cs` | 已改 | 新增 `ReportTickFailure`：本域 tick 故障的独立入口——持续故障按本域声明的有界心跳写出（首条 + 按间隔重复 + 显式终止），本域 tick 重新走通时写 `tick-fault-cleared` 恢复闭环并重新起搏；既不结束会话也不清空其它领域 |
+| `Adapters/Resource/ResourceProductionControlSeam.cs` | 已改 | 薄门面新增转发：`DeferObserver` / `SuspendWrites` / `ResumeWrites` / `IsWriteSuspended` / `DeferredObserverCount` |
+| `Adapters/Resource/ResourceLifecyclePolicy.cs` | 已改 | 声明持续状态心跳节奏（5s 间隔、重复上限 6） |
+| `WhitelistTests/Evidence/StaticIL/ControlPlaneReadinessStaticILContractTests.cs` | 新增契约 | 9 项（含聚合门）：事务粒度 retry 键、暂缓路径零释放、身份门纯粹且不结束会话、协调器经逐条准入策略、共享外层捕获不结束会话（含更新入口只经两个独立边界）、持续故障心跳不是一次去重 |
+| `WhitelistTests/Evidence/StaticIL/IlContractProbe.cs` | 已扩 | 新增 `CountExceptionHandlers`：证明某个域 tick 处于自己的异常边界内 |
+| `WhitelistTests/Evidence/PureMemory/MultiObserver/LifecycleOrchestrationEngineTests.cs` | 已扩 | ARI01–ARI10（见下），并扩测试假体：按观察者归属登记复制贡献、`ThrowOnSessionEnd`、`SessionBeginCalls`、`RestoreRegionStateCalls` |
+| `WhitelistTests/Evidence/PureMemory/MultiObserver/ObserverSampleAdmissionTests.cs` | 新增 | SAM01–SAM03：逐条准入、整批判定、身份不可读与重复记录 |
+| `WhitelistTests/Evidence/PureMemory/MultiObserver/SessionIdentityGateTests.cs` | 新增 | SIG01–SIG03：直接驱动身份门——窗口内恢复不要求重建会话、窗口耗尽显式熔断且心跳有界、熔断恢复要求重建会话、`Reset` 回到未确认态 |
+| `WhitelistTests/Evidence/PureMemory/Adapters/Resource/ResourceProductionControlSeamTests.cs` | 已改 | M6P35 的失衡残留辅助按「事务键上的 Region 字段」匹配后移除（键不再是裸 `RegionKey`）；断言不变 |
+| `WhitelistTests/Program.cs` | 已改 | 注册 16 项新证据（ARI01–ARI10、SAM01–SAM03、SIG01–SIG03）与 9 项 StaticIL 契约；唯一入口目标数 335 → 360 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | 新增 ARI01–ARI10、SAM01–SAM03 与 SIG01–SIG03；票 01 表征门、票 02 投影契约、票 03 编排契约全部保持绿 |
+| StaticIL | PASS | 新增 9 项准入结构契约（含僵尸域故障闭环绕过共享日志配额、共享面故障通道有界心跳 + 恢复闭环）；既有 Lifecycle/Demand/Resource 契约保持绿 |
+| BuildArtifact | PASS | `Verify-BuildFingerprintArtifact.ps1` 独立核验通过；版本身份为 `0.2.4.9` / `SPF-0.2.4.9-Experimental-CollisionSlice`；两次 Release Rebuild 指纹一致 |
+| Runtime | PENDING | 本批次不宣称 Runtime；Shadow/正式切换候选与三端验收见票 05–09 |
+
+### 新证据清单
+
+| 证据 | 锁定内容 |
+|---|---|
+| ARI01 | 单条不可用样本只暂缓它自己的观察者：其它观察者仍提交本拍更新并在新区域建租约，另一领域与暂缓者自身贡献不受影响 |
+| ARI02 | 暂缓不触发破坏性释放：持续 20 拍暂缓 + 推进 + 刷新后需求/租约/复制贡献原样保留；确认离开仍走滞回释放 |
+| ARI03 | 暂缓心跳有界且必留闭环：首条 + 重复到上限 + 显式终止（不再刷屏），观测恢复即闭环清标记；新观察者进入暂缓重新起搏 |
+| ARI04 | 暂缓贡献仍计入需求：同区另一观察者离开后需求只降到暂缓者那一份，租约不提前进入滞回 |
+| ARI05 | retry 事务粒度：同区两观察者各自保留资格、互不吞并，各自到点只补齐自己的复制贡献 |
+| ARI06 | 陈旧连接代次无写入资格：换连接后旧登记撤销、只剩一份资格，新事务尝试序号从 1 起算（不继承），新代次驱动重试 |
+| ARI07 | 身份不确定阻断写入与破坏性释放，但保留全部租约/需求/暂缓态；恢复写闭环并重新放行 |
+| ARI08 | 身份不可恢复＝显式熔断：持续留痕、贡献保留、重建会话后旧 epoch/代次不再有资格 |
+| ARI09 | 故障隔离单元至少是 Domain Id + Region Key + Transition：同域一区 acquire 失败与另一区、另一领域无关；一区释放失败只保留该区待释放登记且不升级成领域熔断 |
+| ARI10 | 熔断领域持续异常有界心跳；不参与新会话（未收到 `OnSessionBegin`）也不挡住其它领域；会话收尾成功即恢复并闭环 |
+| SAM01–SAM03 | 逐条准入策略：单条不可用只暂缓该观察者；整批不可判定整批暂缓；身份不可读关上缺席移除；重复记录不改变结论 |
+| SIG01–SIG03 | 身份门行为面：窗口内恢复（不要求重建）、窗口耗尽显式熔断 + 有界心跳（首条 + 重复到上限 + 显式终止）、熔断后恢复必须重建会话（旧 epoch/代次无资格）、`Reset` 回到未确认态 |
+
+### 扰动负控制（证明新门禁非同义反复）
+
+| 扰动 | 实测 FAIL |
+|---|---|
+| retry 事务键塌回「区域单槽」 | ARI05、ARI06、M6P31、M6P32、M6P34、M6P38、M6P39、M6P40、LOE07、LOE08（10） |
+| 暂缓心跳每拍重新起搏 | ARI03（1） |
+| 取消挂起写入闸门 | ARI07、ARI08（2） |
+| 熔断领域心跳退回「一条记录后静默」 | ARI10（1） |
+| 熔断领域照常参与新会话 | ARI10、M6P30（2，加固 ARI10 后复测） |
+| 陈旧登记两处撤销同时取消 | ARI06、M6P33（2） |
+| 逐条准入塌回整批冻结 | SAM01、SAM03（2） |
+| 更新入口直连两域（共享外层捕获复活） | Readiness Outer Catch Does Not End Session 与合成门（2） |
+| 故障处理入口重新结束会话 | Readiness Outer Catch Does Not End Session 与合成门（2） |
+| 恢复闭环额外要求心跳仍在运行 | Readiness Shared Fault Channel 与合成门（2） |
+| 同一故障 episode 内重启心跳 | **无咬合**（协调器故障通道无纯内存宿主，见审计报告 §8-5） |
+
+仅关「连接代次失效撤销」或仅关「区域退出撤销」两处扰动各自**无咬合**（355/355）：这两条撤销路径互为冗余，单独存在即可维持不变量——如实具名，并由两者同时取消时的 ARI06 + M6P33 取证。扰动逐次还原并复核回到全绿（见 `.scratch/collision-migration-slice/evidence/ticket04-perturbation.md`，本地证据）。
+
+### 不可变语义（票 04 起生效，后续票不得回退）
+
+- 样本不可用不等于零需求、不等于离开：单条记录不可用只进 Deferred Observer Demand，其贡献保留；清理只由确认离开、代次失效、会话重置或有界恢复策略触发（ARI01/ARI02/ARI04 + StaticIL 暂缓路径零释放锁定）；
+- 持续异常必须有界心跳：样本暂缓、领域熔断、写入挂起三者都要「首条 + 有界重复 + 显式终止 + 恢复闭环」，不得一条去重日志后永久静默（ARI03/ARI10 + StaticIL 锁定）；
+- 会话身份不确定时阻断写入与破坏性释放，但不清空任何领域；恢复不了就显式熔断，熔断后的恢复必须重建会话（ARI07/ARI08 + StaticIL 身份门锁定）；
+- retry 身份与观察者贡献事务粒度一致：区域 + 观察者 + 连接代次，禁止区域单槽互吞（ARI05/ARI06 + StaticIL 事务键锁定）；
+- 共享外层捕获不得结束会话：僵尸与共享面各有独立故障边界，更新入口只经这两个边界调用各域 tick（StaticIL 锁定）。
+
+### 双轴审查链（每轮全新实例，无延续、无复用）
+
+| 轮 | 本轮增量 | Standards | Spec |
+|---|---|---|---|
+| 1 | 全量首轮（3 个纯类型 + 引擎/协调器/插件改动 + 7 项结构契约 + ARI01–ARI10 + SAM01–SAM03 + 文档） | CLEAN（0 硬违规；3 判断项） | **BLOCKING 2**：身份不可读时仍会删除既有 Resource 观察者；暂缓观察者的连接身份实际未保留 |
+| 2 | 两项 BLOCKING 修复（缺席移除闸门进删除点、连接身份显式续用）+ 三项判断项收口（心跳影子标记改用 `IsRunning`、暂缓集只构造一次、两个只读属性接入汇总日志）+ 收紧逐条准入契约 | CLEAN（0 硬违规；2 判断项） | **BLOCKING 1**：故障恢复清空追踪 → 永久幽灵需求 |
+| 3 | 故障恢复分支不再重置追踪（改为 `ForceImmediateReconcile()` + 挂起写入）、抽出具名 `ForceImmediateReconcile`、补齐审计报告与产本身份 | **CLEAN**（0 硬违规） | **BLOCKING 2**：审计报告尚未落盘而票面已宣称闭环；09-17 未跟踪材料属范围外（已具名并从提交范围排除） |
+| 4 | 补 SIG01–SIG03 直接驱动身份门（并修正身份门「状态转换记录与心跳首条」双计数）；僵尸域故障入口改为有界心跳 + `tick-fault-cleared` 恢复闭环 | **CLEAN**（0 硬违规） | **BLOCKING 2**：身份门行为面无直接证据（ARI07/08 只驱动引擎挂起）；僵尸域故障入口「打到上限即永久静默」且无恢复闭环 |
+| 5 | 僵尸域故障心跳/闭环绕过共享日志配额（新 `SafeFault` 出口 + StaticIL 契约）；票面/报告/manifest 数字与 `git diff --check` 修正 | **CLEAN**（0 硬违规） | **BLOCKING 2**：故障心跳/闭环仍可能被共享日志配额静默吞掉；文档数字互相矛盾 |
+| 6 | 共享面故障通道改为有界心跳 + `fault-cleared` 闭环（替换计数器封顶）、退避等待期与身份不确定期推进引擎时钟（新 StaticIL 契约）；全部数字统一为 360/360 与 9 项契约 | **CLEAN**（0 硬违规） | **BLOCKING 2**：持续故障期间引擎挂起心跳因提前返回而无法推进；文档数字仍互相矛盾 |
+| 7 | 共享面恢复闭环改由故障 episode 决定（心跳 Exhausted 后恢复仍写闭环，契约收紧）、manifest 契约计数修正、去提前结论 | **CLEAN**（0 硬违规；判断项含新增契约需补扰动——本轮以 P11b 补齐） | **BLOCKING 3**：心跳用尽后恢复不写闭环；manifest 契约计数仍写 7 项；票面提前宣称双 CLEAN |
+| 8 | 同一故障 episode 内不得重启心跳（退避失败不再无限重新起搏）、扰动台账补齐 P11/P11b/P11c 并统一计数、票面去提前结论 | **CLEAN**（0 硬违规） | **BLOCKING 2**：§1 扰动计数未同步；产本身份与代码改动后的产物不一致 |
+| 9 | 计数同步、代码冻结后重新双构建并回填最终身份、双次 Rebuild 的 Run 1/Run 2 逐次身份留存、manifest 与审计的审查链对齐 | 第 8 轮 **CLEAN** 覆盖同一增量（第 4–6、9 轮未重派，已在审计报告 §10 具名） | **CLEAN**（无剩余 BLOCKING） |
+
+审查最终双 CLEAN（Spec 第 9 轮、Standards 第 8 轮），产物身份已按此授予；逐轮处置的完整记录见 `audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md` §10）。
+
+### 判断项延期（全部具名；双轴确认不阻断）
+
+1. 三处「有界心跳」起搏样板近似（`MarkRepairRequired` / `StartDeferredHeartbeat` / `SuspendWrites`）——重复量小，第四处消费者出现时应抽 `BoundedHeartbeat.Restart`；
+2. `Tick` 的变更原因持续累积（关机闩、故障退避、身份门、采样核对、汇总日志、故障恢复挂起）——仓库无 `Tick` 单一职责的成文约束；
+3. 诊断原因码仍为裸 `string`；4. 汇总日志跨多个只读属性拼串（轻微 Feature Envy，同时充当新只读属性的生产消费者）；5. `ObserverSampleAdmissionPlan` 构造参数 6 个（Data Clumps 边界，构造为 `internal`）；
+6. 票 03 已具名的存量判断项（`Report` 可选参数簇、`AcquireAttemptCount` 纯转发、`AdvanceTime`/`Flush` 守卫重复、注册闭合与 `IsSessionActive` 同字段、`Build`/`Report` 形状近似、诊断键字符串拼接、薄门面 Middle Man、测试三级反射）本票未新增未恶化；薄门面因新增 5 个转发成员略增面积，仍属 ADR 0011 要求的兼容门面。
+
+### 缝合缺口（全部具名，无静默跳过）
+
+- **协调器接线无纯内存宿主**：`MultiObserverShadowCoordinator` 与插件更新入口依赖 Unity/Unturned 类型，PureMemory 无法构造其接线。因此「暂缓观察者连接身份续用」「不具备缺席移除资格时保留追踪集合」「故障恢复不结束会话且不清空追踪」三点只有结构契约 + 代码级注释 + 审查复核，没有行为门直接覆盖（审计报告 §8-1）。
+- **两处扰动无咬合**（P6/P6b：陈旧代次登记的两条撤销路径互为冗余；P10a：闸门读取当时还在日志分支）已如实具名，不作为已验证计入（审计报告 §8-2/§8-3）。
+
+### 移交票 06/07/08/09（本批不做，具名）
+- Collision 的 Demand Policy、只读影子与执行端口归票 05/06；本批**未新增任何 Collision 执行类型、未切换 Authority Writer**（StaticIL 单域注册点契约仍绿）；
+- 正式切换与旧 RemoteCoverage Writer 退役归票 08；准入门 Go/No-Go 证据闭合归票 07；
+- Runtime（三端、Shadow 与正式候选指纹区分）归票 09：本批只落静态准入不变量，不宣称任何 Runtime PASS。

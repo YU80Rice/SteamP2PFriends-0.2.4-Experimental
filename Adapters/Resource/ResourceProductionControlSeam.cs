@@ -103,6 +103,24 @@ namespace SteamP2PFriends.Adapters.Resource
             return _engine.RemoveObserver(DomainIds.Resource, observerId);
         }
 
+        /// <summary>
+        /// 登记暂缓观察者：本拍样本不可用但无法证明离开。既有贡献原样保留，不触发破坏性释放；
+        /// 持续暂缓与恢复闭环由共享引擎的有界心跳承载。
+        /// </summary>
+        public void DeferObserver(ulong observerId, string reason)
+        {
+            _engine.DeferObserver(DomainIds.Resource, observerId, reason);
+        }
+
+        /// <summary>挂起本域写入（会话身份不确定或共享面故障恢复期间）：保留租约与需求。</summary>
+        public void SuspendWrites(string reason) => _engine.SuspendWrites(reason);
+
+        public void ResumeWrites(string reason) => _engine.ResumeWrites(reason);
+
+        public bool IsWriteSuspended => _engine.IsWriteSuspended;
+
+        public int DeferredObserverCount => _engine.DeferredObserverCount(DomainIds.Resource);
+
         public int GetDemand(RegionKey regionKey) =>
             _engine.GetDemand(DomainIds.Resource, regionKey);
 

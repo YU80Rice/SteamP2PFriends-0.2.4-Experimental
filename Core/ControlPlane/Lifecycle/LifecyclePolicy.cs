@@ -50,6 +50,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             float hysteresisSeconds,
             RetrySchedule deferredRetry,
             RetrySchedule failedRetry,
+            HeartbeatPolicy heartbeat,
             string source)
         {
             if (hysteresisSeconds < 0f)
@@ -60,6 +61,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             HysteresisSeconds = hysteresisSeconds;
             DeferredRetry = deferredRetry;
             FailedRetry = failedRetry;
+            Heartbeat = heartbeat;
             Source = source;
         }
 
@@ -71,6 +73,12 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
         /// <summary>一般失败的 retry 节奏。</summary>
         public RetrySchedule FailedRetry { get; }
+
+        /// <summary>
+        /// 持续状态（样本暂缓、领域熔断、写入挂起）的诊断心跳节奏。心跳有界：既有间隔下限，
+        /// 又有重复上限，且在恢复时必留闭环记录。
+        /// </summary>
+        public HeartbeatPolicy Heartbeat { get; }
 
         /// <summary>政策来源标识（例如领域常量名），供诊断与取证引用。</summary>
         public string Source { get; }

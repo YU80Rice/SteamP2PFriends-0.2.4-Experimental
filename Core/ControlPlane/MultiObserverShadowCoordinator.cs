@@ -9,6 +9,7 @@ using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Adapters.Item.Patches;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.MultiObserver.Demand;
+using SteamP2PFriends.MultiObserver.Lifecycle;
 using UnityEngine;
 
 using SteamP2PFriends.Security;
@@ -25,7 +26,6 @@ namespace SteamP2PFriends.MultiObserver
         private const float SummaryIntervalSeconds = 30f;
         private const int SessionEventLogLimit = 160;
         private const int SessionSummaryLogLimit = 120;
-        private const int SessionFaultLogLimit = 16;
 
         private sealed class ConnectionIdentity
         {
@@ -37,9 +37,17 @@ namespace SteamP2PFriends.MultiObserver
         private sealed class CaptureResult
         {
             internal readonly List<ObserverShadowSample> Samples = new List<ObserverShadowSample>();
+
+            /// <summary>逐条准入输入：每条原生记录是否可用（含身份不可读的记录）。</summary>
+            internal readonly List<ObserverSampleRecord> Records = new List<ObserverSampleRecord>();
+
             internal Dictionary<ulong, ConnectionIdentity> StagedConnections;
             internal ulong StagedNextConnectionToken;
-            internal bool IsComplete = true;
+
+            /// <summary>整批是否可判定（客户端名册本身可用）。false ＝ 本拍整批暂缓。</summary>
+            internal bool IsBatchUsable = true;
+
+            internal string BatchFailureReason = string.Empty;
         }
 
         private sealed class ValidatedObserver
@@ -57,6 +65,24 @@ namespace SteamP2PFriends.MultiObserver
             new Dictionary<string, string>(StringComparer.Ordinal);
         private static readonly ShadowShutdownGate ShutdownGate = new ShadowShutdownGate();
         private static readonly ShadowFaultBackoff FaultBackoff = new ShadowFaultBackoff();
+
+        /// <summary>
+        /// 会话身份门：把「身份缺失/不一致」从一条去重日志后的永久静默变成有限恢复或显式熔断。
+        /// 身份由宿主会话建立时确认（<see cref="NotifyHostSessionStarted"/>），会话结束即复位。
+        /// </summary>
+        private static readonly SessionIdentityGate IdentityGate = new SessionIdentityGate(
+            new HeartbeatPolicy(IdentityHeartbeatSeconds, IdentityHeartbeatRepeats),
+            IdentityRecoveryWindowSeconds);
+
+        /// <summary>共享面故障心跳的节奏（协调器自己的声明，不借用领域政策）。</summary>
+        private static readonly HeartbeatPolicy SharedFaultHeartbeat = new HeartbeatPolicy(5f, 6);
+
+        private static BoundedHeartbeat _sharedFaultHeartbeat;
+        private static bool _sharedFaulted;
+
+        private const float IdentityHeartbeatSeconds = 5f;
+        private const int IdentityHeartbeatRepeats = 6;
+        private const float IdentityRecoveryWindowSeconds = 15f;
         private static ResourceProductionControlSeam ResourceProduction;
         private static readonly HashSet<ulong> ResourceObservers = new HashSet<ulong>();
 
@@ -65,7 +91,6 @@ namespace SteamP2PFriends.MultiObserver
         private static float _nextSummaryAt;
         private static int _eventLogCount;
         private static int _summaryLogCount;
-        private static int _faultLogCount;
         private static string _hostSessionId;
 
         internal static ulong SessionEpoch => Ledger.SessionEpoch;
@@ -119,6 +144,7 @@ namespace SteamP2PFriends.MultiObserver
                 EndSessionIfNeeded("deferred-plugin-shutdown");
                 ResetManagedState(resetLogQuotas: true);
                 _hostSessionId = null;
+                IdentityGate.Reset();
                 return;
             }
             if (ShutdownGate.IsLatched) return;
@@ -126,10 +152,23 @@ namespace SteamP2PFriends.MultiObserver
             float now = Time.realtimeSinceStartup;
             if (FaultBackoff.IsFaulted)
             {
-                if (!FaultBackoff.TryBeginRecovery(now)) return;
-                EndSessionIfNeeded("fault-recovery");
-                ResetManagedState(resetLogQuotas: false);
-                SafeInfo($"fault-recovery attempt={FaultBackoff.Attempt}");
+                if (!FaultBackoff.TryBeginRecovery(now))
+                {
+                    // 退避等待期：故障心跳按真实时间继续推进到显式终止；同时推进引擎时钟，
+                    // 使引擎侧「写入挂起」的有界心跳不会停在首条。
+                    ReportSharedFaultHeartbeat(now, null);
+                    AdvanceEngineClock();
+                    return;
+                }
+                // 共享面故障的恢复只隔离共享面自己的状态：不结束会话。僵尸/旁路异常经共享外层
+                // 捕获进来时若顺手 EndSession，就会跨域清掉资源等领域的租约；写入闸门改由
+                // 引擎的挂起态把住（有界心跳 + 恢复闭环），Session 本身留给会话身份轴。
+                // 观察者追踪与连接身份也必须留着：引擎里的租约与需求仍在，追踪集合一旦被清掉，
+                // 这些观察者之后即使确认缺席也再也不会被清理，变成永久幽灵需求。
+                ForceImmediateReconcile();
+                ResourceProduction?.SuspendWrites("shared-fault-recovery");
+                SafeWarn($"fault-recovery attempt={FaultBackoff.Attempt} "
+                    + "writesSuspended=true sessionEnded=false trackingRetained=true");
             }
 
             bool active = enabled && HostManager.ShouldProcessClientHostListen();
@@ -141,14 +180,35 @@ namespace SteamP2PFriends.MultiObserver
             }
 
             string currentSessionId = HostManager.CurrentSessionId;
-            if (string.IsNullOrEmpty(currentSessionId)
-                || string.IsNullOrEmpty(_hostSessionId)
-                || !string.Equals(_hostSessionId, currentSessionId, StringComparison.Ordinal))
+            SessionIdentityDecision identity = IdentityGate.Observe(currentSessionId, now);
+            if (identity.Changed && IdentityGate.IsReady)
             {
-                SafeMismatch(
-                    "host-session-identity",
-                    $"host session identity unavailable or mismatched; notified={MaskSession(_hostSessionId)} " +
-                    $"current={MaskSession(currentSessionId)}; shadow reconcile suppressed");
+                if (identity.RequiresResynchronization)
+                {
+                    // 熔断后身份重新可用：失明期间可能已经换了世界，旧 Session Epoch 与旧代次
+                    // 不得再写入，必须重建会话后才能继续。
+                    EndSessionIfNeeded("session-identity-resynchronized");
+                    ResetManagedState(resetLogQuotas: true);
+                }
+                SafeInfo("session-identity=" + identity.State + " identity="
+                    + MaskSession(currentSessionId)
+                    + " resynchronized=" + identity.RequiresResynchronization.ToString().ToLowerInvariant());
+            }
+            if (!IdentityGate.IsReady)
+            {
+                // 身份缺失或不一致：先在有限窗口内恢复，恢复不了就显式熔断；两种状态下都
+                // 阻止写入与破坏性释放，但不清空任何领域——不确定不等于终止。
+                ResourceProduction?.SuspendWrites("host-session-identity-" + IdentityGate.State);
+                if (identity.ShouldEmit)
+                {
+                    SafeWarn("session-identity=" + identity.State + " notified="
+                        + MaskSession(IdentityGate.AcknowledgedIdentity) + " current="
+                        + MaskSession(currentSessionId) + " heartbeat=" + identity.Heartbeat
+                        + " writesSuspended="
+                        + (ResourceProduction?.IsWriteSuspended ?? false).ToString().ToLowerInvariant()
+                        + " failClosed=true");
+                }
+                AdvanceEngineClock();
                 return;
             }
             ClearMismatch("host-session-identity");
@@ -165,7 +225,6 @@ namespace SteamP2PFriends.MultiObserver
                 }
                 _eventLogCount = 0;
                 _summaryLogCount = 0;
-                _faultLogCount = 0;
                 _nextSummaryAt = now;
                     SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
             }
@@ -179,20 +238,37 @@ namespace SteamP2PFriends.MultiObserver
             _nextReconcileAt = now + ReconcileIntervalSeconds;
 
             CaptureResult capture = CaptureSamples();
-            if (!capture.IsComplete)
+            ObserverSampleAdmissionPlan plan = ObserverSampleAdmission.Plan(
+                capture.Records, capture.IsBatchUsable, capture.BatchFailureReason);
+            if (plan.IsBatchRejected)
             {
-                SafeMismatch("capture-incomplete", "capture-incomplete; entire shadow reconcile suppressed");
+                // 整批不可判定：本拍不提交也不移除任何人，并把已知观察者登记为暂缓。
+                SafeMismatch("capture-rejected",
+                    "capture-rejected reason=" + capture.BatchFailureReason
+                    + "; observers retained as deferred demand");
+                DeferKnownObservers("capture-batch-rejected:" + capture.BatchFailureReason);
                 return;
             }
-            CommitConnectionIdentities(capture);
+            ClearMismatch("capture-rejected");
             ClearMismatch("capture-incomplete");
+
+            // 暂缓集只构造一次：连接身份续用、资源侧删除豁免与追踪集合三处共用同一份。
+            var deferred = new HashSet<ulong>(plan.DeferredObserverIds);
+            CommitConnectionIdentities(capture, deferred);
+            if (deferred.Count > 0)
+            {
+                SafeEvent("capture-deferred count=" + deferred.Count
+                    + " admissible=" + plan.AdmissibleObserverIds.Count
+                    + " unknownIdentity=" + (!plan.AllowAbsenceRemoval).ToString().ToLowerInvariant());
+            }
 
             IReadOnlyList<ShadowTransition> transitions =
                 Ledger.Reconcile(
                     capture.Samples,
                     Regions.WORLD_SIZE,
-                    ItemManager.ITEM_REGIONS);
-            ReconcileResourceProduction(capture.Samples);
+                    ItemManager.ITEM_REGIONS,
+                    plan.AllowAbsenceRemoval);
+            ReconcileResourceProduction(capture.Samples, deferred, plan);
             ResourceProduction?.Flush(0f);
             foreach (ShadowTransition transition in transitions)
             {
@@ -227,10 +303,16 @@ namespace SteamP2PFriends.MultiObserver
                         $"resourceRadiusSource={ResourceProduction?.DemandPolicy.RadiusSource ?? "none"} " +
                         $"resourceActiveLeases={ResourceProduction?.ActiveLeaseCount ?? 0} " +
                         $"resourcePendingReleases={ResourceProduction?.PendingReleaseCount ?? 0} " +
+                        $"resourceDeferredObservers={ResourceProduction?.DeferredObserverCount ?? 0} " +
+                        $"resourceWritesSuspended=" +
+                        (ResourceProduction?.IsWriteSuspended ?? false).ToString().ToLowerInvariant() + " " +
                         "controlPlane=active");
                 }
             }
 
+            // 共享面本拍走通：确认恢复并解除故障挂起（身份挂起由身份门自己把守，不在这里解除）。
+            ReportSharedFaultRecovered();
+            if (IdentityGate.IsReady) ResourceProduction?.ResumeWrites("shared-fault-cleared");
             FaultBackoff.MarkSuccess();
         }
 
@@ -245,6 +327,7 @@ namespace SteamP2PFriends.MultiObserver
                 ResetManagedState(resetLogQuotas: true);
                 _hostSessionId = sessionId;
             }
+            IdentityGate.Bind(sessionId);
         }
 
         internal static void NotifyHostSessionEnded(string sessionId, string reason)
@@ -261,6 +344,7 @@ namespace SteamP2PFriends.MultiObserver
             EndSessionIfNeeded("host-session-ended:" + (reason ?? "unknown"));
             ResetManagedState(resetLogQuotas: true);
             _hostSessionId = null;
+            IdentityGate.Reset();
         }
 
         internal static void HandleTickFailure(Exception exception)
@@ -269,15 +353,48 @@ namespace SteamP2PFriends.MultiObserver
             {
                 float now = Time.realtimeSinceStartup;
                 if (!FaultBackoff.RecordFailure(now)) return;
-                if (_faultLogCount < SessionFaultLogLimit)
-                {
-                    _faultLogCount++;
-                    SafeWarn($"fault={_faultLogCount}/{SessionFaultLogLimit} attempt={FaultBackoff.Attempt} " +
-                        $"retryAt={FaultBackoff.NextRecoveryAt:F1} " +
-                        $"type={exception?.GetType().Name ?? "unknown"}; legacy writers unchanged");
-                }
+                // 共享面故障也是持续异常：按有界心跳写出（首条 + 按间隔重复 + 显式终止），
+                // 恢复时写闭环。逐次容量上限会让持续故障在若干条之后永久静默，因此不再用它封顶。
+                StartSharedFaultHeartbeat(now);
+                ReportSharedFaultHeartbeat(now, exception);
             }
             catch { }
+        }
+
+        /// <summary>
+        /// 共享面故障的有界心跳起搏。持续故障在退避等待期间不会再有新的失败记录，
+        /// 因此心跳由「已在故障中」这一事实驱动（等待期每拍按真实时间推进），
+        /// 而不是只在失败发生时才推进——否则等待期就是静默期。
+        /// </summary>
+        private static void StartSharedFaultHeartbeat(float now)
+        {
+            // 故障 episode 的活跃标记与心跳是否仍在运行是两件事：心跳用尽（Exhausted）后
+            // 仍在故障中，恢复时必须照样写闭环——闭环由 episode 决定，心跳只决定重复输出。
+            // 同理，同一 episode 内不得重启心跳：退避失败会再次进入这里，若按 IsRunning 重建，
+            // 「有界心跳」就会被无限重启，退回刷屏。
+            if (_sharedFaulted) return;
+            _sharedFaulted = true;
+            _sharedFaultHeartbeat = new BoundedHeartbeat(SharedFaultHeartbeat, now);
+        }
+
+        private static void ReportSharedFaultHeartbeat(float now, Exception exception)
+        {
+            EBoundedHeartbeat kind = _sharedFaultHeartbeat.IsRunning
+                ? _sharedFaultHeartbeat.Next(now)
+                : EBoundedHeartbeat.Suppressed;
+            if (kind == EBoundedHeartbeat.Suppressed) return;
+            SafeWarn($"fault heartbeat={kind} attempt={FaultBackoff.Attempt} " +
+                $"retryAt={FaultBackoff.NextRecoveryAt:F1} " +
+                $"type={exception?.GetType().Name ?? "unknown"}; legacy writers unchanged");
+        }
+
+        /// <summary>共享面重新走通：写恢复闭环并结束故障心跳。</summary>
+        private static void ReportSharedFaultRecovered()
+        {
+            if (!_sharedFaulted) return;
+            _sharedFaulted = false;
+            _sharedFaultHeartbeat.Stop();
+            SafeWarn("fault-cleared recovered=true sessionEnded=false trackingRetained=true");
         }
 
         internal static void Shutdown()
@@ -299,6 +416,7 @@ namespace SteamP2PFriends.MultiObserver
                 EndSessionIfNeeded("plugin-shutdown");
                 ResetManagedState(resetLogQuotas: true);
                 _hostSessionId = null;
+                IdentityGate.Reset();
             }
         }
 
@@ -306,27 +424,24 @@ namespace SteamP2PFriends.MultiObserver
         {
             var result = new CaptureResult();
             var clients = Provider.clients;
-            if (clients == null)
-            {
-                result.IsComplete = false;
-                return result;
-            }
+            if (clients == null) return RejectBatch(result, "client-list-unavailable");
 
             SteamPlayer[] snapshot;
             try
             {
                 int count = clients.Count;
-                if (count > 64) return Incomplete(result, "observer-capacity-exceeded");
+                if (count > 64) return RejectBatch(result, "observer-capacity-exceeded");
                 snapshot = new SteamPlayer[count];
                 for (int index = 0; index < count; index++) snapshot[index] = clients[index];
-                if (clients.Count != count) return Incomplete(result, "client-list-changed-during-copy");
+                if (clients.Count != count) return RejectBatch(result, "client-list-changed-during-copy");
             }
             catch (Exception ex)
             {
-                return Incomplete(result, "client-snapshot-error:" + ex.GetType().Name);
+                return RejectBatch(result, "client-snapshot-error:" + ex.GetType().Name);
             }
 
             var validated = new List<ValidatedObserver>(snapshot.Length);
+            var unusableObserverIds = new List<ulong>();
             var activeObservers = new HashSet<ulong>();
             for (int index = 0; index < snapshot.Length; index++)
             {
@@ -342,7 +457,11 @@ namespace SteamP2PFriends.MultiObserver
                     || movement.loadedRegions == null
                     || !activeObservers.Add(observerId))
                 {
-                    return Incomplete(result, "invalid-observer-record:index=" + index);
+                    // 单条记录不可用只暂缓它自己的观察者：其余有效观察者照常提交本拍更新，
+                    // 不冻结整批；这条记录也不被当作「已离开」，因此不会触发破坏性释放。
+                    // 身份读不到（observerId=0）时按「无法证明谁在场」处理，本拍不再按缺席移除。
+                    unusableObserverIds.Add(observerId);
+                    continue;
                 }
                 validated.Add(new ValidatedObserver
                 {
@@ -367,10 +486,13 @@ namespace SteamP2PFriends.MultiObserver
                         out ulong connectionToken,
                         out string tokenFailure))
                     {
+                        // 连接代次不可得同样只暂缓该观察者：它本拍没有可用样本，
+                        // 但既有的连接身份与令牌原样保留，不推进也不释放。
                         ResourceObservability.Error("[Host]", "ConnectionGeneration", "-",
                             Ledger.SessionEpoch, 0UL, 0U, "Fallback", true, "failed",
                             "reason=" + tokenFailure + " failClosed=true observer=" + Mask(observer.ObserverId));
-                        return Incomplete(result, "connection-generation-rejected:" + tokenFailure);
+                        unusableObserverIds.Add(observer.ObserverId);
+                        continue;
                     }
                     CountNativeLoadedItemRegions(
                         observer.Movement,
@@ -401,18 +523,30 @@ namespace SteamP2PFriends.MultiObserver
             }
             catch (Exception ex)
             {
-                return Incomplete(result, "capture-build-error:" + ex.GetType().Name);
+                return RejectBatch(result, "capture-build-error:" + ex.GetType().Name);
             }
+
+            foreach (ulong unusableObserverId in unusableObserverIds)
+                result.Records.Add(new ObserverSampleRecord(unusableObserverId, usable: false));
+            foreach (ValidatedObserver observer in validated)
+                result.Records.Add(new ObserverSampleRecord(observer.ObserverId, usable: true));
 
             result.StagedConnections = stagedConnections;
             result.StagedNextConnectionToken = stagedNextToken;
             return result;
         }
 
-        private static CaptureResult Incomplete(CaptureResult result, string reason)
+        /// <summary>
+        /// 整批不可判定（客户端名册缺失、容量超限、拷贝期间变化、构建异常）：本拍既不提交
+        /// 任何样本，也不移除任何观察者，并在共享引擎上把这些观察者登记为暂缓——他们的既有
+        /// 贡献原样保留（延迟释放属票 09 的运行时核对口径）。
+        /// </summary>
+        private static CaptureResult RejectBatch(CaptureResult result, string reason)
         {
-            result.IsComplete = false;
+            result.IsBatchUsable = false;
+            result.BatchFailureReason = reason;
             result.Samples.Clear();
+            result.Records.Clear();
             result.StagedConnections = null;
             SafeEvent("capture-rejected reason=" + reason);
             return result;
@@ -597,19 +731,47 @@ namespace SteamP2PFriends.MultiObserver
             return sessionId + "|" + serverId + "|" + map;
         }
 
-        private static void CommitConnectionIdentities(CaptureResult capture)
+        private static void CommitConnectionIdentities(
+            CaptureResult capture, HashSet<ulong> deferred)
         {
+            // 暂缓观察者的连接身份与令牌必须原样续用：本拍没读到记录不等于换了连接，
+            // 更不等于离开——身份被顺手作废就会让它的下一次可用样本变成「重连」，
+            // 从而把同一观察者的贡献拆成两个连接代次。
+            var carried = new Dictionary<ulong, ConnectionIdentity>();
+            foreach (ulong observerId in deferred)
+            {
+                if (Connections.TryGetValue(observerId, out ConnectionIdentity identity))
+                    carried[observerId] = identity;
+            }
+
             var removed = new List<ulong>();
             foreach (ulong observerId in Connections.Keys)
             {
-                if (!capture.StagedConnections.ContainsKey(observerId)) removed.Add(observerId);
+                if (capture.StagedConnections.ContainsKey(observerId)) continue;
+                if (carried.ContainsKey(observerId)) continue;
+                removed.Add(observerId);
             }
             Connections.Clear();
             foreach (KeyValuePair<ulong, ConnectionIdentity> pair in capture.StagedConnections)
                 Connections.Add(pair.Key, pair.Value);
+            foreach (KeyValuePair<ulong, ConnectionIdentity> pair in carried)
+            {
+                if (!Connections.ContainsKey(pair.Key)) Connections.Add(pair.Key, pair.Value);
+            }
             _nextConnectionToken = capture.StagedNextConnectionToken;
             foreach (ulong observerId in removed)
                 RemoveObserverMismatch(observerId);
+        }
+
+        /// <summary>
+        /// 把当前已知的资源观察者整体登记为暂缓（整批不可判定时）：本拍既没有证据证明它们
+        /// 离开，也没有证据刷新它们的位置，因此保留既有贡献、不产生破坏性释放。
+        /// </summary>
+        private static void DeferKnownObservers(string reason)
+        {
+            if (ResourceProduction == null || ResourceObservers.Count == 0) return;
+            foreach (ulong observerId in ResourceObservers)
+                ResourceProduction.DeferObserver(observerId, reason);
         }
 
         private static void EndSessionIfNeeded(string reason)
@@ -644,13 +806,24 @@ namespace SteamP2PFriends.MultiObserver
             {
                 _eventLogCount = 0;
                 _summaryLogCount = 0;
-                _faultLogCount = 0;
             }
-            _nextReconcileAt = 0f;
+            ForceImmediateReconcile();
             _nextSummaryAt = 0f;
         }
 
-        private static void ReconcileResourceProduction(IReadOnlyList<ObserverShadowSample> samples)
+        /// <summary>
+        /// 强制下一拍立即重新核对（不清任何观察者状态）。故障恢复与状态重置都经它表达同一语义，
+        /// 避免「立即重核」这件事在两处各自内联、日后漂移。
+        /// </summary>
+        private static void ForceImmediateReconcile()
+        {
+            _nextReconcileAt = 0f;
+        }
+
+        private static void ReconcileResourceProduction(
+            IReadOnlyList<ObserverShadowSample> samples,
+            HashSet<ulong> deferred,
+            ObserverSampleAdmissionPlan plan)
         {
             if (ResourceProduction == null)
             {
@@ -666,7 +839,7 @@ namespace SteamP2PFriends.MultiObserver
                 // 每个进程内的有效观察者都提交事实，资格由 Resource Demand Policy 声明、由共享
                 // 投影引擎执行：不合格（未获玩法资格）只是不贡献新需求，其既有贡献进入
                 // Deferred Observer Demand 而不是被当作确认离开——「无法证明离开就不做破坏性
-                // 释放」。只有真正缺席（样本列表里没有）才走 RemoveObserver。
+                // 释放」。只有真正缺席（样本列表里没有且不在暂缓集里）才走 RemoveObserver。
                 if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
                     || !seen.Add(sample.ObserverId))
                     continue;
@@ -679,16 +852,47 @@ namespace SteamP2PFriends.MultiObserver
                     sample.GameplayAuthorized);
             }
 
-            var removed = new List<ulong>();
-            foreach (ulong observerId in ResourceObservers)
+            foreach (ulong observerId in deferred)
+                ResourceProduction.DeferObserver(observerId, "observer-sample-unusable");
+
+            var previouslyTracked = new List<ulong>(ResourceObservers);
+            bool allowAbsenceRemoval = plan.AllowAbsenceRemoval;
+            if (allowAbsenceRemoval)
             {
-                if (!seen.Contains(observerId)) removed.Add(observerId);
+                var removed = new List<ulong>();
+                foreach (ulong observerId in ResourceObservers)
+                {
+                    if (!seen.Contains(observerId) && !deferred.Contains(observerId)) removed.Add(observerId);
+                }
+                foreach (ulong observerId in removed)
+                    ResourceProduction.RemoveObserver(observerId);
             }
-            foreach (ulong observerId in removed)
-                ResourceProduction.RemoveObserver(observerId);
+            else
+            {
+                // 本拍存在身份不可读的记录：谁在场无法判定，因此本拍不具备按缺席移除的资格。
+                // 已追踪集合原样保留，等下一拍拿到可用样本时再判缺席。
+                ResourceObservability.NoticeOnce("resource-absence-removal-deferred", "[Host]",
+                    "ResourceProduction", "-", Ledger.SessionEpoch, 0UL, 0U,
+                    "Fallback", false, "deferred",
+                    "reason=unknown-observer-identity absenceRemovalSuppressed=true");
+            }
 
             ResourceObservers.Clear();
             foreach (ulong observerId in seen) ResourceObservers.Add(observerId);
+            foreach (ulong observerId in deferred) ResourceObservers.Add(observerId);
+            if (!allowAbsenceRemoval)
+            {
+                foreach (ulong observerId in previouslyTracked) ResourceObservers.Add(observerId);
+            }
+        }
+
+        /// <summary>
+        /// 提前返回的路径也要推进引擎时钟：引擎的写入挂起心跳按引擎时钟起搏，
+        /// 时钟不走路，持续故障/身份不确定期间的心跳就会停在首条——又退回「一条记录后静默」。
+        /// </summary>
+        private static void AdvanceEngineClock()
+        {
+            ResourceProduction?.AdvanceTime(Time.deltaTime);
         }
 
         private static void SafeMismatch(string key, string detail)
