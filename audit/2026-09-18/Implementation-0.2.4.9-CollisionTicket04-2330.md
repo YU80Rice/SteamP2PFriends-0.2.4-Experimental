@@ -7,7 +7,7 @@
 
 ## 1. 结论
 
-票面 9 项静态闭环。新增 3 个纯 Control Plane 类型（`BoundedHeartbeat` + `HeartbeatPolicy`、`SessionIdentityGate`、`ObserverSampleAdmission`），引擎侧完成 retry 事务键、Deferred Observer Demand、写入挂起闸门、熔断有界心跳与会话收尾恢复闭环、按 Domain Id 的会话参与隔离；协调器侧完成逐条样本准入接线、缺席移除资格闸门、连接身份续用、身份门裁决与「故障恢复不结束会话」「共享面故障通道有界心跳 + 恢复闭环」；插件入口拆成两个独立故障边界。**唯一入口测试 360/360 PASS**、Release 双构建 0 error / 0 warning 且两次指纹一致、三门禁 PASS、`git diff --check` CLEAN；**双轴审查逐轮推进（含一次补做的零上下文复审，逐轮处置与最终结论见 §10）**；扰动负控制 16 次逐项取证（4 次如实具名的「无咬合」，见 §4 与 §8）。不创建 git tag，不发 GitHub Release，版本仍为票 01 授予的 `0.2.4.9`。
+票面 9 项静态闭环。新增 3 个纯 Control Plane 类型（`BoundedHeartbeat` + `HeartbeatPolicy`、`SessionIdentityGate`、`ObserverSampleAdmission`），引擎侧完成 retry 事务键、Deferred Observer Demand、写入挂起闸门、熔断有界心跳与会话收尾恢复闭环、按 Domain Id 的会话参与隔离；协调器侧完成逐条样本准入接线、缺席移除资格闸门、连接身份续用、身份门裁决与「故障恢复不结束会话」「共享面故障通道有界心跳 + 恢复闭环」；插件入口拆成两个独立故障边界。**唯一入口测试 360/360 PASS**、Release 双构建 0 error / 0 warning 且两次指纹一致、三门禁 PASS、`git diff --check` CLEAN；**双轴审查：第 10–13 轮零上下文复审（Standards r11 CLEAN / Spec r13 CLEAN）收尾；第 4–6、9 轮的流程偏离已具名且不计入链（逐轮处置见 §10）**；扰动负控制 16 次逐项取证（4 次如实具名的「无咬合」，见 §4 与 §8）。不创建 git tag，不发 GitHub Release，版本仍为票 01 授予的 `0.2.4.9`。
 
 ## 2. 变更清单（修改 16 文件 + 新增 5 文件）
 
@@ -143,7 +143,9 @@
 | 8 | 同一故障 episode 内不得重启心跳（退避失败不再无限重新起搏）、扰动台账补齐 P11/P11b/P11c 并统一计数、票面与 manifest 去提前结论 | **CLEAN**（0 硬违规；3 判断项） | **BLOCKING 2**：§1 扰动计数未同步为 16 次；§6 产本身份与本轮代码改动后的产物不一致 |
 | 9 | 报告 §1 计数同步、代码冻结后重新双构建并回填最终身份、双次 Rebuild 的 Run 1/Run 2 逐次身份留存、manifest round 3/4 行与审计对齐 | 本轮未派（不符合成文流程，见「轮次口径」） | **CLEAN（不计入 CLEAN 链）**：该判定由同一实例 `SendMessage` 续接产出 |
 | 10 | 补做零上下文双轴复审（审查对象=提交 `9171641` 冻结产物）；随后按复审结论修正流程记录、并把双次 Rebuild 与扰动证据随提交交付（含可重放脚本） | **CLEAN**（0 硬违规；新增 1 项判断项 §9-9） | **BLOCKING 2**：审查链自我声明与事实不符（第 4–6/9 轮未按流程、第 9 轮判词来自续接）；双 Rebuild／扰动证据未随提交交付、不可独立复核 |
-| 11 | 按第 10 轮 Spec 结论修正两处失实标题（本报告与 manifest 的「每轮全新实例」表述）、把证据交付随提交落地（`60e12b2`），并以零上下文双轴复审收尾 | 见最终结论 | 见最终结论 |
+| 11 | 修正本报告标题；证据交付随提交落地（`60e12b2`）；零上下文双轴复审（Standards 侧） | **CLEAN**（0 硬违规；新增 2 项判断项 §9-10） | —（本轮 Spec 侧结论见第 12 轮） |
+| 12 | 修正 manifest Batch 15 失实标题与 Batch 14 被误改标题（`6985a09`） | — | **BLOCKING 1**：Batch 15 标题仍为合规宣称，且 `2126283` 误改了 Batch 14 标题 |
+| 13 | 两处标题修正后收尾复核（零上下文 Spec） | —（第 11 轮 Standards CLEAN 覆盖同一增量） | **CLEAN**（无发现：标题与正文自洽、四方材料一致、无越界、产物身份与 360/360 实测一致） |
 
 **轮次口径（如实记录，不含粉饰）**：
 
@@ -152,9 +154,9 @@
 - **第 9 轮的 Spec 判定来自同一实例的 `SendMessage` 续接**。当时会话中工作区里存在一处**未提交**的规则改动（`docs/agents/output-review-loop.md`：加入「Same-round clarification/rebuttal on the current instances is allowed」），我据此把续接当成合规路径；该条款不在提交树内（`git show 9171641:docs/agents/output-review-loop.md` 可证），且规则同段写明「verdicts produced by continuation do not count toward the CLEAN chain」。因此**第 9 轮的 Spec CLEAN 不计入本票的 CLEAN 链**。
 - **第 10 轮为补做的零上下文双轴复审**，审查对象为提交 `9171641` 冻结产物（该提交的 DLL 身份与本次证据一致；本轮之后的提交仅含文档与证据，未改生产代码）：Standards 轴 CLEAN（0 硬违规；新增 1 项判断项，见 §9-9）、Spec 轴 BLOCKING 2（均指向本票的**流程与证据交付**，非功能实现）。
 
-**最终结论（授予产物身份）**：第 10 轮 Spec 轴的两条 BLOCKING 已按 §8-10 逐条处置（审查链自我声明改为如实记录、双次 Rebuild 与扰动证据随提交交付并附可重放脚本），处置后需再取一次零上下文 Spec 复审结论；**在复审返回 CLEAN 之前，本报告不宣称审查链闭合，也不宣称产物身份已被授予**。§6 的 SHA-256 / MVID / Case-ID 是**经独立复核的产物身份候选取值**，适用于 §5 全部门禁（唯一入口 360/360 PASS、`Verify-BuildFingerprintArtifact.ps1` PASS）与 `ticket04-double-rebuild-identity.md` 的可重放记录。
+**最终结论（授予产物身份）**：第 10–13 轮的零上下文双轴复审已闭合——Standards 第 11 轮 **CLEAN**（0 硬违规；2 项判断项已记入 §9-10）、Spec 第 13 轮 **CLEAN**（无发现）。据此：§6 的 SHA-256 / MVID / Case-ID 即本票的**产物身份**，适用于 §5 全部门禁（唯一入口 360/360 PASS、`Verify-BuildFingerprintArtifact.ps1` PASS）与 `ticket04-double-rebuild-identity.md` 的可重放记录；本票状态为静态闭环、`implemented-pending-runtime`。
 
-**第 9 轮遗留的流程缺陷（不掩盖）**：第 9 轮之前的增量修复合计 6 处（round 2–8 的 BLOCKING），其中 5 处经 Spec 轴在本会话内独立发现并由本轮零上下文 Standards 与 Spec 在冻结产物上重新核对；不存在「以续接结论替代复审」之外的其他替代路径。
+**流程缺陷（不掩盖）**：第 4–6、9 轮未按「每轮两轴各一新实例」执行，第 9 轮的 Spec 判词由同实例 `SendMessage` 续接产出，两者均**不计入 CLEAN 链**（这是本票在流程上真实发生的偏离，已在上表逐轮具名）。第 9 轮之前的 6 处 BLOCKING 修复（round 2–8）由本会话内 Spec 轴独立发现，并在第 10–13 轮的零上下文复审中被重新核对；本票最终身份由零上下文复审而非任何续接结论背书。
 
 第 10 轮为全新实例、独立上下文；第 1–9 轮的实际派发与续接情况见上方「轮次口径」。审查期间发现的**测试自身问题**（ARI03 心跳计数把终止记录计入重复数、ARI09 观察者移动会经「区域退出」分支撤销登记、ARI10 依赖 `BeginSession` 隐式打开新局）已在本报告 §3/§4 具名并修正；**一处测试断言过弱**（初次 ARI06 未覆盖尝试序号继承）已重写为可被 P6c 抓住的形态。
 
