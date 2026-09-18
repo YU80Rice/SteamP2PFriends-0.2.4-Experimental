@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 Resource 经领域端口迁入共享生命周期编排引擎
 
-**Status:** implemented-pending-runtime（静态闭环：共享控制面准入不变量落地；360/360 PASS、Release 双构建 0 error/0 warning 且两次指纹一致、三门禁 PASS、扰动负控制 16 次逐项取证（4 次无咬合已具名）、双轴审查逐轮全新实例推进，最终 Spec 第 9 轮 / Standards 第 8 轮双 CLEAN（逐轮处置见审计报告 §10）；完整证据见 `audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md`。本票不宣称 Readiness Gate 已 Runtime 通过，Runtime 归票 09）
+**Status:** implemented-pending-runtime（静态闭环：共享控制面准入不变量落地；360/360 PASS、Release 双构建 0 error/0 warning 且两次指纹一致、三门禁 PASS、扰动负控制 16 次逐项取证（4 次无咬合已具名）、审查按轮推进（第 10 轮为补做的零上下文双轴复审；第 4–6、9 轮未按「每轮两轴各一新实例」执行，第 9 轮判词为续接产物、不计入链——逐轮处置见审计报告 §10）；完整证据见 `audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md`。本票不宣称 Readiness Gate 已 Runtime 通过，Runtime 归票 09）
 
 - [x] 不完整观察者样本不冻结其它观察者、区域或领域（ARI01 + `ObserverSampleAdmission` SAM01–SAM03：逐条准入，单条坏记录只暂缓它自己；StaticIL 锁定协调器经该策略准入）。
 - [x] 样本未知进入 Deferred Observer Demand，不触发 destructive Release（ARI02/ARI04 + 引擎 `DeferObserver`：贡献原样保留、零释放；StaticIL 锁定暂缓方法体内零 `OnRelease`/零需求递减）。
