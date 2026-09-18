@@ -12,21 +12,30 @@ namespace SteamP2PFriends.WhitelistTests
     /// </summary>
     internal static class IlContractProbe
     {
-        internal static int CountMethodCalls(MethodInfo method, string declaringTypeName, string methodName)
+        /// <summary>
+        /// 构造函数也是合法的契约目标（例如「唯一注册点位于该类型的构造函数内」），
+        /// 因此 IL 计数入口接受 MethodBase 而不只是 MethodInfo。
+        /// </summary>
+        internal static int CountMethodCalls(MethodBase method, string declaringTypeName, string methodName)
         {
+            return CountCallsWhere(method, called =>
+                called.DeclaringType?.FullName == declaringTypeName && called.Name == methodName);
+        }
+
+        internal static int CountCallsWhere(MethodBase method, Func<MethodBase, bool> matches)
+        {
+            if (matches == null) throw new ArgumentNullException(nameof(matches));
             return CountOperands(method, (owner, operandType, token) =>
             {
                 if (operandType != OperandType.InlineMethod) return false;
                 MethodBase called;
                 try { called = owner.ResolveMethod(token); }
                 catch { called = null; }
-                return called != null
-                    && called.DeclaringType?.FullName == declaringTypeName
-                    && called.Name == methodName;
+                return called != null && matches(called);
             });
         }
 
-        internal static int CountFieldLoads(MethodInfo method, string declaringTypeName, string fieldName)
+        internal static int CountFieldLoads(MethodBase method, string declaringTypeName, string fieldName)
         {
             return CountOperands(method, (owner, operandType, token) =>
             {
@@ -44,7 +53,7 @@ namespace SteamP2PFriends.WhitelistTests
         /// 统计方法体内引用「声明类型满足 predicate」的成员 token（方法调用、字段访问、
         /// 构造函数、类型操作数都算），用于证明某模块不触达原生/Unity 类型。
         /// </summary>
-        internal static int CountMemberReferences(MethodInfo method, Func<Type, bool> declaringTypeMatches)
+        internal static int CountMemberReferences(MethodBase method, Func<Type, bool> declaringTypeMatches)
         {
             if (declaringTypeMatches == null) throw new ArgumentNullException(nameof(declaringTypeMatches));
             return CountOperands(method, (owner, operandType, token) =>
@@ -62,22 +71,6 @@ namespace SteamP2PFriends.WhitelistTests
             });
         }
 
-        /// <summary>
-        /// 统计方法体内满足 predicate 的被调方法数（用于「不得调用某组类型」这类断言）。
-        /// </summary>
-        internal static int CountCallsWhere(MethodInfo method, Func<MethodBase, bool> matches)
-        {
-            if (matches == null) throw new ArgumentNullException(nameof(matches));
-            return CountOperands(method, (owner, operandType, token) =>
-            {
-                if (operandType != OperandType.InlineMethod) return false;
-                MethodBase called;
-                try { called = owner.ResolveMethod(token); }
-                catch { called = null; }
-                return called != null && matches(called);
-            });
-        }
-
         internal static int CountAssemblyMethodCalls(Assembly assembly, string declaringTypeName, string methodName)
         {
             return SumOverDeclaredMethods(assembly, method => CountMethodCalls(method, declaringTypeName, methodName));
@@ -88,14 +81,12 @@ namespace SteamP2PFriends.WhitelistTests
             return SumOverDeclaredMethods(assembly, method => CountMemberReferences(method, declaringTypeMatches));
         }
 
-        internal static int SumOverDeclaredMethods(Assembly assembly, Func<MethodInfo, int> count)
+        internal static int SumOverDeclaredMethods(Assembly assembly, Func<MethodBase, int> count)
         {
             int total = 0;
             foreach (Type type in assembly.GetTypes())
             {
-                foreach (MethodInfo method in type.GetMethods(
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-                    | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                foreach (MethodBase method in DeclaredMethodsAndConstructors(type))
                 {
                     int calls = count(method);
                     if (calls < 0) return -1;
@@ -106,15 +97,13 @@ namespace SteamP2PFriends.WhitelistTests
         }
 
         internal static int SumOverMethodsInNamespace(
-            Assembly assembly, Func<Type, bool> typeMatches, Func<MethodInfo, int> count)
+            Assembly assembly, Func<Type, bool> typeMatches, Func<MethodBase, int> count)
         {
             int total = 0;
             foreach (Type type in assembly.GetTypes())
             {
                 if (!typeMatches(type)) continue;
-                foreach (MethodInfo method in type.GetMethods(
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-                    | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                foreach (MethodBase method in DeclaredMethodsAndConstructors(type))
                 {
                     int calls = count(method);
                     if (calls < 0) return -1;
@@ -124,8 +113,20 @@ namespace SteamP2PFriends.WhitelistTests
             return total;
         }
 
+        /// <summary>
+        /// 类型的全部声明方法，含构造函数——注册、接线与初始化调用往往只出现在构造函数里，
+        /// 漏掉它们会让「唯一注册点」「不得触达某组类型」这类契约假绿。
+        /// </summary>
+        private static IEnumerable<MethodBase> DeclaredMethodsAndConstructors(Type type)
+        {
+            const BindingFlags Declared = BindingFlags.Public | BindingFlags.NonPublic
+                | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+            foreach (MethodInfo method in type.GetMethods(Declared)) yield return method;
+            foreach (ConstructorInfo constructor in type.GetConstructors(Declared)) yield return constructor;
+        }
+
         internal static int CountOperands(
-            MethodInfo method, Func<Module, OperandType, int, bool> matches)
+            MethodBase method, Func<Module, OperandType, int, bool> matches)
         {
             if (method == null) return -1;
             byte[] il = method.GetMethodBody()?.GetILAsByteArray();

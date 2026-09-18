@@ -31,7 +31,15 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：03。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`，投影迁移 Runtime 归票 09）。
+当前前沿：04（与 05 并行）。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`）；票 03 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`）。两张票的 Runtime 验收均归票 09。
+
+## 票 03 → 票 04 的具名交接（截获点，不在票 03 内修）
+
+票 03 以**行为保持**方式把资源生产接缝迁入共享编排引擎，因此以下三项仍是票 04 的准入阻塞项，且都已在引擎里预留了收口位置：
+
+- **retry 仍按「区域单槽 + 拥有者观察者」登记**：`spec.md` 要求观察者贡献事务区分领域、区域、观察者、连接代次、会话，禁止区域单槽互吞。票 01 表征门 M6P38/M6P39/M6P40 锁定的正是当前语义，票 03 未改（`M6P40` 注释已列明该边界不属已验收语义）。登记已收进引擎的每域状态（`DomainLifecycleState.AcquireRetries`），票 04 改键为事务粒度即可，不需要再动引擎结构。
+- **样本捕获层 `capture-incomplete` 整体冻结**与「无效样本未进入 Deferred Observer Demand」仍归票 04 第 1–2 项；票 03 未触碰 `MultiObserverShadowCoordinator.CaptureSamples`（`git diff` 可证）。
+- **会话身份的有界恢复/显式熔断**仍归票 04 第 4 项：票 03 保留既有失败闭合语义（会话收尾失败 → `repair-required` + 拒绝新写入），未新增有界恢复策略。
 
 ## 票 02 → 票 04 的具名交接（截获点，不在票 02 内修）
 

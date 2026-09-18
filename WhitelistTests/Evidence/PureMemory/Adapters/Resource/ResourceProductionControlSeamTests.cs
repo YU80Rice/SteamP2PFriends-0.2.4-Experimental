@@ -745,13 +745,11 @@ namespace SteamP2PFriends.WhitelistTests
             bool deferredOnly = seam.PendingAcquireRetryCount == 1
                 && seam.GetDemand(staleRegion) == 0;
 
-            // 反射清除登记,伪造 R4 失衡残留(历史回滚时代的产物/未知路径):
-            // 区域在空间索引、无 demand、无登记。补偿治本覆盖已知路径,该兜底
+            // 反射清除登记,伪造失衡残留(历史回滚时代的产物/未知路径):
+            // 区域在投影里、无 demand、无登记。补偿治本覆盖已知路径,该兜底
             // 容忍剩余过时退出——对称 R1,记日志跳过,不抛 underflow。
-            System.Reflection.FieldInfo retriesField = typeof(ResourceProductionControlSeam).GetField(
-                "_acquireRetries", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            System.Collections.IDictionary retries = (System.Collections.IDictionary)retriesField.GetValue(seam);
-            retries.Remove(staleRegion);
+            // 票 03 起 retry 登记归共享编排引擎,反射目标随之迁移到引擎的每域状态。
+            RemoveAcquireRetryRegistration(seam, staleRegion);
             bool residueState = seam.PendingAcquireRetryCount == 0
                 && seam.GetDemand(staleRegion) == 0;
 
@@ -765,6 +763,28 @@ namespace SteamP2PFriends.WhitelistTests
                 && seam.PendingReleaseCount == 0
                 && !seam.IsLeased(staleRegion)
                 && seam.IsSessionActive;
+        }
+
+        /// <summary>
+        /// 制造「区域在投影里、无需求、无 retry 登记」的失衡残留：接缝已不再持有 retry 登记，
+        /// 登记归共享编排引擎的每域状态。沿 engine -> per-domain state -> retry 表两级反射取出
+        /// 登记字典并移除该区域，不新增只为测试存在的生产 API。
+        /// </summary>
+        private static void RemoveAcquireRetryRegistration(ResourceProductionControlSeam seam, RegionKey region)
+        {
+            const System.Reflection.BindingFlags InstanceNonPublic =
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            object engine = typeof(ResourceProductionControlSeam).GetField("_engine", InstanceNonPublic)
+                .GetValue(seam);
+            System.Collections.IDictionary domains = (System.Collections.IDictionary)
+                engine.GetType().GetField("_domains", InstanceNonPublic).GetValue(engine);
+            foreach (System.Collections.DictionaryEntry entry in domains)
+            {
+                object domainState = entry.Value;
+                System.Collections.IDictionary retries = (System.Collections.IDictionary)
+                    domainState.GetType().GetField("AcquireRetries", InstanceNonPublic).GetValue(domainState);
+                retries.Remove(region);
+            }
         }
 
         internal static bool Test_M6P19_ReleaseRejectionDoesNotRunCompensation()

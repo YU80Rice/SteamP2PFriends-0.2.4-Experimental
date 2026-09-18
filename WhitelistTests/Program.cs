@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 313 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 335 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -71,6 +71,23 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("DPE09 RemovalReleases", DemandProjectionEngineTests.Test_DPE09_RemovalReleasesDomainDemand, ref total, ref passed, ref failed);
             RunTest("DPE10 RestoreProjection", DemandProjectionEngineTests.Test_DPE10_RestoreObserverRegionsRebuildsProjection, ref total, ref passed, ref failed);
             RunTest("DPE11 DeferredGenerationChange", DemandProjectionEngineTests.Test_DPE11_DeferredObserverGenerationChangeReleases, ref total, ref passed, ref failed);
+            // 票 03：共享生命周期编排引擎拥有需求聚合、Acquire/Release、滞回、身份校验、
+            // retry、补偿调度与局部故障隔离；领域只经 Domain Execution Port 执行原生操作。
+            RunTest("LOE01 TypedDemandSharedProjection", LifecycleOrchestrationEngineTests.Test_LOE01_ConsumesTypedDemandFromSharedProjection, ref total, ref passed, ref failed);
+            RunTest("LOE02 DemandAggregationAcquireOnce", LifecycleOrchestrationEngineTests.Test_LOE02_AggregatesDemandAndAcquiresOnce, ref total, ref passed, ref failed);
+            RunTest("LOE03 HysteresisSchedulesRelease", LifecycleOrchestrationEngineTests.Test_LOE03_LastExitSchedulesHysteresisRelease, ref total, ref passed, ref failed);
+            RunTest("LOE04 ReentryCancelsRelease", LifecycleOrchestrationEngineTests.Test_LOE04_ReentryInsideHysteresisCancelsRelease, ref total, ref passed, ref failed);
+            RunTest("LOE05 RegionGenerationIdentity", LifecycleOrchestrationEngineTests.Test_LOE05_RegionGenerationIdentityGatesRelease, ref total, ref passed, ref failed);
+            RunTest("LOE06 SessionEpochIdentity", LifecycleOrchestrationEngineTests.Test_LOE06_SessionEpochGatesPendingReleases, ref total, ref passed, ref failed);
+            RunTest("LOE07 RetryFollowsDomainPolicy", LifecycleOrchestrationEngineTests.Test_LOE07_RetryFollowsDomainPolicyAndClearsOnSuccess, ref total, ref passed, ref failed);
+            RunTest("LOE08 SingleRegionIsolation", LifecycleOrchestrationEngineTests.Test_LOE08_SingleRegionFailureIsIsolated, ref total, ref passed, ref failed);
+            RunTest("LOE09 CrossDomainIsolation", LifecycleOrchestrationEngineTests.Test_LOE09_DomainFailureDoesNotCrossDomains, ref total, ref passed, ref failed);
+            RunTest("LOE10 TransactionRollback", LifecycleOrchestrationEngineTests.Test_LOE10_TransactionRollbackRestoresStateAndProjection, ref total, ref passed, ref failed);
+            RunTest("LOE11 ReleaseIdempotence", LifecycleOrchestrationEngineTests.Test_LOE11_CommitReleaseIsIdempotent, ref total, ref passed, ref failed);
+            RunTest("LOE12 DiagnosticsCorrelation", LifecycleOrchestrationEngineTests.Test_LOE12_DiagnosticsCarryCorrelationFields, ref total, ref passed, ref failed);
+            RunTest("LOE13 RegistrationClosure", LifecycleOrchestrationEngineTests.Test_LOE13_RegistrationClosureFreezesDomainSet, ref total, ref passed, ref failed);
+            RunTest("LOE14 AcquireObservable", LifecycleOrchestrationEngineTests.Test_LOE14_SuccessfulAcquireIsObservable, ref total, ref passed, ref failed);
+            RunTest("LOE15 FaultedDomainIsolation", LifecycleOrchestrationEngineTests.Test_LOE15_FaultedDomainDoesNotStallOthers, ref total, ref passed, ref failed);
             #endregion
 
             #region 3. Adapters: Item Domain Tests (21 Tests)
@@ -416,6 +433,22 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Demand Resource Policy Declaration", DemandProjectionStaticILContractTests.Test_ResourceDomainDeclaresItsOwnDemandPolicy,
                 ref total, ref passed, ref failed);
             RunTest("Demand Eligibility Delegated To Policy", DemandProjectionStaticILContractTests.Test_ResourceEligibilityIsDelegatedToPolicy,
+                ref total, ref passed, ref failed);
+
+            // 票 03：共享生命周期编排引擎拥有编排状态机，Resource 只经领域执行端口操作原生状态。
+            RunTest("Lifecycle Orchestration StaticIL", LifecycleOrchestrationStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Lifecycle Seam Holds No State Machine", LifecycleOrchestrationStaticILContractTests.Test_SeamHoldsNoOrchestrationState,
+                ref total, ref passed, ref failed);
+            RunTest("Lifecycle Engine Reaches Native Only Via Port", LifecycleOrchestrationStaticILContractTests.Test_EngineReachesNativeStateOnlyThroughPort,
+                ref total, ref passed, ref failed);
+            RunTest("Lifecycle Engine Consumes Typed Demand", LifecycleOrchestrationStaticILContractTests.Test_EngineConsumesTypedDemandWithoutReprojectingSpatialFacts,
+                ref total, ref passed, ref failed);
+            RunTest("Lifecycle Resource Policy Declaration", LifecycleOrchestrationStaticILContractTests.Test_ResourceDeclaresItsOwnLifecyclePolicy,
+                ref total, ref passed, ref failed);
+            RunTest("Lifecycle Single Domain Registration", LifecycleOrchestrationStaticILContractTests.Test_SingleDomainRegistrationSiteIsResource,
+                ref total, ref passed, ref failed);
+            RunTest("Lifecycle No Domain Branch", LifecycleOrchestrationStaticILContractTests.Test_EngineHasNoDomainBranch,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

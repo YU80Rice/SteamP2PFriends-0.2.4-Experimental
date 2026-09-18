@@ -1,4 +1,4 @@
-# 0.2.4-Experimental Migration Manifest
+﻿# 0.2.4-Experimental Migration Manifest
 
 ## Batch 1：Structure Baseline and Metadata Source
 
@@ -462,3 +462,87 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 ### 移交票 04（本批不修，具名）
 
 - 样本捕获层的 `capture-incomplete` 整体冻结仍在（`spec.md:61` 要求单条不可用记录不得冻结其它有效观察者的本拍更新）；票 02 已提供「资格不合格＝暂缓」的原语，票 04 需补样本不可用路径与其有界恢复策略（票 04 checklist 第 1–2 项）。
+
+## Batch 14：Resource 经领域端口迁入共享生命周期编排引擎（0.2.4.9 / 票 03）
+
+状态：**静态完成**——共享 Lifecycle Orchestration Engine 拥有需求聚合、0→1 Acquire、N→0 滞回 Release、身份校验、retry、补偿调度、局部故障隔离与统一诊断；Resource 只经 Domain Execution Port 操作原生状态，生产接缝退化为薄门面，原有通用生命周期状态机退出生产权威。生产 Writer 仍唯一，Collision 仍无生产写入资格。Runtime 归 Collision 切片关单票 09。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Core/ControlPlane/Lifecycle/`（新增 6 文件） | 新增模块 | `LifecycleOrchestrationEngine`（编排状态机 + 多域注册）、`IDomainExecutionPort` + `EDomainFailureKind`（领域执行端口与失败分类）、`LifecyclePolicy` + `RetrySchedule`（领域声明的滞回与 retry 节奏）、`ILifecycleDiagnostics` + `DefaultLifecycleDiagnostics`（统一诊断出口）、`LifecycleDiagnostic` + 结果/路径/级别枚举、`LifecycleEvents`（转换事件名） |
+| `Adapters/Resource/ResourceExecutionPort.cs` | 新增 | Resource 域执行端口：把引擎的编排决策翻译成领域原生操作，把原生失败翻译成引擎可执行的结果分类；不聚合需求、不持有租约或滞回 |
+| `Adapters/Resource/ResourceLifecyclePolicy.cs` | 新增 | Resource 的 Lifecycle Policy 声明（滞回窗口 + 暂缓/一般 retry 节奏与静默阈值），滞回值取自资源域自己的常量 |
+| `Adapters/Resource/ResourceLifecycleDiagnostics.cs` | 新增 | Resource 诊断出口：把统一转换记录落成既有 `[ResourceObs]` 取证格式，运行日志字段/事件名/路径/结果词表与迁移前一致 |
+| `Adapters/Resource/ResourceProductionControlSeam.cs` | 已重写 | 退化为薄门面：零编排集合字段、零嵌套编排类型，唯一持有的编排对象是共享引擎；对外行为面（会话/观察者更新/移除/时间推进/刷新/查询）保持不变 |
+| `WhitelistTests/Evidence/StaticIL/IlContractProbe.cs` | 已扩 | `CountOperands`/`CountMethodCalls`/`CountFieldLoads`/`CountMemberReferences`/`SumOver*` 改为接受 `MethodBase` 并纳入构造函数——注册与接线调用只出现在构造函数里，漏掉会造成「唯一注册点」「不得触达某组类型」这类契约假绿 |
+| `WhitelistTests/Evidence/StaticIL/LifecycleOrchestrationStaticILContractTests.cs` | 新增契约 | 引擎/端口/政策/诊断类型存在且 Lifecycle 命名空间零原生依赖、接缝零编排状态机、引擎只经端口触达原生状态、引擎消费 typed demand 不重新投影、Resource 自声明 Lifecycle Policy、全程序集唯一领域注册点、引擎无领域分支 |
+| `WhitelistTests/Evidence/StaticIL/ResourceProductionControlStaticILContractTests.cs` | 已改 | 代次读取契约移向 `ResourceExecutionPort.ReadRegionGeneration`（唯一 RegionKey 入口、经 `RegionGeneration.FromNative`）；失败分类边界与取证 helper 契约改指共享引擎的 `ProcessEntered` / `ProcessSingleRegionEntry` / `DescribeFailure` |
+| `WhitelistTests/Evidence/PureMemory/MultiObserver/LifecycleOrchestrationEngineTests.cs` | 新增 | LOE01–LOE15：消费共享投影的 typed demand、需求聚合与一次 Acquire、滞回调度与重入、区域代次与会话代次身份门、retry 随领域政策并在成功后清除、单区域隔离、跨域隔离、事务回滚与补偿、释放幂等、诊断关联字段、注册闭合（会话内拒绝 / 会话间开放）、成功 Acquire 可观测、熔断领域不拖停其它领域 |
+| `WhitelistTests/Evidence/PureMemory/Adapters/Resource/ResourceProductionControlSeamTests.cs` | 已改 | M6P35 的失衡残留反射目标随 retry 登记迁入引擎的每域状态（两级反射，不新增仅供测试的生产 API）；断言不变 |
+| `WhitelistTests/Program.cs` | 已改 | 注册 22 项新证据（LOE01–LOE15、Lifecycle StaticIL 7 项）；唯一入口目标数 313 → 335 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | 新增 LOE01–LOE15；票 01 表征门（M6P36–M6P41、SPI05、半径来源契约）与票 02 投影契约（DPE01–DPE11、M6P42–M6P46）全部保持绿 |
+| StaticIL | PASS | 新增 7 项结构契约；既有 Resource 生产控制、退休、采伐注册与 Demand 投影契约保持绿 |
+| BuildArtifact | PASS | `Verify-BuildFingerprintArtifact.ps1` 独立核验通过；版本身份仍为 `0.2.4.9` / `SPF-0.2.4.9-Experimental-CollisionSlice` |
+| Runtime | PENDING | 本批次不宣称 Runtime；编排迁移的三端运行验收见票 09 |
+
+### 扰动负控制（证明新门禁非同义反复）
+
+| 扰动 | 实测 FAIL |
+|---|---|
+| 引擎去掉滞回窗口（释放立即到期） | LOE03、M6P02、M6P03、M6P37（4） |
+| 接缝加回一个编排集合字段 | Lifecycle Seam Holds No State Machine 与合成门（2） |
+| 引擎持有具体端口实现类型 | Lifecycle Engine Reaches Native Only Via Port 与合成门（2） |
+| 引擎读取 Domain Id 常量（引入领域分支） | Lifecycle No Domain Branch 与合成门（2） |
+| 引擎内置默认 Lifecycle Policy | Lifecycle Resource Policy Declaration 与合成门（2） |
+| 出现第二处领域注册点（模拟 Collision 接线） | Lifecycle Single Domain Registration 与合成门（2） |
+| 改快一般失败 retry 起步间隔 | M6P39（1） |
+| 引擎不再登记 acquire retry | LOE07、LOE08、M6P31、M6P32、M6P38、M6P39、M6P40（7） |
+| 引擎跳过补偿执行 | LOE10、M6P13、M6P14、M6P17、M6P23（5） |
+| 去掉注册闭合（会话内可新增领域） | LOE13（1） |
+| 去掉成功 Acquire 转换诊断 | LOE14（1） |
+| 熔断领域重新阻断推进路径 | LOE15（1） |
+
+扰动逐次还原并复核回到全绿；「引擎不再登记 retry」与「跳过补偿」两组同时打到票 01 表征门，证明资源已验收语义确实由共享引擎承载而非旁路。
+
+### 不可变语义（票 03 起生效，后续票不得回退）
+
+- 唯一对外行为接缝是 Lifecycle Orchestration Engine；Resource 与后续领域都是该接缝上的 Domain Execution Port（StaticIL 锁定）；
+- 领域不得持有编排状态机：需求计数、租约、滞回登记、retry 登记与观察者集合都归引擎（StaticIL + LOE 行为面锁定）；
+- 引擎不得触达领域执行类型、不得读取 Domain Id 常量、不得内置默认政策或默认半径（StaticIL 锁定）；
+- 编排引擎消费 Session Epoch / Connection Generation / Region Generation，不重新生成也不合并这些轴（引擎无对应写入面，身份门由 LOE05/LOE06 锁定）；
+- 故障隔离单元至少是 Domain Id + Region Key + Transition（LOE08 单区域、LOE09 跨域）。
+
+### 移交票 04（本批不修，具名）
+
+- **retry 登记仍是「区域单槽 + 拥有者观察者」**：本票以行为保持方式迁移，未改变票 01 表征的 retry 语义（M6P38/M6P39/M6P40 锁定的是该语义）；`spec.md` 要求的「观察者贡献事务区分领域/区域/观察者/连接代次/会话，禁止区域单槽互吞」仍归票 04（其 checklist 第 5 项）。引擎已把登记收进每域状态，改键为事务粒度不需要再动引擎结构；
+- **样本捕获层 `capture-incomplete` 整体冻结**与「无效样本未进入 Deferred Observer Demand」仍归票 04（checklist 第 1–2 项），本票未触碰该路径；
+- **会话身份有界恢复/显式熔断**仍归票 04（checklist 第 4 项）：本票保留既有失败闭合（`repair-required` + 新写入拒绝）语义，未新增有界恢复策略。
+
+### 双轴审查链（每轮全新实例，无延续、无复用）
+
+| 轮 | 本轮增量 | Standards | Spec |
+|---|---|---|---|
+| 1 | 全量首轮（Lifecycle 模块 6 文件 + Resource 执行端口/政策/诊断 + 接缝重写 + 22 项新证据 + 文档） | CLEAN（0 硬违规；5 判断项，其中枚举死成员已修） | **BLOCKING 3**：Registration Closure 缺失；成功 Acquire 无转换诊断；RepairRequired 阻断跨域刷新 |
+| 2 | 注册闭合 + 成功 Acquire 诊断 + 熔断领域跳过 + 枚举裁剪 + 诊断构造收敛 + LOE13–LOE15 | CLEAN（0 硬违规；新增 1 项重复代码、1 项命名副作用） | **BLOCKING 2**：注册闭合被过度收紧为永久闭合（`EndSession` 后不重开），与「本次会话」措辞不符；成功 Acquire 诊断缺尝试次数与原因 |
+| 3 | 闭合边界收窄为会话级 + 成功 Acquire 补齐 `attempt`/`reason` + `EnsureSessionActive`/`IsAdvanceSkipped` 拆分 + LOE13/LOE14 扩展 | **CLEAN**（0 硬违规；新增 1 项重复代码需收口） | **CLEAN**（两条 BLOCKING 逐项闭合；未越界票 04） |
+| 4 | `NextAttemptNumber` 抽出供两处复用 + 删除有副作用的谓词改为 `ReportSkippedFaultedDomain` | **CLEAN**（0 硬违规；2 项新增判断项） | **CLEAN**（逐项「无差距」：取值时机与表达式等价、跳过路径状态转移等价、去重键与事件字段保持、无范围扩张） |
+
+审查期间的三处**测试自身错误**（LOE06 在会话结束后仍调 `AdvanceTime`、假体把一次被拒绝的释放计入释放次数、注入失败同时挡住了补偿用的重新进入）已在审计报告 §3 具名并修正；一处**探针缺陷**（`IlContractProbe` 的原先实现跳过构造函数，会让「唯一注册点」契约假绿）已具名并修正。
+
+### 判断项延期（全部具名；双轴确认不阻断）
+
+1. `Report(...)` 的可选参数簇（领域/区域/代次/观察者/尝试/角色/级别）——第 1–4 轮持续具名；合并为上下文对象会把调用点变成 builder 链，本切片不引入；
+2. `AcquireAttemptCount` 现为对 `NextAttemptNumber` 的纯转发（第 4 轮具名）——保留它使成功 Acquire 调用点的取值意图可读；若后续另有第二个消费方即应内联；
+3. `AdvanceTime`/`Flush` 循环入口的四行守卫重复（第 4 轮具名）——仅两处、四行，再抽一层守卫不划算；
+4. `IsRegistrationClosed` 与 `IsSessionActive` 读同一字段（第 3/4 轮具名）——已用 XML 注释固定「闭合边界＝会话本身」的视角，若将来两者语义分叉必须拆开；
+5. `Build` 与 `Report` 的构造形状仍近似（第 2 轮具名）——派生逻辑已收敛到 `IsSharedPath`/`DeriveSeverity`；两者携带的关联字段不同，强行合并会退回第 1 项；
+6. 诊断去重键为字符串拼接（第 2 轮具名）——沿用本文件既有 `TransitionOnce` 键模式，未新增长期形态；
+7. 生产接缝现为薄门面（Middle Man 形状，第 1 轮具名）——ADR 0011 明确要求保留兼容门面，不构成违规；
+8. `ResourceProductionControlSeamTests` 的失衡残留辅助走三级反射（第 1 轮具名）——为不新增「仅供测试」的生产 API，接受该耦合；引擎结构再变时需同步该辅助。

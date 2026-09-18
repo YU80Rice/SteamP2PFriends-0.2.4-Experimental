@@ -130,50 +130,68 @@ namespace SteamP2PFriends.WhitelistTests
             return IlContractProbe.FindCallOffset(method, name);
         }
 
+        /// <summary>
+        /// 票 03 迁移：原生区域代次读取从生产接缝移入领域执行端口，唯一入口不变——
+        /// 恰有一个接受 Region Key 的读取方法，且它只转发给领域声明的代次来源。
+        /// </summary>
         internal static bool Test_GenerationReadDoesNotUseFallbackGuess()
         {
-            Type seam = typeof(ResourceProductionControlSeam);
-            MethodInfo[] readers = seam.GetMethods(BindingFlags.Static | BindingFlags.Instance |
+            Type port = typeof(ResourceExecutionPort);
+            MethodInfo[] readers = port.GetMethods(BindingFlags.Static | BindingFlags.Instance |
                 BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(method => method.Name == "ReadGeneration")
+                .Where(method => method.Name == "ReadRegionGeneration")
                 .ToArray();
 
             return readers.Length == 1
                 && readers[0].GetParameters().Length == 1
-                && readers[0].GetParameters()[0].ParameterType == typeof(RegionKey);
+                && readers[0].GetParameters()[0].ParameterType == typeof(RegionKey)
+                && CountMethodCalls(readers[0], "SteamP2PFriends.Core.Identity.RegionGeneration",
+                    "FromNative") == 1
+                && CountAssemblyMethodCalls(typeof(SteamP2PFriendsPlugin).Assembly,
+                    typeof(ResourceProductionControlSeam).FullName, "ReadGeneration") == 0;
         }
 
+        /// <summary>
+        /// 票 03 迁移：分类边界随编排逻辑移入共享引擎的 ProcessEntered，契约不变——
+        /// 转换路径不解析异常文本（Message 只经具名 helper 承载）。
+        /// </summary>
         internal static bool Test_FailureClassificationDoesNotParseExceptionText()
         {
-            MethodInfo entered = typeof(ResourceProductionControlSeam).GetMethod(
-                "ProcessEntered", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo entered = LifecycleMethod("ProcessEntered");
             return entered != null
                 && CountMethodCalls(entered, "System.Exception", "get_Message") == 0;
         }
 
+        /// <summary>
+        /// 与 Test_FailureClassificationDoesNotParseExceptionText 互补：转换路径不读取 Message
+        /// （契约），但独立取证 helper 必须真正读取 Message（运行时日志定位需要）。二者共同保证
+        /// 取证信息进入可观测输出、又不污染分类边界。
+        /// </summary>
         internal static bool Test_AcquireFailureHelperEmbedsExceptionMessage()
         {
-            // 与 Test_FailureClassificationDoesNotParseExceptionText 互补：ProcessEntered 的
-            // EDG 不读取 Message（契约），但独立取证 helper DescribeAcquireFailure 必须真正
-            // 读取 Message（运行时日志定位需要）。二者共同保证取证信息进入可观测输出、
-            // 又不污染 ProcessEntered 的分类边界。
-            MethodInfo helper = typeof(ResourceProductionControlSeam).GetMethod(
-                "DescribeAcquireFailure", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo helper = LifecycleMethod("DescribeFailure");
             return helper != null
                 && CountMethodCalls(helper, "System.Exception", "get_Message") == 1
                 && CountMethodCalls(helper, "System.Exception", "get_StackTrace") == 0;
         }
 
+        /// <summary>
+        /// 单区域处理体（含 acquire 失败分类 catch）迁入共享引擎后，分类边界随之迁移；
+        /// 本契约镜像 Test_FailureClassificationDoesNotParseExceptionText，守护新边界同样不解析
+        /// 异常文本——领域失败分类只经执行端口的 ClassifyRegionFailure 声明，不在引擎里读文本。
+        /// </summary>
         internal static bool Test_SingleRegionEntryDoesNotParseExceptionText()
         {
-            // ProcessEntered 的单区域处理体（含 acquire 失败分类 catch）抽入
-            // ProcessSingleRegionEntry 后，分类边界随之迁移；本契约镜像
-            // Test_FailureClassificationDoesNotParseExceptionText，守护新的分类边界
-            // 同样不解析异常文本（Message 仅经 DescribeAcquireFailure helper 承载）。
-            MethodInfo singleRegion = typeof(ResourceProductionControlSeam).GetMethod(
-                "ProcessSingleRegionEntry", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo singleRegion = LifecycleMethod("ProcessSingleRegionEntry");
             return singleRegion != null
                 && CountMethodCalls(singleRegion, "System.Exception", "get_Message") == 0;
+        }
+
+        private static MethodInfo LifecycleMethod(string name)
+        {
+            Type engine = typeof(ResourceProductionControlSeam).Assembly.GetType(
+                "SteamP2PFriends.MultiObserver.Lifecycle.LifecycleOrchestrationEngine");
+            return engine?.GetMethod(name, BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic);
         }
 
         internal static bool Test_ClientConnectionGenerationFailureRequestsTeardown()
