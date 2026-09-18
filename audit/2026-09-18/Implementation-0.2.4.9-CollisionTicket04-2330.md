@@ -126,7 +126,8 @@
 5. **协调器汇总日志跨多个只读属性拼串**（Standards round 2，Feature Envy 轻微）：属诊断日志常见写法，且为两个新只读属性提供了生产消费者；延期。
 6. **`ObserverSampleAdmissionPlan` 构造参数 6 个**（Standards round 2，Data Clumps 边界）：均为同一次 `Plan` 调用的强相关字段且构造为 `internal`；延期。
 9. **准入计划的 `BatchRejectReason` 与 `IgnoredDuplicateCount` 目前只被测试消费**（第 10 轮零上下文 Standards 新发现；协调器的整批拒绝日志用的是 `CaptureResult.BatchFailureReason`）：属轻度 Speculative Generality / 诊断预留字段。可延期——若下一票接入诊断日志即自然收口，否则应内联删除。
-10. **票 03 已具名的存量判断项（`Report` 可选参数簇、`AcquireAttemptCount` 纯转发、`AdvanceTime`/`Flush` 守卫重复、`IsRegistrationClosed` 与 `IsSessionActive` 同字段、`Build`/`Report` 形状近似、诊断键字符串拼接、薄门面 Middle Man、测试三级反射）**：本票未新增、未恶化；薄门面因本票新增 5 个转发成员而略增面积，仍属 ADR 0011 要求的兼容门面；延期。
+10. **`AcquireRetryQualificationCount(domain, region)` 与 `IsObserverDeferred(domain, observerId)` 目前只被测试消费**（第 11 轮零上下文 Standards 新发现）：与 §9-9 同属「为诊断/取证预留的查询面」，生产侧暂无调用方。两者是 ARI05/ARI06 与 ARI01/ARI03 断言事务粒度与暂缓状态所必需的可观测面，删除会让门禁失去观测点，故按延期处理；若后续诊断日志接入这两个量（例如汇总行输出 `retryQualifications` 与 `deferredObservers`），即自然收口。
+11. **票 03 已具名的存量判断项（`Report` 可选参数簇、`AcquireAttemptCount` 纯转发、`AdvanceTime`/`Flush` 守卫重复、`IsRegistrationClosed` 与 `IsSessionActive` 同字段、`Build`/`Report` 形状近似、诊断键字符串拼接、薄门面 Middle Man、测试三级反射）**：本票未新增、未恶化；薄门面因本票新增 5 个转发成员而略增面积，仍属 ADR 0011 要求的兼容门面；延期。
 
 ## 10. 双轴审查实际轮次记录（含流程偏离；非合规宣称）
 
