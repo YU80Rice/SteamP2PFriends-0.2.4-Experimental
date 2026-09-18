@@ -10,7 +10,14 @@
     <SteamP2PFriendsReleaseChannel>Experimental</SteamP2PFriendsReleaseChannel>
     <SteamP2PFriendsVersionIdentity>$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)</SteamP2PFriendsVersionIdentity>
     <SteamP2PFriendsPluginGuid>com.yu80rice.steamp2pfriends</SteamP2PFriendsPluginGuid>
-    <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-CollisionSlice</SteamP2PFriendsDefaultCaseId>
+    <!--
+      候选角色：影子候选与正式切换候选必须是可区分的构建指纹——同一份源码、不同角色
+      得到不同的产物身份（角色进程序集元数据与默认 Case-ID，因而 SHA-256 / MVID 不同）。
+      本切片当前交付只读影子候选；正式切换候选由票 08 用
+      -p:SteamP2PFriendsCandidateRole=Cutover 构建，不得与影子候选混用验收日志。
+    -->
+    <SteamP2PFriendsCandidateRole Condition="'$(SteamP2PFriendsCandidateRole)' == ''">ReadOnlyShadow</SteamP2PFriendsCandidateRole>
+    <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-CollisionSlice-$(SteamP2PFriendsCandidateRole)</SteamP2PFriendsDefaultCaseId>
     <SteamP2PFriendsU3SdkCommit>ea7b4973af5ba10f62baad2bfde36ab2e5b060eb</SteamP2PFriendsU3SdkCommit>
   </PropertyGroup>
 </Project>

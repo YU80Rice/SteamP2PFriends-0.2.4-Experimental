@@ -57,13 +57,14 @@ namespace SteamP2PFriends.WhitelistTests
         /// <summary>
         /// 票 01 身份门：本阶段（Collision Migration Slice）Metadata Source 授予 0.2.4.9，
         /// 发布通道仍为 Experimental，默认 Case-ID 能把本切片与 0.2.4.8 结构基线分开。
+        /// 票 05 起默认 Case-ID 追加候选角色后缀（本切片当前交付只读影子候选）。
         /// 该字面量是本阶段的冻结身份，随版本推进显式更新；不做隐式漂移。
         /// </summary>
         internal static bool Test_SliceIdentityIsPinnedToMigrationStage()
         {
             const string expectedVersion = "0.2.4.9";
             const string expectedChannel = "Experimental";
-            const string expectedCaseId = "SPF-0.2.4.9-Experimental-CollisionSlice";
+            const string expectedCaseId = "SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow";
 
             PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly);
             return string.Equals(PluginBuildMetadata.Version, expectedVersion, StringComparison.Ordinal)
@@ -75,6 +76,33 @@ namespace SteamP2PFriends.WhitelistTests
                 && string.Equals(fingerprint.AssemblyVersion, expectedVersion, StringComparison.Ordinal)
                 && string.Equals(fingerprint.FileVersion, expectedVersion, StringComparison.Ordinal)
                 && string.Equals(fingerprint.BuildCaseId, expectedCaseId, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 影子候选与正式切换候选必须是可区分的构建指纹（票 05/ADR 0012）：候选角色进程序集
+        /// 元数据与默认 Case-ID，因此两个角色的产物身份不同，两类候选的验收日志不得混用。
+        /// 本门断言「角色确实参与身份」——正式切换候选的具体角色值由票 08 冻结。
+        /// </summary>
+        internal static bool Test_ShadowCandidateRoleIsDistinctFromCutoverCandidate()
+        {
+            const string shadowRole = "ReadOnlyShadow";
+            const string cutoverRole = "Cutover";
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(assembly);
+
+            string shadowCaseId = PluginBuildMetadata.DefaultCaseId;
+            string cutoverCaseId = shadowCaseId.Replace(shadowRole, cutoverRole);
+            bool roleIsEmbedded = HasAssemblyMetadata(assembly, "SteamP2PFriendsCandidateRole", shadowRole)
+                && string.Equals(fingerprint.CandidateRole, shadowRole, StringComparison.Ordinal);
+            bool roleIsInCaseId = shadowCaseId.EndsWith("-" + shadowRole, StringComparison.Ordinal);
+            bool rolesAreDistinct = !string.Equals(shadowCaseId, cutoverCaseId, StringComparison.Ordinal)
+                && !string.Equals(fingerprint.CaseId, cutoverCaseId, StringComparison.Ordinal)
+                && fingerprint.IsComplete;
+
+            return string.Equals(PluginBuildMetadata.CandidateRole, shadowRole, StringComparison.Ordinal)
+                && roleIsEmbedded
+                && roleIsInCaseId
+                && rolesAreDistinct;
         }
 
         internal static bool Test_CaseIdOverrideIsShared()

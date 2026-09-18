@@ -57,7 +57,7 @@ namespace SteamP2PFriends
             ok &= resourceReplicationRegistered;
             if (resourceLifecycleRegistered && resourceReplicationRegistered)
             {
-                MultiObserver.MultiObserverShadowCoordinator.ConfigureResourceProduction(resource);
+                MultiObserver.MultiObserverShadowCoordinator.ConfigureControlPlane(resource);
             }
             var building = new BuildingDomainAdapter();
             ok &= RegisterLifecycle(building);

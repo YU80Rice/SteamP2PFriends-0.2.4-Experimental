@@ -48,7 +48,7 @@ namespace SteamP2PFriends.WhitelistTests
             Type policy = assembly.GetType(PolicyTypeName);
             Type demand = assembly.GetType(DemandTypeName);
             Type seam = assembly.GetType(SeamTypeName);
-            MethodInfo configure = StaticMethod(CoordinatorTypeName, "ConfigureResourceProduction");
+            MethodInfo configure = StaticMethod(CoordinatorTypeName, "ConfigureControlPlane");
 
             bool controlPlaneBuildsOneOfEach = configure != null
                 && IlContractProbe.CountMethodCalls(configure, AuthorityTypeName, ".ctor") == 1

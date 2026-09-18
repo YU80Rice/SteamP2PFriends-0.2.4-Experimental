@@ -12,7 +12,7 @@ namespace SteamP2PFriends.WhitelistTests
         /// <summary>
         /// 测试宿主接线：为每个用例建立一份独立的 Control Plane（唯一空间事实 + 共享投影引擎）
         /// 与 Resource Demand Policy，再注入生产接缝。生产接线在协调器
-        /// ConfigureResourceProduction 中完成同一组构造。
+        /// ConfigureControlPlane 中完成同一组构造。
         /// </summary>
         private static ResourceProductionControlSeam CreateSeam(
             ILifecycleDomainAdapter lifecycle,

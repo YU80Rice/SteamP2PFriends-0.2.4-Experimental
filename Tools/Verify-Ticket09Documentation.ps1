@@ -17,7 +17,8 @@ function Get-PropertyValue([string]$name) {
 $version = Get-PropertyValue 'SteamP2PFriendsVersion'
 $releaseChannel = Get-PropertyValue 'SteamP2PFriendsReleaseChannel'
 $pluginGuid = Get-PropertyValue 'SteamP2PFriendsPluginGuid'
-$defaultCaseId = (Get-PropertyValue 'SteamP2PFriendsDefaultCaseId').Replace('$(SteamP2PFriendsVersion)', $version).Replace('$(SteamP2PFriendsReleaseChannel)', $releaseChannel)
+$candidateRole = Get-PropertyValue 'SteamP2PFriendsCandidateRole'
+$defaultCaseId = (Get-PropertyValue 'SteamP2PFriendsDefaultCaseId').Replace('$(SteamP2PFriendsVersion)', $version).Replace('$(SteamP2PFriendsReleaseChannel)', $releaseChannel).Replace('$(SteamP2PFriendsCandidateRole)', $candidateRole)
 
 # 结构基线 Ticket 09 文档门禁。0.2.4.8 基线验收后本脚本按两类文档校验：
 #   1) 当前版本展示文档：期望值取自 Build/Version.props（Metadata Source 唯一来源）；

@@ -13,8 +13,9 @@ $namespace.AddNamespace('msb', 'http://schemas.microsoft.com/developer/msbuild/2
 $expectedVersion = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsVersion', $namespace).InnerText
 $expectedReleaseChannel = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsReleaseChannel', $namespace).InnerText
 $expectedPluginGuid = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsPluginGuid', $namespace).InnerText
+$expectedCandidateRole = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsCandidateRole', $namespace).InnerText
 $expectedDefaultCaseId = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsDefaultCaseId', $namespace).InnerText
-$expectedDefaultCaseId = $expectedDefaultCaseId.Replace('$(SteamP2PFriendsVersion)', $expectedVersion).Replace('$(SteamP2PFriendsReleaseChannel)', $expectedReleaseChannel)
+$expectedDefaultCaseId = $expectedDefaultCaseId.Replace('$(SteamP2PFriendsVersion)', $expectedVersion).Replace('$(SteamP2PFriendsReleaseChannel)', $expectedReleaseChannel).Replace('$(SteamP2PFriendsCandidateRole)', $expectedCandidateRole)
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($resolvedPath).FileVersion
 $hash = (Get-FileHash -LiteralPath $resolvedPath -Algorithm SHA256).Hash.ToUpperInvariant()
 $assembly = [Reflection.Assembly]::LoadFile($resolvedPath)
@@ -36,6 +37,7 @@ foreach ($attribute in $assembly.GetCustomAttributesData()) {
 $version = $metadata['SteamP2PFriendsVersion']
 $pluginGuid = $metadata['SteamP2PFriendsPluginGuid']
 $artifactDefaultCaseId = $metadata['SteamP2PFriendsDefaultCaseId']
+$artifactCandidateRole = $metadata['SteamP2PFriendsCandidateRole']
 $caseId = if ($ExpectedCaseId) { $ExpectedCaseId } else { $artifactDefaultCaseId }
 $caseIdSource = if ($ExpectedCaseId) { 'expected-case-id' } else { 'artifact-metadata' }
 $caseIdAssociation = if ($ExpectedCaseId) { 'pending-log-correlation' } else { 'artifact-metadata' }
@@ -45,6 +47,8 @@ $checks = @(
     ($fileVersion -eq $expectedVersion),
     ($pluginGuid -eq $expectedPluginGuid),
     ($artifactDefaultCaseId -eq $expectedDefaultCaseId),
+    ($artifactCandidateRole -eq $expectedCandidateRole),
+    (-not [string]::IsNullOrWhiteSpace($artifactCandidateRole)),
     (-not [string]::IsNullOrWhiteSpace($caseId)),
     ($caseId -match '^[A-Za-z0-9._-]{1,96}$'),
     ($hash -match '^[0-9A-F]{64}$'),
@@ -97,6 +101,7 @@ $result = [pscustomobject]@{
     CaseIdSource = $caseIdSource
     CaseIdAssociation = $caseIdAssociation
     ArtifactDefaultCaseId = $artifactDefaultCaseId
+    CandidateRole = $artifactCandidateRole
     MetadataSource = 'Build/Version.props'
     Result = if (($checks -notcontains $false) -and ($checks.Count -gt 0)) { 'PASS' } else { 'FAIL' }
 }

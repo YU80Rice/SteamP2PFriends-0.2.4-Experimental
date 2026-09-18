@@ -33,7 +33,7 @@ namespace SteamP2PFriends.WhitelistTests
             Type worldSync = assembly.GetType("SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerWorldSyncDiagnosticPatch");
             MethodInfo onRelease = adapter?.GetMethod("OnRelease", BindingFlags.Instance | BindingFlags.Public,
                 null, new[] { typeof(SteamP2PFriends.MultiObserver.SPI.LeaseTicket) }, null);
-            MethodInfo configure = coordinator?.GetMethod("ConfigureResourceProduction",
+            MethodInfo configure = coordinator?.GetMethod("ConfigureControlPlane",
                 BindingFlags.Static | BindingFlags.NonPublic);
 
             return seam != null
@@ -246,7 +246,7 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_ProductionRadiusComesFromVanillaObjectRegionSource()
         {
             MethodInfo configure = typeof(MultiObserverShadowCoordinator).GetMethod(
-                "ConfigureResourceProduction", BindingFlags.Static | BindingFlags.NonPublic);
+                "ConfigureControlPlane", BindingFlags.Static | BindingFlags.NonPublic);
             return configure != null
                 && CountFieldLoads(configure, "SDG.Unturned.LevelGround", "RESOURCE_REGIONS") == 1
                 && CountFieldLoads(configure, "SDG.Unturned.Regions", "WORLD_SIZE") == 1

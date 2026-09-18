@@ -15,9 +15,10 @@
 | Version | `0.2.4.9` |
 | Release channel | `Experimental` |
 | Plugin GUID | `com.yu80rice.steamp2pfriends` |
-| Default Case-ID | `SPF-0.2.4.9-Experimental-CollisionSlice` |
+| Candidate role | `ReadOnlyShadow`（可用 `-p:SteamP2PFriendsCandidateRole=Cutover` 覆盖） |
+| Default Case-ID | `SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow` |
 
-Case-ID 末段标识当前迁移切片：`0.2.4.8` 结构基线为 `StructureBaseline`，`0.2.4.9` Collision Migration Slice 为 `CollisionSlice`，使 BuildArtifact 证据能把两个阶段分开。
+Case-ID 结构为 `SPF-<Version>-<Channel>-<Slice>-<CandidateRole>`，末两段分别标识迁移切片与构建候选角色：`0.2.4.8` 结构基线为 `StructureBaseline`，`0.2.4.9` Collision Migration Slice 为 `CollisionSlice`。候选角色把只读影子候选（`ReadOnlyShadow`）与正式切换候选（`Cutover`）分成两个可区分的产物身份——角色进程序集元数据（`SteamP2PFriendsCandidateRole`）与默认 Case-ID，同一份源码换角色即得到不同的 SHA-256 / MVID，因此两类候选的验收日志不得混用。
 
 主项目和 `WhitelistTests` 项目都在 `CoreCompile` 前从该 props 生成本项目的 `BuildMetadata` 常量；各自的 `AssemblyInfo.cs` 用这些常量设置 AssemblyVersion、AssemblyFileVersion、InformationalVersion 和 AssemblyMetadata。`BepInPlugin`、运行时 Fingerprint、测试和审计记录均消费同一来源，测试还验证两项目的版本值一致。
 
@@ -30,6 +31,7 @@ Case-ID 末段标识当前迁移切片：`0.2.4.8` 结构基线为 `StructureBas
 - `dllSha256`；
 - `pluginGuid`；
 - `caseId` 与 `caseIdSource`；
+- `candidateRole`（构建候选角色：只读影子 / 正式切换）；
 - `buildCaseId`（DLL 内嵌的构建关联键）；
 - `evidence=self-reported`。
 

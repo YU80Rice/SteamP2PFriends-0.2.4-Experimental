@@ -197,7 +197,7 @@ namespace SteamP2PFriends.WhitelistTests
                 IlContractProbe.CountMethodCalls(method, EngineTypeName, "Register"));
             Type seam = LifecycleType(SeamTypeName);
             ConstructorInfo seamConstructor = seam?.GetConstructors().SingleOrDefault();
-            MethodInfo configure = StaticMethod(CoordinatorTypeName, "ConfigureResourceProduction");
+            MethodInfo configure = StaticMethod(CoordinatorTypeName, "ConfigureControlPlane");
 
             // 唯一注册点位于 Resource 生产接缝的构造函数内；协调器只经该接缝接线。
             bool registeredOnlyOnResourceWiring = seamConstructor != null

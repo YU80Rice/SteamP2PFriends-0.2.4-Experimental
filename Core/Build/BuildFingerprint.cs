@@ -23,6 +23,12 @@ namespace SteamP2PFriends.Core.Build
         internal string CaseIdSource { get; set; }
         internal string BuildCaseId { get; set; }
 
+        /// <summary>
+        /// 构建候选角色（只读影子 / 正式切换）：影子候选与正式切换候选必须是可区分的产物身份，
+        /// 因此它既是程序集元数据的一部分，也进默认 Case-ID 与运行日志。
+        /// </summary>
+        internal string CandidateRole { get; set; }
+
         internal bool IsComplete
         {
             get
@@ -34,14 +40,15 @@ namespace SteamP2PFriends.Core.Build
                     !IsUnavailable(DllSha256) &&
                     !IsUnavailable(PluginGuid) &&
                     !IsUnavailable(CaseId) &&
-                    !IsUnavailable(BuildCaseId);
+                    !IsUnavailable(BuildCaseId) &&
+                    !IsUnavailable(CandidateRole);
             }
         }
 
         internal string ToLogString()
         {
             return string.Format(
-                "version={0} assemblyVersion={1} fileVersion={2} mvid={3} dllSha256={4} pluginGuid={5} caseId={6} caseIdSource={7} buildCaseId={8} evidence=self-reported",
+                "version={0} assemblyVersion={1} fileVersion={2} mvid={3} dllSha256={4} pluginGuid={5} caseId={6} caseIdSource={7} candidateRole={8} buildCaseId={9} evidence=self-reported",
                 Version,
                 AssemblyVersion,
                 FileVersion,
@@ -50,6 +57,7 @@ namespace SteamP2PFriends.Core.Build
                 PluginGuid,
                 CaseId,
                 CaseIdSource,
+                CandidateRole,
                 BuildCaseId);
         }
 
@@ -86,7 +94,8 @@ namespace SteamP2PFriends.Core.Build
                 PluginGuid = SafeGetPluginGuid(assembly),
                 CaseId = caseId,
                 CaseIdSource = caseIdSource,
-                BuildCaseId = SafeGetAssemblyMetadata(assembly, "SteamP2PFriendsDefaultCaseId")
+                BuildCaseId = SafeGetAssemblyMetadata(assembly, "SteamP2PFriendsDefaultCaseId"),
+                CandidateRole = SafeGetAssemblyMetadata(assembly, "SteamP2PFriendsCandidateRole")
             };
         }
 

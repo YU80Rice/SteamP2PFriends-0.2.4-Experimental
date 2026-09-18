@@ -662,3 +662,59 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 - Collision 的 Demand Policy、只读影子与执行端口归票 05/06；本批**未新增任何 Collision 执行类型、未切换 Authority Writer**（StaticIL 单域注册点契约仍绿）；
 - 正式切换与旧 RemoteCoverage Writer 退役归票 08；准入门 Go/No-Go 证据闭合归票 07；
 - Runtime（三端、Shadow 与正式候选指纹区分）归票 09：本批只落静态准入不变量，不宣称任何 Runtime PASS。
+
+## Batch 16：Collision 声明式 Demand Policy 与只读影子验证（0.2.4.9 / 票 05）
+
+状态：**静态完成**——Collision 按自己声明的 Demand Policy（原版物件区域半径的切比雪夫投影）从**同一份** canonical 观察者事实算出 typed Collision Demand，**含 Host**、不扫描客户端名册；只读影子把新旧投影按观察者贡献与聚合 `Domain Id + Region Key` 逐条分类（预期差异 4 类 / 禁止差异 7 类，另带原因词，无法归因即失败闭合），并按「确认离开才清理」消费准入计划（暂缓不等于离开）。**旧 `RemoteCoverage` Writer 仍是唯一生产写入者**，影子零原生写入；只读 1H2G 影子 Runtime 待人工执行，且不得当作正式切换证据（Execution Port 与切换分别归票 06/08，Runtime 归票 09）。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Adapters/Collision/CollisionDemandPolicy.cs` | 新增 | Collision 域的政策声明：Domain Id、切比雪夫形状、半径来源字面量 `LevelObjects.OBJECT_REGIONS`、资格=观察者事实的玩法资格（Host 亦在其列）；只声明，不扫描名册、不持有位置、半径不升格为共享默认值 |
+| `Adapters/Collision/CollisionShadowFrame.cs` | 新增 | 影子对照一拍输入（新侧当前/上一拍区域、旧侧覆盖、两侧认领者）与两种认领者类型；旧侧认领者按四态（在场且合格/在场但不合格/暂缓/已离开）表达，暂缓不得被当成离开 |
+| `Adapters/Collision/CollisionShadowReport.cs` | 新增 | 差异分类枚举（4 预期 + 7 禁止）、处置、差异（聚合键 + 观察者/连接代次归因 + 原因词）与报告计数 |
+| `Adapters/Collision/CollisionShadowComparator.cs` | 新增 | 纯函数分类器：异域整帧失败闭合、越界键、Host 新增覆盖、旧侧无在场合格认领者、canonical 生命周期补齐、授权认领者缺区、静止抖动、跨观察者错误释放、凭空需求 |
+| `Adapters/Collision/Patches/LevelObjectRemoteCollisionPatch.cs` | 已改 | **只读** `CaptureShadowSnapshot`（抄旧覆盖区域与旧侧中心，编码转换留在适配器边界内）；旧 Writer 写入路径一字未动 |
+| `Core/ControlPlane/MultiObserverShadowCoordinator.cs` | 已改 | 接线点 `ConfigureResourceProduction` → `ConfigureControlPlane`（同时注册 Resource 与 Collision 两条政策，世界尺寸只读一次）；`RunCollisionShadow`（提交事实→**确认离开才清理**（消费准入计划的缺席移除资格与暂缓集）→抄旧覆盖→分类→记录，零原生写入调用）；禁止差异有界心跳 + 恢复闭环；汇总日志新增 6 个 Collision 字段；会话边界清影子基线 |
+| `Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationDomainModules.cs` | 已改 | 唯一调用点改名 |
+| `Build/Version.props` | 已改 | 新增 `SteamP2PFriendsCandidateRole`（默认 `ReadOnlyShadow`），默认 Case-ID 追加角色后缀 |
+| `Properties/AssemblyInfo.cs` | 已改 | 候选角色进程序集元数据（角色成为产物身份的一部分） |
+| `Core/Build/BuildFingerprint.cs` | 已改 | 快照新增 `CandidateRole`（缺失即身份不完整，fail-closed），自报告行输出 `candidateRole` |
+| `SteamP2PFriends.csproj` | 已改 | 登记 4 个新增编译项；`BuildMetadata` 新增 `CandidateRole` |
+| `Tools/Verify-BuildFingerprintArtifact.ps1` | 已改 | 解析并校验产物内嵌候选角色，输出 `CandidateRole` |
+| `Tools/Verify-Ticket09Documentation.ps1` | 已改 | Case-ID 解析补上候选角色占位符（文档门禁与产物身份同源） |
+| `WhitelistTests/Evidence/PureMemory/Adapters/Collision/CollisionShadowComparatorTests.cs` | 新增 | CSC01–CSC17 |
+| `WhitelistTests/Evidence/StaticIL/CollisionShadowStaticILContractTests.cs` | 新增契约 | 政策自声明、资格沿用观察者事实、影子路径纯内存且不扫名册、旧覆盖快照只读、影子零原生写入、旧 Writer 仍是唯一生产写入者、比较器唯一只读消费点（含聚合门共 8 项） |
+| `WhitelistTests/Evidence/BuildArtifact/BuildArtifactEvidenceTests.cs` | 已改 | 切片身份门更新为带角色的默认 Case-ID；新增候选角色可区分门 |
+| `WhitelistTests/Program.cs` | 已改 | 注册 26 项新证据；唯一入口目标数 360 → 386 |
+| `docs/architecture/build-fingerprint-artifact-evidence.md` | 已改 | 候选角色字段、Case-ID 新结构、`candidateRole` 自报告字段 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | 新增 CSC01–CSC17；票 01 表征门、票 02 投影契约、票 03 编排契约、票 04 准入契约全部保持绿 |
+| StaticIL | PASS | 新增 8 项结构契约（含聚合门）；既有 Demand/Lifecycle/Resource/Readiness 契约保持绿 |
+| BuildArtifact | PASS | `Verify-BuildFingerprintArtifact.ps1` PASS（影子候选）；两次 Release Rebuild 指纹逐项一致；候选角色可区分（双角色实测 SHA-256 / MVID `DIFFER`） |
+| Runtime | PENDING | 只读 1H2G 影子运行待人工执行；正式切换候选与三端验收归票 09 |
+
+### 影子候选与正式切换候选的构建指纹
+
+- 默认 `SteamP2PFriendsCandidateRole = ReadOnlyShadow`，默认 Case-ID 为 `SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow`；`-p:SteamP2PFriendsCandidateRole=Cutover` 构建得到另一套产物身份（实测 SHA-256 与 MVID 逐项不同），角色同时进程序集元数据与运行日志；
+- 两类候选的验收日志不得混用；影子 DLL 日志不构成正式切换 Runtime PASS（ADR 0012 后果）。
+
+### 不可变语义（票 05 起生效，后续票不得回退）
+
+- Collision 的半径来源是原版物件区域常量，**不得升格为跨域共享默认半径**；Collision 政策只产出 Collision 需求，不得应用于 `ResourceSpawnpoint`（StaticIL + CSC12 锁定）；
+- 影子对照**只读**：不写原生状态、不驱动旧 Writer、不改 Resource 接缝、只把旧覆盖当对照物而不是金标（StaticIL 三项 + 扰动 P8/P11 锁定）；
+- 差异必须可分类：预期差异 4 类、禁止差异 7 类，分类不出来即失败闭合为禁止差异（CSC 行为面 + 扰动 P1/P13 锁定）；暂缓者保留的需求必须落进对照帧的新侧，并以「最后已知事实」合成暂缓认领来解释它（CSC16/CSC17 锁定；缺失任一项都会把保留的 Deferred Demand 误报成「新侧缺区」或「凭空需求」）；旧侧认领者必须区分「在场且合格 / 在场但不合格 / 本拍样本不可用（暂缓）/ 已不在事实里」四态与「无认领者」，不得合并——暂缓不等于离开（CSC15 + 扰动 P12 锁定）；
+- 影子路径「确认离开才清理」：消费准入计划的缺席移除资格与暂缓集合，暂缓者的既有贡献保留（扰动 P14/P15 锁定）；
+- 「含 Host」由门禁把守：影子路径不得按本地玩家过滤（结构契约断言 `IsLocalPlayer` 只被读一次且用于 Host 归因；扰动 P10 证明其有咬合）。
+
+### 移交票 06/07/08/09（本批不做，具名）
+
+- Collision 仍**没有** Domain Execution Port、Lifecycle Policy 与 Acquisition Receipt，也**未**进入 Lifecycle Orchestration Engine 的领域注册（`Lifecycle Single Domain Registration` 契约仍绿）——这些归票 06；
+- 影子比较器、旧覆盖快照与协调器影子路径必须在票 08 随旧 Writer 退役一并删除；`Collision Shadow Single Consumer` 契约会在影子仍被调用时变红，作为退役完成度的机械信号；
+- 默认候选角色在票 08 翻转为正式切换候选；票 09 三端验收必须使用该候选且三端同一 SHA-256；
+- 影子运行若报告禁止差异，按票面回写票 04，不在票 05 强行关单。

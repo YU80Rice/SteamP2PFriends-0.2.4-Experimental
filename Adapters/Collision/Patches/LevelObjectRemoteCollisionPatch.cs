@@ -236,6 +236,33 @@ namespace SteamP2PFriends.Adapters.Collision.Patches
             }
         }
 
+        /// <summary>
+        /// 只读影子快照：把旧 Writer 当前覆盖的区域与它自己跟踪的远端玩家中心抄给对照器。
+        /// 它不写任何东西、不修改任何集合、不触达原生状态——影子期旧 Writer 仍是唯一生产写入者。
+        /// 编码转换在这里完成：裸整数编码只允许出现在这类受控的适配器边界。
+        /// </summary>
+        internal static void CaptureShadowSnapshot(
+            List<Core.Identity.RegionKey> coveredRegions,
+            Dictionary<ulong, Core.Identity.RegionKey> observerCenters)
+        {
+            if (coveredRegions == null) throw new ArgumentNullException(nameof(coveredRegions));
+            if (observerCenters == null) throw new ArgumentNullException(nameof(observerCenters));
+
+            coveredRegions.Clear();
+            observerCenters.Clear();
+            int worldSize = Regions.WORLD_SIZE;
+            foreach (int encodedRegion in RemoteCoverage)
+            {
+                coveredRegions.Add(new Core.Identity.RegionKey(
+                    (byte)(encodedRegion / worldSize), (byte)(encodedRegion % worldSize)));
+            }
+            foreach (KeyValuePair<ulong, int> pair in RemotePlayerRegions)
+            {
+                observerCenters[pair.Key] = new Core.Identity.RegionKey(
+                    (byte)(pair.Value / worldSize), (byte)(pair.Value % worldSize));
+            }
+        }
+
         public static void RemoveRemotePlayer(ulong steamId)
         {
             if (steamId == 0UL)

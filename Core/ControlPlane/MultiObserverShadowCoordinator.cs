@@ -6,6 +6,8 @@ using Steamworks;
 using System;
 using System.Collections.Generic;
 using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.Adapters.Collision;
+using SteamP2PFriends.Adapters.Collision.Patches;
 using SteamP2PFriends.Adapters.Item.Patches;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.MultiObserver.Demand;
@@ -83,7 +85,31 @@ namespace SteamP2PFriends.MultiObserver
         private const float IdentityHeartbeatSeconds = 5f;
         private const int IdentityHeartbeatRepeats = 6;
         private const float IdentityRecoveryWindowSeconds = 15f;
+        /// <summary>Resource 生产接缝持有的共享投影引擎（同一实例）。</summary>
         private static ResourceProductionControlSeam ResourceProduction;
+
+        /// <summary>
+        /// Collision 只读影子：与 Resource 共用同一份 World Presence Observer 事实与同一个
+        /// Demand Projection Engine，各自一份领域投影状态。它只做对照，不写原生状态。
+        /// </summary>
+        private static DemandProjectionEngine _collisionDemandEngine;
+        private static DemandPolicy _collisionDemandPolicy;
+        private static readonly HashSet<ulong> CollisionShadowObservers = new HashSet<ulong>();
+        private static RegionKey[] _collisionShadowPreviousRegions = Array.Empty<RegionKey>();
+        private static CollisionShadowClaim[] _collisionShadowPreviousClaims = Array.Empty<CollisionShadowClaim>();
+        private static BoundedHeartbeat _collisionShadowForbiddenHeartbeat;
+        private static bool _collisionShadowForbidden;
+        private static int _collisionShadowLogCount;
+        private static int _collisionShadowLastInBoth;
+        private static int _collisionShadowLastExpected;
+        private static int _collisionShadowLastForbidden;
+
+        private const int CollisionShadowLogLimit = 12;
+
+        /// <summary>禁止差异的持续诊断节奏（协调器自己的声明，不借用领域政策）。</summary>
+        private static readonly HeartbeatPolicy CollisionShadowForbiddenHeartbeatPolicy =
+            new HeartbeatPolicy(5f, 6);
+
         private static readonly HashSet<ulong> ResourceObservers = new HashSet<ulong>();
 
         private static ulong _nextConnectionToken;
@@ -109,17 +135,25 @@ namespace SteamP2PFriends.MultiObserver
 
         internal static int GetZombieDemandCount(byte bound) => Ledger.GetZombieDemand(BoundKey.FromNative(bound));
 
-        internal static void ConfigureResourceProduction(ResourceDomainAdapter adapter)
+        /// <summary>
+        /// Control Plane 唯一接线点：建立唯一的观察者空间事实与唯一的共享投影引擎，注册各领域
+        /// 自己声明的 Demand Policy（Resource 与 Collision 共用同一份事实、各持有自己一份领域投影），
+        /// 再把 Resource 生产接缝与 Collision 只读影子接到该引擎上。
+        /// 半径与世界尺寸各自读取自己声明的来源，不引入跨域共享默认半径。
+        /// </summary>
+        internal static void ConfigureControlPlane(ResourceDomainAdapter adapter)
         {
             if (adapter == null) throw new ArgumentNullException(nameof(adapter));
-            // Control Plane 在唯一接线点建立唯一的观察者空间事实与共享投影引擎：
-            // 半径与世界尺寸各自读取自己的声明来源，不引入跨域共享默认半径。
+            // 世界尺寸只读一次，两个领域各自读自己的半径来源；不存在跨域共享的默认半径。
+            byte worldSize = checked((byte)Regions.WORLD_SIZE);
             DemandPolicy resourceDemandPolicy = ResourceDemandPolicy.Create(
-                checked((byte)LevelGround.RESOURCE_REGIONS),
-                checked((byte)Regions.WORLD_SIZE));
+                checked((byte)LevelGround.RESOURCE_REGIONS), worldSize);
+            DemandPolicy collisionDemandPolicy = CollisionDemandPolicy.Create(
+                checked((byte)LevelObjects.OBJECT_REGIONS), worldSize);
             var observerAuthority = new ObserverSpatialAuthority();
             var demandProjection = new DemandProjectionEngine(observerAuthority);
             demandProjection.Register(resourceDemandPolicy);
+            demandProjection.Register(collisionDemandPolicy);
             ResourceProduction = new ResourceProductionControlSeam(
                 adapter,
                 adapter,
@@ -128,6 +162,9 @@ namespace SteamP2PFriends.MultiObserver
                 resourceDemandPolicy,
                 ResourceRegionLifecycleAdapter.DefaultHysteresisSeconds);
             ResourceObservers.Clear();
+            _collisionDemandEngine = demandProjection;
+            _collisionDemandPolicy = collisionDemandPolicy;
+            ResetCollisionShadow();
         }
 
         internal static void Initialize()
@@ -270,6 +307,7 @@ namespace SteamP2PFriends.MultiObserver
                     plan.AllowAbsenceRemoval);
             ReconcileResourceProduction(capture.Samples, deferred, plan);
             ResourceProduction?.Flush(0f);
+            RunCollisionShadow(capture.Samples, plan, now);
             foreach (ShadowTransition transition in transitions)
             {
                 SafeEvent(
@@ -306,7 +344,12 @@ namespace SteamP2PFriends.MultiObserver
                         $"resourceDeferredObservers={ResourceProduction?.DeferredObserverCount ?? 0} " +
                         $"resourceWritesSuspended=" +
                         (ResourceProduction?.IsWriteSuspended ?? false).ToString().ToLowerInvariant() + " " +
-                        "controlPlane=active");
+                        $"collisionDemandRegions={CollisionShadowDemandRegionCount()} " +
+                        $"collisionRadiusSource={CollisionDemandPolicy.RadiusSource} " +
+                        $"collisionShadowInBoth={_collisionShadowLastInBoth} " +
+                        $"collisionShadowExpected={_collisionShadowLastExpected} " +
+                        $"collisionShadowForbidden={_collisionShadowLastForbidden} " +
+                        "collisionShadowReadOnly=true controlPlane=active");
                 }
             }
 
@@ -802,6 +845,7 @@ namespace SteamP2PFriends.MultiObserver
             Connections.Clear();
             ResourceObservers.Clear();
             LastMismatch.Clear();
+            ResetCollisionShadow();
             if (resetLogQuotas)
             {
                 _eventLogCount = 0;
@@ -884,6 +928,188 @@ namespace SteamP2PFriends.MultiObserver
             {
                 foreach (ulong observerId in previouslyTracked) ResourceObservers.Add(observerId);
             }
+        }
+
+        /// <summary>
+        /// 只读影子对照：把 canonical 事实（含 Host）提交给 Collision Demand Policy 的投影，
+        /// 抄出旧 Writer 当前覆盖，再按观察者贡献与聚合 Domain Id + Region Key 分类新旧差异。
+        /// 它不写 LevelObject、门、Collider 或可采集树，不驱动旧 Writer，也不给任何生产路径供数——
+        /// 影子只能帮助发现准入问题，不能当作正式切换证据。
+        /// </summary>
+        private static void RunCollisionShadow(
+            IReadOnlyList<ObserverShadowSample> samples, ObserverSampleAdmissionPlan plan, float now)
+        {
+            if (_collisionDemandEngine == null || _collisionDemandPolicy == null) return;
+
+            var deferred = new HashSet<ulong>(plan.DeferredObserverIds);
+            var claims = new List<CollisionShadowClaim>();
+            var regions = new HashSet<RegionKey>();
+            var seen = new HashSet<ulong>();
+            foreach (ObserverShadowSample sample in samples)
+            {
+                if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
+                    || !seen.Add(sample.ObserverId))
+                    continue;
+                var presence = new ObserverPresence(
+                    sample.ObserverId, sample.ConnectionToken,
+                    new RegionKey(sample.ItemRegionX, sample.ItemRegionY), sample.GameplayAuthorized);
+                _collisionDemandEngine.Observe(_collisionDemandPolicy, presence);
+                claims.Add(new CollisionShadowClaim(presence, sample.IsLocalPlayer));
+            }
+
+            // 确认离开才清理，与 Resource 同一口径：只有「确认缺席」才移除投影贡献，
+            // 暂缓（样本不可用）者的既有贡献原样保留——否则离开的客机需求会永久残留，
+            // 接下来每一拍都会被对照器报成「凭空需求」这种禁止差异。
+            if (plan.AllowAbsenceRemoval)
+            {
+                var departed = new List<ulong>();
+                foreach (ulong observerId in CollisionShadowObservers)
+                {
+                    if (!seen.Contains(observerId) && !deferred.Contains(observerId)) departed.Add(observerId);
+                }
+                foreach (ulong observerId in departed)
+                {
+                    _collisionDemandEngine.RemoveObserver(_collisionDemandPolicy, observerId);
+                    CollisionShadowObservers.Remove(observerId);
+                }
+            }
+            foreach (ulong observerId in seen) CollisionShadowObservers.Add(observerId);
+            foreach (ulong observerId in deferred) CollisionShadowObservers.Add(observerId);
+
+            // 暂缓观察者也要有认领：它的保留区域必须能被现有事实解释，否则会被当成
+            // 「凭空需求」——那是禁止差异里的假红。事实取控制面里最后一次已知的观察者样本，
+            // 并标记为暂缓来源，使原因词落回 Deferred Contribution 而不是「本拍在场」。
+            foreach (ulong observerId in deferred)
+            {
+                if (seen.Contains(observerId)) continue;
+                ObserverPresence known;
+                if (!_collisionDemandEngine.Authority.TryGet(observerId, out known)) continue;
+                claims.Add(new CollisionShadowClaim(known, isHost: false, isDeferred: true));
+            }
+
+            // 新侧区域集合取「被跟踪观察者」的投影状态，而不是只取本拍有样本的观察者：
+            // 暂缓者的既有贡献仍留在投影里（Deferred Observer Demand），漏掉它们会把
+            // 真实保留的需求伪造成「新侧缺区」。
+            foreach (ulong observerId in CollisionShadowObservers)
+            {
+                regions.UnionWith(
+                    _collisionDemandEngine.GetActiveRegions(_collisionDemandPolicy, observerId));
+            }
+
+            var legacyRegions = new List<RegionKey>();
+            var legacyCenters = new Dictionary<ulong, RegionKey>();
+            LevelObjectRemoteCollisionPatch.CaptureShadowSnapshot(legacyRegions, legacyCenters);
+
+            var legacyClaims = new List<CollisionShadowLegacyClaim>();
+            foreach (KeyValuePair<ulong, RegionKey> pair in legacyCenters)
+            {
+                ECollisionShadowLegacyState state = ECollisionShadowLegacyState.Absent;
+                foreach (CollisionShadowClaim claim in claims)
+                {
+                    if (claim.Presence.ObserverId != pair.Key) continue;
+                    state = _collisionDemandPolicy.IsEligible(claim.Presence) && !claim.IsDeferred
+                        ? ECollisionShadowLegacyState.Eligible
+                        : ECollisionShadowLegacyState.Pending;
+                    break;
+                }
+                if (state != ECollisionShadowLegacyState.Eligible && deferred.Contains(pair.Key))
+                {
+                    // 暂缓（本拍样本不可用）——既有贡献仍保留，绝不是「离开」。
+                    state = ECollisionShadowLegacyState.Deferred;
+                }
+                else if (state == ECollisionShadowLegacyState.Absent && !plan.AllowAbsenceRemoval)
+                {
+                    // 本拍存在身份不可读的记录：谁在场无法判定，因此也不能断言「离开」。
+                    state = ECollisionShadowLegacyState.Deferred;
+                }
+                // 四态不能压成一个 bool：把暂缓者或 Pending Guest 当成离开，就会把准入故障
+                // 误报成预期差异，或把预期差异说成离开。
+                legacyClaims.Add(new CollisionShadowLegacyClaim(pair.Key, pair.Value, state));
+            }
+
+            var frame = new CollisionShadowFrame(
+                DomainIds.Collision,
+                checked((byte)Regions.WORLD_SIZE),
+                ToRegionArray(regions),
+                _collisionShadowPreviousRegions,
+                legacyRegions.ToArray(),
+                claims.ToArray(),
+                _collisionShadowPreviousClaims,
+                legacyClaims.ToArray());
+            CollisionShadowReport report = CollisionShadowComparator.Compare(_collisionDemandPolicy, frame);
+            _collisionShadowPreviousRegions = frame.NewRegions;
+            _collisionShadowPreviousClaims = frame.CurrentClaims;
+            ReportCollisionShadow(report, now);
+        }
+
+        private static void ReportCollisionShadow(CollisionShadowReport report, float now)
+        {
+            _collisionShadowLastInBoth = report.InBothCount;
+            _collisionShadowLastExpected = report.ExpectedCount;
+            _collisionShadowLastForbidden = report.ForbiddenCount;
+
+            foreach (CollisionShadowDifference difference in report.Differences)
+            {
+                if (_collisionShadowLogCount >= CollisionShadowLogLimit) break;
+                _collisionShadowLogCount++;
+                SafeEvent("collision-shadow kind=" + difference.Kind + " region=" + difference.RegionKey
+                    + " disposition=" + difference.Disposition + " reason=" + difference.Reason
+                    + " attributed=" + difference.ObserverIds.Length
+                    + " radiusSource=" + _collisionDemandPolicy.RadiusSource);
+            }
+
+            if (report.HasForbiddenDifferences)
+            {
+                StartCollisionShadowForbiddenHeartbeat(now);
+                EBoundedHeartbeat heartbeat = _collisionShadowForbiddenHeartbeat.Next(now);
+                if (heartbeat == EBoundedHeartbeat.Suppressed) return;
+                SafeWarn("collision-shadow forbidden=" + report.ForbiddenCount
+                    + " expected=" + report.ExpectedCount + " inBoth=" + report.InBothCount
+                    + " heartbeat=" + heartbeat + " legacyWriterActive=true legacyWriterUnchanged=true");
+                return;
+            }
+
+            if (!_collisionShadowForbidden) return;
+            _collisionShadowForbidden = false;
+            _collisionShadowForbiddenHeartbeat.Stop();
+            SafeWarn("collision-shadow-forbidden-cleared forbidden=0 sessionEnded=false shadowOnly=true");
+        }
+
+        private static void StartCollisionShadowForbiddenHeartbeat(float now)
+        {
+            // 同一禁止差异 episode 内不重启心跳，否则持续异常会退回逐拍刷屏。
+            if (_collisionShadowForbidden) return;
+            _collisionShadowForbidden = true;
+            _collisionShadowForbiddenHeartbeat =
+                new BoundedHeartbeat(CollisionShadowForbiddenHeartbeatPolicy, now);
+        }
+
+        /// <summary>共享投影按 Collision 政策算出的当前需求区域数（诊断口径，不是已物化租约数）。</summary>
+        private static int CollisionShadowDemandRegionCount()
+        {
+            if (_collisionDemandEngine == null || _collisionDemandPolicy == null) return 0;
+            return _collisionDemandEngine.GetDemandRegionCount(_collisionDemandPolicy);
+        }
+
+        private static void ResetCollisionShadow()
+        {
+            CollisionShadowObservers.Clear();
+            _collisionShadowPreviousRegions = Array.Empty<RegionKey>();
+            _collisionShadowPreviousClaims = Array.Empty<CollisionShadowClaim>();
+            _collisionShadowLogCount = 0;
+            _collisionShadowLastInBoth = 0;
+            _collisionShadowLastExpected = 0;
+            _collisionShadowLastForbidden = 0;
+            _collisionShadowForbidden = false;
+            _collisionShadowForbiddenHeartbeat.Stop();
+        }
+
+        private static RegionKey[] ToRegionArray(HashSet<RegionKey> regions)
+        {
+            var array = new RegionKey[regions.Count];
+            regions.CopyTo(array);
+            Array.Sort(array, (left, right) => left.Packed.CompareTo(right.Packed));
+            return array;
         }
 
         /// <summary>

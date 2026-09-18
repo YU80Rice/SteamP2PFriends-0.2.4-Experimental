@@ -113,6 +113,10 @@
     <Compile Include="Adapters\Animal\AnimalSnapshotAdapter.cs" />
     <Compile Include="Adapters\Animal\Patches\\AnimalManagerP0C2SendAnimalStatesPatch.cs" />
     <Compile Include="Adapters\Animal\Patches\\AnimalManagerWorldSyncDiagnosticPatch.cs" />
+    <Compile Include="Adapters\Collision\CollisionDemandPolicy.cs" />
+    <Compile Include="Adapters\Collision\CollisionShadowComparator.cs" />
+    <Compile Include="Adapters\Collision\CollisionShadowFrame.cs" />
+    <Compile Include="Adapters\Collision\CollisionShadowReport.cs" />
     <Compile Include="Adapters\Collision\LevelObjectCollisionAdapter.cs" />
     <Compile Include="Adapters\Collision\Patches\\LevelObjectRemoteCollisionPatch.cs" />
     <Compile Include="Adapters\Item\ItemDomainAdapter.cs" />
@@ -341,6 +345,7 @@
       <_BuildMetadataLines Include="        internal const string VersionIdentity = &quot;$(SteamP2PFriendsVersionIdentity)&quot;%3B" />
       <_BuildMetadataLines Include="        internal const string PluginGuid = &quot;$(SteamP2PFriendsPluginGuid)&quot;%3B" />
       <_BuildMetadataLines Include="        internal const string DefaultCaseId = &quot;$(SteamP2PFriendsDefaultCaseId)&quot;%3B" />
+      <_BuildMetadataLines Include="        internal const string CandidateRole = &quot;$(SteamP2PFriendsCandidateRole)&quot;%3B" />
       <_BuildMetadataLines Include="    }" />
       <_BuildMetadataLines Include="}" />
     </ItemGroup>

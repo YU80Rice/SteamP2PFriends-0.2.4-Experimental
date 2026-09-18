@@ -31,7 +31,16 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：04 静态闭环（`implemented-pending-runtime`），票 05 可并行认领。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`）；票 03 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`）；票 04 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md`）。三张票的 Runtime 验收均归票 09。
+当前前沿：05 静态闭环且双轴审查已闭合（`implemented-pending-runtime`；Standards r5 CLEAN / Spec r5 CLEAN，审查链逐轮见其审计报告 §10），**第 9 项只读 1H2G 影子 Runtime 待人工执行**；票 06 可认领。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`）；票 03 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`）；票 04 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md`）；票 05 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket05-2225.md`）。四张票的 Runtime 验收均归票 09（票 05 另有一项专属于影子期的只读三端运行，待人工执行，且明确不得当作正式切换证据）。
+
+## 票 05 → 票 06/07/08 的具名移交
+
+- **Collision typed demand 与只读影子已在共享引擎上跑通**：Collision Demand Policy 与 Resource 共用同一份 `ObserverSpatialAuthority` 与同一个 `DemandProjectionEngine`，各自一份领域投影状态；接线点是 `MultiObserverShadowCoordinator.ConfigureControlPlane`（原 `ConfigureResourceProduction` 改名）。
+- **票 06 接的是执行侧**：Collision 仍**没有** Domain Execution Port、没有 Lifecycle Policy、没有 Acquisition Receipt，也**未**进入 Lifecycle Orchestration Engine 的领域注册（`Lifecycle Single Domain Registration` 契约仍绿）。票 06 才新增这些类型。
+- **票 08 退役影子时需删的具体件**：`RunCollisionShadow`/`ReportCollisionShadow`/`StartCollisionShadowForbiddenHeartbeat`/`ResetCollisionShadow`/`CollisionShadowDemandRegionCount` 与 4 个影子静态字段、`LevelObjectRemoteCollisionPatch.CaptureShadowSnapshot`、`CollisionShadow*` 四个类型及其测试；`Collision Shadow Single Consumer` 契约会在影子仍被调用时变红，可作为退役完成度的机械信号。
+- **票 07 的准入 Go/No-Go 需消费本票结论**：影子分类口径（预期差异 4 类 / 禁止差异 7 类，另带原因词）与「影子不得当作正式切换证据」的边界写在本票审计报告 §7/§11；影子运行若报告禁止差异，按票面回写 04。
+- **候选角色身份**：默认 `SteamP2PFriendsCandidateRole = ReadOnlyShadow` 由本票引入；票 08 冻结正式切换候选的角色值并翻转默认值，票 09 的三端验收必须使用该候选且三端同一 SHA-256。
+
 
 ## 票 03/02 → 票 04 的具名交接（已在本票收口）
 

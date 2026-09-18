@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 360 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 386 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -196,6 +196,24 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6C06 StaleGeneration", LevelObjectCollisionAdapterTests.Test_M6C06_StaleGenerationCannotCommitRelease, ref total, ref passed, ref failed);
             RunTest("M6C07 MultipleRegions", LevelObjectCollisionAdapterTests.Test_M6C07_MultipleRegionsAreIsolated, ref total, ref passed, ref failed);
             RunTest("M6C08 DisconnectCleanup", LevelObjectCollisionAdapterTests.Test_M6C08_DisconnectCleansObserverState, ref total, ref passed, ref failed);
+            // 票 05：Collision 只读影子对照——新旧投影按观察者贡献与 Domain Id + Region Key 分类。
+            RunTest("CSC01 IdenticalProjections", CollisionShadowComparatorTests.Test_CSC01_IdenticalProjectionsAreInBoth, ref total, ref passed, ref failed);
+            RunTest("CSC02 HostAddedCoverage", CollisionShadowComparatorTests.Test_CSC02_HostAddedCoverageIsExpected, ref total, ref passed, ref failed);
+            RunTest("CSC03 GuestMissingForbidden", CollisionShadowComparatorTests.Test_CSC03_AuthorizedGuestMissingRegionIsForbidden, ref total, ref passed, ref failed);
+            RunTest("CSC04 PendingGuestExpected", CollisionShadowComparatorTests.Test_CSC04_PendingGuestCoverageExitIsExpected, ref total, ref passed, ref failed);
+            RunTest("CSC05 LifecycleGapExpected", CollisionShadowComparatorTests.Test_CSC05_CanonicalLifecycleGapClosedIsExpected, ref total, ref passed, ref failed);
+            RunTest("CSC06 StaticChurnForbidden", CollisionShadowComparatorTests.Test_CSC06_StaticDemandChurnIsForbidden, ref total, ref passed, ref failed);
+            RunTest("CSC07 CrossObserverRelease", CollisionShadowComparatorTests.Test_CSC07_CrossObserverReleaseIsForbidden, ref total, ref passed, ref failed);
+            RunTest("CSC08 UnattributedDemand", CollisionShadowComparatorTests.Test_CSC08_UnattributedDemandIsForbidden, ref total, ref passed, ref failed);
+            RunTest("CSC09 OutOfBoundsRegion", CollisionShadowComparatorTests.Test_CSC09_OutOfBoundsRegionKeyIsForbidden, ref total, ref passed, ref failed);
+            RunTest("CSC10 ForeignDomain", CollisionShadowComparatorTests.Test_CSC10_ForeignDomainFailsClosed, ref total, ref passed, ref failed);
+            RunTest("CSC11 AggregateKeyAttribution", CollisionShadowComparatorTests.Test_CSC11_DifferencesCarryAggregateKeyAndAttribution, ref total, ref passed, ref failed);
+            RunTest("CSC12 HostAndPendingGuest", CollisionShadowComparatorTests.Test_CSC12_CollisionPolicyIncludesHostAndDefersIneligibleGuest, ref total, ref passed, ref failed);
+            RunTest("CSC13 DepartedObserverExpected", CollisionShadowComparatorTests.Test_CSC13_DepartedObserverCoverageExitIsExpected, ref total, ref passed, ref failed);
+            RunTest("CSC14 UnexplainedLegacyForbidden", CollisionShadowComparatorTests.Test_CSC14_UnexplainedLegacyCoverageIsForbidden, ref total, ref passed, ref failed);
+            RunTest("CSC15 DeferredNotDeparture", CollisionShadowComparatorTests.Test_CSC15_DeferredSampleIsNotDeparture, ref total, ref passed, ref failed);
+            RunTest("CSC16 DeferredRetentionInBoth", CollisionShadowComparatorTests.Test_CSC16_DeferredRetentionStaysInBoth, ref total, ref passed, ref failed);
+            RunTest("CSC17 DeferredClaimantExplains", CollisionShadowComparatorTests.Test_CSC17_DeferredClaimantExplainsRetainedRegion, ref total, ref passed, ref failed);
 
             RunTest("M6R01 TreeOreAcquire", ResourceRegionLifecycleAdapterTests.Test_M6R01_FirstAcquireActivatesRegion, ref total, ref passed, ref failed);
             RunTest("M6R02 ResourceHysteresis", ResourceRegionLifecycleAdapterTests.Test_M6R02_ReleaseUsesHysteresisDeadline, ref total, ref passed, ref failed);
@@ -489,12 +507,32 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Readiness Shared Fault Channel", ControlPlaneReadinessStaticILContractTests.Test_SharedFaultChannelIsBoundedAndCloses,
                 ref total, ref passed, ref failed);
 
+            // 票 05：Collision 声明式 Demand Policy 与只读影子对照的结构门禁。
+            RunTest("Collision Shadow StaticIL", CollisionShadowStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Policy Declaration", CollisionShadowStaticILContractTests.Test_CollisionDeclaresItsOwnDemandPolicy,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Presence Eligibility", CollisionShadowStaticILContractTests.Test_CollisionPolicyReusesWorldPresenceEligibility,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Shadow PureMemory", CollisionShadowStaticILContractTests.Test_ShadowPathIsPureMemoryWithoutRosterScan,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Legacy Snapshot ReadOnly", CollisionShadowStaticILContractTests.Test_LegacySnapshotIsReadOnly,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Shadow No Native Write", CollisionShadowStaticILContractTests.Test_ShadowPathDoesNotWriteNativeState,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Legacy Writer Sole Writer", CollisionShadowStaticILContractTests.Test_LegacyWriterRemainsOnlyProductionWriter,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Shadow Single Consumer", CollisionShadowStaticILContractTests.Test_ShadowComparisonHasSingleReadOnlyConsumer,
+                ref total, ref passed, ref failed);
+
             _currentEvidenceClass = EvidenceClass.BuildArtifact;
             Console.WriteLine("\n=== Evidence Class: BuildArtifact ===");
             Console.WriteLine("  Self-reported Fingerprint: " + BuildFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly).ToLogString());
             RunTest("BuildArtifact Fingerprint Shape", BuildArtifactEvidenceTests.Test_All,
                 ref total, ref passed, ref failed);
             RunTest("BuildArtifact Slice Identity", BuildArtifactEvidenceTests.Test_SliceIdentityIsPinnedToMigrationStage,
+                ref total, ref passed, ref failed);
+            RunTest("BuildArtifact Candidate Role", BuildArtifactEvidenceTests.Test_ShadowCandidateRoleIsDistinctFromCutoverCandidate,
                 ref total, ref passed, ref failed);
             RunTest("BuildArtifact Independent Verifier", BuildArtifactEvidenceTests.Test_VerifierConfirmsBuiltArtifactIdentity,
                 ref total, ref passed, ref failed);
