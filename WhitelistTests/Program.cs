@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 386 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 404 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -196,7 +196,20 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M6C06 StaleGeneration", LevelObjectCollisionAdapterTests.Test_M6C06_StaleGenerationCannotCommitRelease, ref total, ref passed, ref failed);
             RunTest("M6C07 MultipleRegions", LevelObjectCollisionAdapterTests.Test_M6C07_MultipleRegionsAreIsolated, ref total, ref passed, ref failed);
             RunTest("M6C08 DisconnectCleanup", LevelObjectCollisionAdapterTests.Test_M6C08_DisconnectCleansObserverState, ref total, ref passed, ref failed);
-            // 票 05：Collision 只读影子对照——新旧投影按观察者贡献与 Domain Id + Region Key 分类。
+            RunTest("CEP01 Execution Port Seam", CollisionExecutionPortTests.Test_CEP01_ExecutionPortSeam, ref total, ref passed, ref failed);
+            RunTest("CEP02 Receipt Identity", CollisionExecutionPortTests.Test_CEP02_ReceiptIdentity, ref total, ref passed, ref failed);
+            RunTest("CEP03 Receipt Replacement", CollisionExecutionPortTests.Test_CEP03_NewAcquireInvalidatesOldReceipt, ref total, ref passed, ref failed);
+            RunTest("CEP04 Receipt Scoped Release", CollisionExecutionPortTests.Test_CEP04_ReleaseOnlyRevokesOwnedReceiptOverrides, ref total, ref passed, ref failed);
+            RunTest("CEP05 Fail Closed Release", CollisionExecutionPortTests.Test_CEP05_StaleOrUncertainReleaseDoesNotDestructivelyDisable, ref total, ref passed, ref failed);
+            RunTest("CEP06 Release Idempotence", CollisionExecutionPortTests.Test_CEP06_ReleaseIsIdempotent, ref total, ref passed, ref failed);
+            RunTest("CEP07 Host Demand", CollisionExecutionPortTests.Test_CEP07_HostDemandBlocksFinalRelease, ref total, ref passed, ref failed);
+            RunTest("CEP08 Override Domain", CollisionExecutionPortTests.Test_CEP08_OverrideSetExcludesResourceAndTrees, ref total, ref passed, ref failed);
+            RunTest("CEP09 Stale Receipt", CollisionExecutionPortTests.Test_CEP09_StaleReceiptCannotReleaseNewAcquire, ref total, ref passed, ref failed);
+            RunTest("CEP10 Release Receipt Diagnostic", CollisionExecutionPortTests.Test_CEP10_ReleaseDiagnosticNamesReceipt, ref total, ref passed, ref failed);
+            RunTest("CEP11 Unowned Override Fail Closed", CollisionExecutionPortTests.Test_CEP11_UnownedOverrideFailsClosed, ref total, ref passed, ref failed);
+            RunTest("CEP12 Release Rejection Observable", CollisionExecutionPortTests.Test_CEP12_ReleaseRejectionIsObservable, ref total, ref passed, ref failed);
+            RunTest("CEP13 Demand Still Present", CollisionExecutionPortTests.Test_CEP13_DemandStillPresentRejectsRelease, ref total, ref passed, ref failed);
+
             RunTest("CSC01 IdenticalProjections", CollisionShadowComparatorTests.Test_CSC01_IdenticalProjectionsAreInBoth, ref total, ref passed, ref failed);
             RunTest("CSC02 HostAddedCoverage", CollisionShadowComparatorTests.Test_CSC02_HostAddedCoverageIsExpected, ref total, ref passed, ref failed);
             RunTest("CSC03 GuestMissingForbidden", CollisionShadowComparatorTests.Test_CSC03_AuthorizedGuestMissingRegionIsForbidden, ref total, ref passed, ref failed);
@@ -523,6 +536,17 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Collision Legacy Writer Sole Writer", CollisionShadowStaticILContractTests.Test_LegacyWriterRemainsOnlyProductionWriter,
                 ref total, ref passed, ref failed);
             RunTest("Collision Shadow Single Consumer", CollisionShadowStaticILContractTests.Test_ShadowComparisonHasSingleReadOnlyConsumer,
+                ref total, ref passed, ref failed);
+            // 票 06：Collision Execution Port 与 Acquisition Receipt 结构门禁。
+            RunTest("Collision Execution StaticIL", CollisionExecutionStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Port Shape", CollisionExecutionStaticILContractTests.Test_PortShapeAndIdentity,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Port No Roster Scan", CollisionExecutionStaticILContractTests.Test_PortHasNoRosterOrNativeScan,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Receipt Domain", CollisionExecutionStaticILContractTests.Test_ReceiptAndOverrideDomain,
+                ref total, ref passed, ref failed);
+            RunTest("Collision No Production Registration", CollisionExecutionStaticILContractTests.Test_NoProductionRegistration,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

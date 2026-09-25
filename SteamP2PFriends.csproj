@@ -114,6 +114,9 @@
     <Compile Include="Adapters\Animal\Patches\\AnimalManagerP0C2SendAnimalStatesPatch.cs" />
     <Compile Include="Adapters\Animal\Patches\\AnimalManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Collision\CollisionDemandPolicy.cs" />
+    <Compile Include="Adapters\Collision\CollisionLifecyclePolicy.cs" />
+    <Compile Include="Adapters\Collision\CollisionAcquisitionReceipt.cs" />
+    <Compile Include="Adapters\Collision\CollisionExecutionPort.cs" />
     <Compile Include="Adapters\Collision\CollisionShadowComparator.cs" />
     <Compile Include="Adapters\Collision\CollisionShadowFrame.cs" />
     <Compile Include="Adapters\Collision\CollisionShadowReport.cs" />

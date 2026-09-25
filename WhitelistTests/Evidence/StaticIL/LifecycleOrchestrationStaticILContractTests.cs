@@ -180,8 +180,13 @@ namespace SteamP2PFriends.WhitelistTests
                 ProductionAssembly, IsLifecycleNamespaceType, method =>
                     IlContractProbe.CountMethodCalls(method, LifecyclePolicyDeclarationTypeName, "Create"));
 
+            Type collisionDeclaration = ProductionAssembly.GetType(
+                "SteamP2PFriends.Adapters.Collision.CollisionLifecyclePolicy");
+            MethodInfo collisionFactory = collisionDeclaration?.GetMethod("Create",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             return IlContractProbe.CountMethodCalls(factory, PolicyTypeName, ".ctor") == 1
-                && assemblyConstructions == 1
+                && IlContractProbe.CountMethodCalls(collisionFactory, PolicyTypeName, ".ctor") == 1
+                && assemblyConstructions == 2
                 && engineConstructions == 0
                 && engineDeclarations == 0;
         }
