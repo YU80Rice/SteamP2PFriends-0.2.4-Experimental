@@ -1,0 +1,16 @@
+
+
+Evidence              : ticket09-documentation-metadata-consistency
+MetadataSource        : Build/Version.props
+Version               : 0.2.4.9
+ReleaseChannel        : Experimental
+PluginGuid            : com.yu80rice.steamp2pfriends
+DefaultCaseId         : SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow
+FrozenBaselineVersion : 0.2.4.8
+FrozenBaselineCaseId  : SPF-0.2.4.8-Experimental-StructureBaseline
+DocumentsChecked      : 5
+Result                : PASS
+
+
+
+TICKET09_DOCUMENTATION_METADATA_PASS

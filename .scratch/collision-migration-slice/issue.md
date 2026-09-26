@@ -31,7 +31,7 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：05 静态闭环且双轴审查已闭合（`implemented-pending-runtime`；Standards r5 CLEAN / Spec r5 CLEAN，审查链逐轮见其审计报告 §10），**第 9 项只读 1H2G 影子 Runtime 待人工执行**；票 06 可认领。阻塞图：`01 → 02 → 03 → 04` 与 `02 → 05` 并行，`03+05 → 06`，`04+05+06 → 07 → 08 → 09`。票 01 已关单（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`）；票 02 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`）；票 03 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`）；票 04 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket04-2330.md`）；票 05 静态闭环、状态 `implemented-pending-runtime`（`audit/2026-09-18/Implementation-0.2.4.9-CollisionTicket05-2225.md`）。四张票的 Runtime 验收均归票 09（票 05 另有一项专属于影子期的只读三端运行，待人工执行，且明确不得当作正式切换证据）。
+当前前沿：07（票 07 准入证据：Control-Plane Readiness Gate 的静态与已观测影子子集 GO，允许受控进入票 08；会话恢复 NOT PROVEN 由票 09 补齐；当前正式 Collision Cutover NO-GO。本票不切换 Authority Writer、不退役旧 Writer；票 08 完成切换与旧 Writer 退役后，票 09 执行正式 Runtime 与会话恢复验收。）
 
 ## 票 05 → 票 06/07/08 的具名移交
 

@@ -1,0 +1,10 @@
+
+EvidenceClass CSharpFiles
+------------- -----------
+PureMemory             41
+StaticIL               22
+BuildArtifact           1
+Runtime                 1
+
+
+EVIDENCE_CLASS_LAYOUT_PASS

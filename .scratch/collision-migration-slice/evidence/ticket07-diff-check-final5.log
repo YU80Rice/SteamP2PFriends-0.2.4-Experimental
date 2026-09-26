@@ -1,0 +1,5 @@
+warning: in the working copy of '.scratch/collision-migration-slice/issue.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.scratch/collision-migration-slice/issues/05-collision-demand-policy-and-readonly-shadow.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.scratch/collision-migration-slice/issues/07-cutover-readiness-go-nogo.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/agents/output-review-loop.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/migration-manifest.md', LF will be replaced by CRLF the next time Git touches it

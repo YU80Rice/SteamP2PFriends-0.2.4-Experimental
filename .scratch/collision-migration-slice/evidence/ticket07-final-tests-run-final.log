@@ -1,0 +1,437 @@
+===============================================================
+=== SteamP2PFriends Modular TestRunner (Target: 404 PASS) ===
+===============================================================
+
+=== Evidence Class: PureMemory ===
+  PASS [PureMemory] EvidenceClass Catalog + Registration Closure
+
+--- [PureMemory / Domain 1/8: Core & Diagnostics Policy] ---
+  PASS [PureMemory] LOG1 Markers
+  PASS [PureMemory] LOG2 Defaults
+  PASS [PureMemory] LOG3 Labels
+  PASS [PureMemory] LOG4 Tags
+  PASS [PureMemory] ID Contract
+
+--- [PureMemory / Domain 2/8: MultiObserver Control Plane & Spatial Index] ---
+  PASS [PureMemory] SPI01 Grid2DDiff
+  PASS [PureMemory] SPI02 Bound1DDiff
+  PASS [PureMemory] SPI03 DisconnectReleasesAll
+  PASS [PureMemory] SPI04 ReconnectInvalidation
+  PASS [PureMemory] SPI05 Grid2DShapeClipping
+  PASS [PureMemory] M01 PendingIsObserver
+  PASS [PureMemory] M02 DemandRefCount
+  PASS [PureMemory] M03 ConnectionGeneration
+  PASS [PureMemory] M04 DisconnectEpoch
+  PASS [PureMemory] M05 EdgeRelevance
+  PASS [PureMemory] M06 DuplicateObserver
+  PASS [PureMemory] M07 MovementDemand
+  PASS [PureMemory] M08 SessionIdentity
+  PASS [PureMemory] M09 IncompleteCapture
+  PASS [PureMemory] M10 LifecycleSequence
+  PASS [PureMemory] M11 FaultBackoff
+  PASS [PureMemory] M12 StaleLoaded
+  PASS [PureMemory] M13 ObserverCapacity
+  PASS [PureMemory] M14 InvalidZombieBound
+  PASS [PureMemory] M15 ConnectionGenerationOverflow
+  PASS [PureMemory] DPE01 SharedFactSingle
+  PASS [PureMemory] DPE02 ChebyshevClipping
+  PASS [PureMemory] DPE03 OverlapCount
+  PASS [PureMemory] DPE04 EnterExitDiff
+  PASS [PureMemory] DPE05 ConnectionInvalidation
+  PASS [PureMemory] DPE06 DomainIsolation
+  PASS [PureMemory] DPE07 EligibilityDeferral
+  PASS [PureMemory] DPE08 DeclarationsFailClosed
+  PASS [PureMemory] DPE09 RemovalReleases
+  PASS [PureMemory] DPE10 RestoreProjection
+  PASS [PureMemory] DPE11 DeferredGenerationChange
+  PASS [PureMemory] LOE01 TypedDemandSharedProjection
+  PASS [PureMemory] LOE02 DemandAggregationAcquireOnce
+  PASS [PureMemory] LOE03 HysteresisSchedulesRelease
+  PASS [PureMemory] LOE04 ReentryCancelsRelease
+  PASS [PureMemory] LOE05 RegionGenerationIdentity
+  PASS [PureMemory] LOE06 SessionEpochIdentity
+  PASS [PureMemory] LOE07 RetryFollowsDomainPolicy
+  PASS [PureMemory] LOE08 SingleRegionIsolation
+  PASS [PureMemory] LOE09 CrossDomainIsolation
+  PASS [PureMemory] LOE10 TransactionRollback
+  PASS [PureMemory] LOE11 ReleaseIdempotence
+  PASS [PureMemory] LOE12 DiagnosticsCorrelation
+  PASS [PureMemory] LOE13 RegistrationClosure
+  PASS [PureMemory] LOE14 AcquireObservable
+  PASS [PureMemory] LOE15 FaultedDomainIsolation
+  PASS [PureMemory] ARI01 DeferredSampleDoesNotFreeze
+  PASS [PureMemory] ARI02 DeferredNeverReleases
+  PASS [PureMemory] ARI03 DeferredHeartbeatBounded
+  PASS [PureMemory] ARI04 DeferredStillCountsDemand
+  PASS [PureMemory] ARI05 RetryTransactionScope
+  PASS [PureMemory] ARI06 StaleRetryNoEligibility
+  PASS [PureMemory] ARI07 IdentityGatesWrites
+  PASS [PureMemory] ARI08 IdentityCircuitBreak
+  PASS [PureMemory] ARI09 FaultUnitDomainRegionTransition
+  PASS [PureMemory] ARI10 FaultHeartbeatBounded
+  PASS [PureMemory] SAM01 PerRecordAdmission
+  PASS [PureMemory] SAM02 BatchRejection
+  PASS [PureMemory] SAM03 UnknownIdentityAndDuplicates
+  PASS [PureMemory] SIG01 IdentityRecoversInWindow
+  PASS [PureMemory] SIG02 IdentityCircuitBreak
+  PASS [PureMemory] SIG03 CircuitRecoveryResync
+
+--- [PureMemory / Domain 3/8: Adapters / Item Domain (M1 + M2)] ---
+  PASS [PureMemory] G1 FirstCommit
+  PASS [PureMemory] G2 Abort
+  PASS [PureMemory] G3 Reset
+  PASS [PureMemory] G4 Preparing
+  PASS [PureMemory] M1I01 LocalVanilla
+  PASS [PureMemory] M1I02 DedicatedAuthority
+  PASS [PureMemory] M1I03 RegistrationGate
+  PASS [PureMemory] M1I04 RemoteEligibility
+  PASS [PureMemory] M1I05 PendingObserver
+  PASS [PureMemory] M2I01 ReliableCommit
+  PASS [PureMemory] M2I02 AbortRetry
+  PASS [PureMemory] M2I03 RelevanceReentry
+  PASS [PureMemory] M2I04 Reconnect
+  PASS [PureMemory] M2I05 OverlappingObservers
+  PASS [PureMemory] M2I06 DifferentRegions
+  PASS [PureMemory] M2I07 NewWorldGeneration
+  PASS [PureMemory] M2I08 ExplicitCapability
+  PASS [PureMemory] M2I10 LoadedRollback
+  PASS [PureMemory] M2I11 ExactDisconnect
+
+--- [PureMemory / Domain 4/8: Adapters / Zombie Domain (M3 + M4)] ---
+  PASS [PureMemory] M3Z01 FirstAcquire
+  PASS [PureMemory] M3Z02 GenerationCommit
+  PASS [PureMemory] M3Z03 ReleaseHysteresis
+  PASS [PureMemory] M3Z04 DemandCancelsRelease
+  PASS [PureMemory] M3Z05 StaleSession
+  PASS [PureMemory] M3Z06 StaleGeneration
+  PASS [PureMemory] M3Z07 DemandMismatch
+  PASS [PureMemory] M3Z08 QuarantineRecovery
+  PASS [PureMemory] M3Z09 BoundIsolation
+  PASS [PureMemory] M3Z10 ReleaseIdempotence
+  PASS [PureMemory] M3Z11 NativeDemandIsolation
+  PASS [PureMemory] M3Z12 QuarantineReleaseGate
+  PASS [PureMemory] M4Z01 InitialSnapshot
+  PASS [PureMemory] M4Z02 StaleGenerationResync
+  PASS [PureMemory] M4Z03 AbortRetry
+  PASS [PureMemory] M4Z04 RelevanceReentry
+  PASS [PureMemory] M4Z05 ReconnectInvalidation
+  PASS [PureMemory] M4Z06 OverlappingSnapshots
+  PASS [PureMemory] M4Z07 BoundsDoNotCrossCommit
+  PASS [PureMemory] M4Z08 ExplicitCapability
+  PASS [PureMemory] M4Z09 DeltaSequenceMonotonic
+  PASS [PureMemory] M4Z10 ExactDisconnect
+  PASS [PureMemory] DG1 EligibilityTruthTable
+  PASS [PureMemory] DG2 ListenHostPeiNotBlocked
+  PASS [PureMemory] DG3 ListenHostPartStatesFailClosed
+  PASS [PureMemory] DG4 GuardPassObservation
+  PASS [PureMemory] IGP3 ItemEligibilityListenHostVsSingleplayer
+  PASS [PureMemory] IGP1 ItemDespawnObservation
+  PASS [PureMemory] IGP2 ItemRespawnObservation
+
+--- [PureMemory / Domain 5/8: Adapters / Animal Domain (M5)] ---
+  PASS [PureMemory] M5A01 FirstAcquire
+  PASS [PureMemory] M5A02 GenerationCommit
+  PASS [PureMemory] M5A03 ReleaseHysteresis
+  PASS [PureMemory] M5A04 DemandCancelsRelease
+  PASS [PureMemory] M5A05 StaleSession
+  PASS [PureMemory] M5A06 StaleGeneration
+  PASS [PureMemory] M5A07 BoundIsolation
+  PASS [PureMemory] M5A08 ReleaseIdempotence
+  PASS [PureMemory] M5A09 DisconnectCleansLease
+  PASS [PureMemory] M5A10 DemandMismatchQuarantine
+  PASS [PureMemory] M5S01 InitialSnapshot
+  PASS [PureMemory] M5S02 DuplicateIgnored
+  PASS [PureMemory] M5S03 StaleGenerationResync
+  PASS [PureMemory] M5S04 ReconnectInvalidation
+  PASS [PureMemory] M5S05 OverlappingSnapshots
+  PASS [PureMemory] M5S06 BoundsDoNotCrossCommit
+  PASS [PureMemory] M5S07 DisconnectCleansObserver
+
+--- [PureMemory / Domain 6/8: Adapters / Collision & Resource Domains (M6)] ---
+  PASS [PureMemory] M6C01 FirstAcquire
+  PASS [PureMemory] M6C02 ReleaseHysteresis
+  PASS [PureMemory] M6C03 DemandCancelsRelease
+  PASS [PureMemory] M6C04 CommitRelease
+  PASS [PureMemory] M6C05 StaleSession
+  PASS [PureMemory] M6C06 StaleGeneration
+  PASS [PureMemory] M6C07 MultipleRegions
+  PASS [PureMemory] M6C08 DisconnectCleanup
+  PASS [PureMemory] CEP01 Execution Port Seam
+  PASS [PureMemory] CEP02 Receipt Identity
+  PASS [PureMemory] CEP03 Receipt Replacement
+  PASS [PureMemory] CEP04 Receipt Scoped Release
+  PASS [PureMemory] CEP05 Fail Closed Release
+  PASS [PureMemory] CEP06 Release Idempotence
+  PASS [PureMemory] CEP07 Host Demand
+  PASS [PureMemory] CEP08 Override Domain
+  PASS [PureMemory] CEP09 Stale Receipt
+  PASS [PureMemory] CEP10 Release Receipt Diagnostic
+  PASS [PureMemory] CEP11 Unowned Override Fail Closed
+  PASS [PureMemory] CEP12 Release Rejection Observable
+  PASS [PureMemory] CEP13 Demand Still Present
+  PASS [PureMemory] CSC01 IdenticalProjections
+  PASS [PureMemory] CSC02 HostAddedCoverage
+  PASS [PureMemory] CSC03 GuestMissingForbidden
+  PASS [PureMemory] CSC04 PendingGuestExpected
+  PASS [PureMemory] CSC05 LifecycleGapExpected
+  PASS [PureMemory] CSC06 StaticChurnForbidden
+  PASS [PureMemory] CSC07 CrossObserverRelease
+  PASS [PureMemory] CSC08 UnattributedDemand
+  PASS [PureMemory] CSC09 OutOfBoundsRegion
+  PASS [PureMemory] CSC10 ForeignDomain
+  PASS [PureMemory] CSC11 AggregateKeyAttribution
+  PASS [PureMemory] CSC12 HostAndPendingGuest
+  PASS [PureMemory] CSC13 DepartedObserverExpected
+  PASS [PureMemory] CSC14 UnexplainedLegacyForbidden
+  PASS [PureMemory] CSC15 DeferredNotDeparture
+  PASS [PureMemory] CSC16 DeferredRetentionInBoth
+  PASS [PureMemory] CSC17 DeferredClaimantExplains
+  PASS [PureMemory] M6R01 TreeOreAcquire
+  PASS [PureMemory] M6R02 ResourceHysteresis
+  PASS [PureMemory] M6R03 ResourceDemandCancel
+  PASS [PureMemory] M6R04 ResourceCommitRelease
+  PASS [PureMemory] M6R05 ResourceStaleSession
+  PASS [PureMemory] M6R06 ResourceStaleGeneration
+  PASS [PureMemory] M6R07 ResourceIsolation
+  PASS [PureMemory] M6R08 ResourceDisconnect
+  PASS [PureMemory] M6S01 ResourceInitialSnapshot
+  PASS [PureMemory] M6S02 ResourceDuplicateIgnored
+  PASS [PureMemory] M6S03 ResourceStaleGenResync
+  PASS [PureMemory] M6S04 ResourceReconnectToken
+  PASS [PureMemory] M6S05 ResourceOverlapping
+  PASS [PureMemory] M6S06 ResourceDisconnectClean
+  PASS [PureMemory] M6S07 ResourceStaleDisconnect
+  PASS [PureMemory] M6S08 ResourceNativeDataPlane
+  PASS [PureMemory] M6S09 ResourceOldBaseline
+  PASS [PureMemory] M6S10 ResourceGenerationOverflow
+  PASS [PureMemory] M6S11 ResourceStaleRemoveTolerated
+  PASS [PureMemory] M6H01 HarvestDeadGen
+  PASS [PureMemory] M6H02 HarvestMultiDead
+  PASS [PureMemory] M6H03 HarvestAliveRevive
+  PASS [PureMemory] M6H04 HarvestSnapshotDead
+  PASS [PureMemory] M6H05 HarvestDeltaSeq
+  PASS [PureMemory] M6H06 HarvestReconnect
+  PASS [PureMemory] M6H07 HarvestIsolation
+  PASS [PureMemory] M6H08 HarvestSessionReset
+  PASS [PureMemory] M6P01 ResourceUnionAcquire
+  PASS [PureMemory] M6P02 ResourceReleaseHysteresis
+  PASS [PureMemory] M6P03 ResourceReentry
+  PASS [PureMemory] M6P04 ResourceReconnectReset
+  PASS [PureMemory] M6P05 ResourceGenerationFlow
+  PASS [PureMemory] M6P06 ResourceSameFrameReentry
+  PASS [PureMemory] M6P07 ResourceRealAdapterSeam
+  PASS [PureMemory] M6P08 ResourceStaleGeneration
+  PASS [PureMemory] M6P09 ResourceReleaseRetry
+  PASS [PureMemory] M6P11 ResourceReplicationEnterRollback
+  PASS [PureMemory] M6P12 ResourceReplicationExitRollback
+  PASS [PureMemory] M6P13 ResourceMultiRegionEnterCompensation
+  PASS [PureMemory] M6P14 ResourceMultiRegionExitCompensation
+  PASS [PureMemory] M6P15 ResourceAcquireFailureIsolated
+  PASS [PureMemory] M6P16 ResourceGenerationReaderFailure
+  PASS [PureMemory] M6P17 ResourceDisconnectCompensation
+  PASS [PureMemory] M6P18 ResourceReleaseCompensation
+  PASS [PureMemory] M6P19 ResourceReleaseRejection
+  PASS [PureMemory] M6P20 ResourceSnapshotRestore
+  PASS [PureMemory] M6P21 ResourceAcquireSideEffectIsolated
+  PASS [PureMemory] M6P22 ResourceSessionInitFailClosed
+  PASS [PureMemory] M6P23 ResourceReplicationRestore
+  PASS [PureMemory] M6P24 ResourceGenerationRegressionRetained
+  PASS [PureMemory] M6P25 ResourceReleaseGenerationRegressionRetained
+  PASS [PureMemory] M6P26 ResourceSessionEndLifecycleFailure
+  PASS [PureMemory] M6P27 ResourceSessionEndReplicationFailure
+  PASS [PureMemory] M6P28 ResourceAcquireGenerationRegression
+  PASS [PureMemory] M6P29 ResourceExitGenerationRegression
+  PASS [PureMemory] M6P30 ResourceRepairRequiredLock
+  PASS [PureMemory] M6P31 ResourceCaptureFailureIsolation
+  PASS [PureMemory] M6P32 ResourceSnapshotUnavailableDeferredRetry
+  PASS [PureMemory] M6P33 ResourceRollbackRestoresRetryRegistration
+  PASS [PureMemory] M6P34 ResourceDeferredOnlyRegionExit
+  PASS [PureMemory] M6P35 ResourceStaleExitTolerated
+  PASS [PureMemory] M6P36 ResourceProductionRadiusShape
+  PASS [PureMemory] M6P37 ResourceHysteresisConstant
+  PASS [PureMemory] M6P38 ResourceDeferredRetrySchedule
+  PASS [PureMemory] M6P39 ResourceFailedRetrySchedule
+  PASS [PureMemory] M6P40 ResourceRetryQualificationKept
+  PASS [PureMemory] M6P41 ResourceOverlapRetainsLease
+  PASS [PureMemory] M6P42 ResourceSharedProjection
+  PASS [PureMemory] M6P43 ResourcePolicyIdentity
+  PASS [PureMemory] M6P44 ResourceEligibilityPolicy
+  PASS [PureMemory] M6P45 ResourceRemovalClearsProjection
+  PASS [PureMemory] M6P46 ResourceSessionBoundaryClearsFact
+  PASS [PureMemory] M6O01 ResourceObservabilityFields
+  PASS [PureMemory] M6O02 ResourceFallbackExplicit
+  PASS [PureMemory] M6O03 ResourceReceiveDecisionBoundary
+  PASS [PureMemory] M6O04 ResourceControlledObservationValues
+  PASS [PureMemory] M6O05 WorldSyncReflectionReasons
+  PASS [PureMemory] M6O06 WorldSyncNullRegionFailClosed
+  PASS [PureMemory] M6O07 ObservationBeforeQuota
+  PASS [PureMemory] M6O08 ReceiveBeforeQuota
+  PASS [PureMemory] M6O09 HarvestNativePostcondition
+  PASS [PureMemory] M6O10 HarvestRegistrationIdempotent
+  PASS [PureMemory] M6O11 ConnectionOverflowTeardown
+  PASS [PureMemory] M6O12 SessionEndCleanupFinally
+  PASS [PureMemory] M6O13 ResourceEndLogAfterCleanup
+  PASS [PureMemory] M6O14 DeltaRejectPerCall
+  PASS [PureMemory] M6R09 ResourceSessionEnd
+  PASS [PureMemory] M7B01 BarricadeAcquire
+  PASS [PureMemory] M7B02 BarricadePlace
+  PASS [PureMemory] M7B03 BarricadeDamage
+  PASS [PureMemory] M7B04 BarricadeDeltaSeq
+  PASS [PureMemory] M7B05 BarricadeHysteresis
+  PASS [PureMemory] M7B06 BarricadeStaleSession
+  PASS [PureMemory] M7B07 BarricadeReconnect
+  PASS [PureMemory] M7B08 BarricadeDisconnect
+  PASS [PureMemory] M7S01 StructureAcquire
+  PASS [PureMemory] M7S02 StructurePlace
+  PASS [PureMemory] M7S03 StructureDamage
+  PASS [PureMemory] M7S04 StructureSalvage
+  PASS [PureMemory] M7S05 StructureHysteresis
+  PASS [PureMemory] M7S06 StructureStaleSession
+  PASS [PureMemory] M7S07 StructureReconnect
+  PASS [PureMemory] M7S08 StructureDisconnect
+
+--- [PureMemory / Domain 7/8: Adapters / Security Domain (Whitelist & Route B)] ---
+  PASS [PureMemory] WL1 Bootstrap
+  PASS [PureMemory] WL2 BootstrapSaveFailure
+  PASS [PureMemory] WL3 BootstrapLoadFailure
+  PASS [PureMemory] WL4 BootstrapContainsFailure
+  PASS [PureMemory] WL5 AddSaveFailure
+  PASS [PureMemory] WL6 AddLoadFailure
+  PASS [PureMemory] WL7 AddContainsFailure
+  PASS [PureMemory] WL8 AddSnapshotFailure
+  PASS [PureMemory] WL9 RemoveSaveFailure
+  PASS [PureMemory] WL9a RevokeCommitBeforeKick
+  PASS [PureMemory] WL9b RevokeFailureNoDisconnect
+  PASS [PureMemory] WL9c NativeContainsRaw
+  PASS [PureMemory] WL10 RemoveNoOp
+  PASS [PureMemory] WL11 RemoveSnapshotFailure
+  PASS [PureMemory] WL12 AddSelf
+  PASS [PureMemory] WL13 RemoveSelf
+  PASS [PureMemory] WL14 AddInvalidLocal
+  PASS [PureMemory] WL15 RemoveInvalidLocal
+  PASS [PureMemory] WL16 JudgeEqualsLocal
+  PASS [PureMemory] WL17 PersistenceFault
+  PASS [PureMemory] B1 HandshakePermit
+  PASS [PureMemory] B2 WorldEntry
+  PASS [PureMemory] B3 TrustedVisitor
+  PASS [PureMemory] B4 ConcurrentGuests
+  PASS [PureMemory] B5 Approve
+  PASS [PureMemory] B6 PersistFailure
+  PASS [PureMemory] B7 DisconnectReject
+  PASS [PureMemory] B8 TimeoutLayout
+  PASS [PureMemory] B9 Revoke
+  PASS [PureMemory] B10 RevokePersistFailure
+  PASS [PureMemory] B12 InputSanitizer
+
+--- [PureMemory / Domain 8/8: Platform UI, Readiness & Compatibility] ---
+  PASS [PureMemory] E1 EntryEarlyMenu
+  PASS [PureMemory] E2 EntryLifecycleFailure
+  PASS [PureMemory] E3 EntryIdempotentReset
+  PASS [PureMemory] E4 HandshakeCompatibilityGate
+  PASS [PureMemory] P1 PersonaEmpty
+  PASS [PureMemory] P2 PersonaControls
+  PASS [PureMemory] P3 PersonaTruncate
+  PASS [PureMemory] P4 PersonaValid
+  PASS [PureMemory] P5 PersonaFormat
+  PASS [PureMemory] P6 PersonaInvalid
+  PASS [PureMemory] IUI1 Exact
+  PASS [PureMemory] IUI2 StaleRendered
+  PASS [PureMemory] IUI3 StalePending
+  PASS [PureMemory] IUI4 Identity
+  PASS [PureMemory] JR1 SteamIdPortClassifiesAsSteamP2P
+  PASS [PureMemory] JR2 ForbiddenSuffixesStayVanilla
+  PASS [PureMemory] JR3 DirectIpAndDnsKeepOwnPortStripping
+  PASS [PureMemory] JR4 SteamIdRouteCarriesDirectPagePassword
+  PASS [PureMemory] JR5 HostMenuInputResolvesSessionPassword
+  PASS [PureMemory] JR6 RuntimePasswordClearedOnSessionEnd
+
+=== Evidence Class: StaticIL ===
+  PASS [StaticIL] ID StaticIL
+  PASS [StaticIL] Resource/Collision StaticIL
+  PASS [StaticIL] Resource Production Control StaticIL
+  PASS [StaticIL] Resource Authority Retirement StaticIL
+  PASS [StaticIL] Resource Harvest Registration StaticIL
+  PASS [StaticIL] Resource Harvest Four Hook State
+  PASS [StaticIL] Resource Harvest Identity State
+  PASS [StaticIL] Resource Harvest Rollback State
+  PASS [StaticIL] Resource Harvest Unpatch Failure State
+  PASS [StaticIL] Resource Harvest Rollback Knowledge
+  PASS [StaticIL] Resource Generation Reader No Guess
+  PASS [StaticIL] Resource Radius Source No Shared Default
+  PASS [StaticIL] Resource Failure Classification
+  PASS [StaticIL] Resource Acquire Failure Helper Message
+  PASS [StaticIL] Resource Single Region Entry Classification
+  PASS [StaticIL] Resource Native Snapshot Fail Closed
+  PASS [StaticIL] Resource Native Restore Atomic
+  PASS [StaticIL] Item/Zombie StaticIL
+  PASS [StaticIL] T04 ModuleOwnershipStaticIL
+  PASS [StaticIL] T07 AnimalStructureOwnershipStaticIL
+  PASS [StaticIL] M1I06 CurrentU3IL
+  PASS [StaticIL] M2I09 CurrentU3ReplicationGate
+  PASS [StaticIL] ZG1 RespawnDedicatedCallSiteUnique
+  PASS [StaticIL] ZG2 RespawnGateTranspilerContract
+  PASS [StaticIL] IG1 ItemUpdateDedicatedCallSiteUnique
+  PASS [StaticIL] IG2 ItemUpdateGateTranspilerContract
+  PASS [StaticIL] B11 AuthoritativeGates
+  PASS [StaticIL] Harmony HC1 Observer
+  PASS [StaticIL] Harmony HC2 ForeignTranspiler
+  PASS [StaticIL] Harmony HC3 TransportExclusive
+  PASS [StaticIL] Inventory IUI5 Reflection
+  PASS [StaticIL] Inventory IUI6 Production
+  PASS [StaticIL] Collision RC1 AnimationRestore
+  PASS [StaticIL] Collision RC2 PolicyBeforeActivation
+  PASS [StaticIL] Demand Projection StaticIL
+  PASS [StaticIL] Demand Single Spatial Authority
+  PASS [StaticIL] Demand No Native Dependency
+  PASS [StaticIL] Demand No Shared Default Radius
+  PASS [StaticIL] Demand Engine Does Not Write Domain
+  PASS [StaticIL] Demand Resource Policy Declaration
+  PASS [StaticIL] Demand Eligibility Delegated To Policy
+  PASS [StaticIL] Lifecycle Orchestration StaticIL
+  PASS [StaticIL] Lifecycle Seam Holds No State Machine
+  PASS [StaticIL] Lifecycle Engine Reaches Native Only Via Port
+  PASS [StaticIL] Lifecycle Engine Consumes Typed Demand
+  PASS [StaticIL] Lifecycle Resource Policy Declaration
+  PASS [StaticIL] Lifecycle Single Domain Registration
+  PASS [StaticIL] Lifecycle No Domain Branch
+  PASS [StaticIL] Control Plane Readiness StaticIL
+  PASS [StaticIL] Readiness Retry Transaction Scope
+  PASS [StaticIL] Readiness Deferred Demand Never Releases
+  PASS [StaticIL] Readiness Session Identity Gate
+  PASS [StaticIL] Readiness Per-Record Sample Admission
+  PASS [StaticIL] Readiness Outer Catch Does Not End Session
+  PASS [StaticIL] Readiness Bounded Fault Heartbeat
+  PASS [StaticIL] Readiness Zombie Fault Bypasses Log Quota
+  PASS [StaticIL] Readiness Shared Fault Channel
+  PASS [StaticIL] Collision Shadow StaticIL
+  PASS [StaticIL] Collision Policy Declaration
+  PASS [StaticIL] Collision Presence Eligibility
+  PASS [StaticIL] Collision Shadow PureMemory
+  PASS [StaticIL] Collision Legacy Snapshot ReadOnly
+  PASS [StaticIL] Collision Shadow No Native Write
+  PASS [StaticIL] Collision Legacy Writer Sole Writer
+  PASS [StaticIL] Collision Shadow Single Consumer
+  PASS [StaticIL] Collision Execution StaticIL
+  PASS [StaticIL] Collision Port Shape
+  PASS [StaticIL] Collision Port No Roster Scan
+  PASS [StaticIL] Collision Receipt Domain
+  PASS [StaticIL] Collision No Production Registration
+
+=== Evidence Class: BuildArtifact ===
+  Self-reported Fingerprint: version=0.2.4.9 assemblyVersion=0.2.4.9 fileVersion=0.2.4.9 mvid=b4fbc814-a1d2-47b1-acd9-475390ee1110 dllSha256=B7C6BE2CD9F17864C3288DB6639552A559D17F9235535C78A92D59A7DDF02182 pluginGuid=com.yu80rice.steamp2pfriends caseId=SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow caseIdSource=build-metadata candidateRole=ReadOnlyShadow buildCaseId=SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow evidence=self-reported
+  PASS [BuildArtifact] BuildArtifact Fingerprint Shape
+  PASS [BuildArtifact] BuildArtifact Slice Identity
+  PASS [BuildArtifact] BuildArtifact Candidate Role
+  PASS [BuildArtifact] BuildArtifact Independent Verifier
+  PASS [BuildArtifact] BuildArtifact Shared Case-ID
+  PASS [BuildArtifact] BuildArtifact Case-ID Fallback
+  PASS [BuildArtifact] BuildArtifact Test Metadata
+  PASS [BuildArtifact] BuildArtifact Full Log Identity
+  PASS [BuildArtifact] BuildArtifact Rejects Incomplete Log
+
+=== Evidence Class: Runtime ===
+  PENDING Runtime evidence: SP, listen-host, U3DS, P2P
+
+===============================================================
+=== Final Result: 404/404 PASS (Failed: 0) ===
+===============================================================

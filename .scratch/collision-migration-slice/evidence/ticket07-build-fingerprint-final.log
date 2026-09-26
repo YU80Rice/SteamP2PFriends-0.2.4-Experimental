@@ -1,0 +1,22 @@
+
+
+Evidence              : independent-artifact-verification
+Path                  : D:\Agent-¹¤×÷Ä¿Â¼\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\bin\
+                        Release\SteamP2PFriends.dll
+Version               : 0.2.4.9
+AssemblyVersion       : 0.2.4.9
+FileVersion           : 0.2.4.9
+MVID                  : b4fbc814-a1d2-47b1-acd9-475390ee1110
+DLL_SHA256            : B7C6BE2CD9F17864C3288DB6639552A559D17F9235535C78A92D59A7DDF02182
+PluginGuid            : com.yu80rice.steamp2pfriends
+CaseId                : SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow
+CaseIdSource          : artifact-metadata
+CaseIdAssociation     : artifact-metadata
+ArtifactDefaultCaseId : SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow
+CandidateRole         : ReadOnlyShadow
+MetadataSource        : Build/Version.props
+Result                : PASS
+
+
+
+INDEPENDENT_ARTIFACT_VERIFICATION_PASS

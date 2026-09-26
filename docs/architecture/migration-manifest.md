@@ -718,3 +718,34 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 - 影子比较器、旧覆盖快照与协调器影子路径必须在票 08 随旧 Writer 退役一并删除；`Collision Shadow Single Consumer` 契约会在影子仍被调用时变红，作为退役完成度的机械信号；
 - 默认候选角色在票 08 翻转为正式切换候选；票 09 三端验收必须使用该候选且三端同一 SHA-256；
 - 影子运行若报告禁止差异，按票面回写票 04，不在票 05 强行关单。
+
+## Batch 18：Collision 正式切换准入证据（0.2.4.9 / 票 07）
+
+状态：**Control-Plane Readiness Gate 的静态与已观测影子子集 GO（允许受控进入票 08）；会话恢复 NOT PROVEN（票 09）；当前正式 Collision Cutover NO-GO**——票 04 的静态准入不变量、票 05 的只读影子 Runtime 已观测证据与票 06 的 Collision Execution Port/Acquisition Receipt 证据均通过；票 05 包没有第二连接代次的“退出—等待—重进”场景，因此会话恢复由票 09 的正式 `Cutover` Runtime 补齐。当前候选仍为 `ReadOnlyShadow`，正式 `Cutover` 候选、旧 Writer 调用归零与会话边界原子切换归票 08，正式 1 Host + 2 Guest Runtime 归票 09。因此本票不切换 Authority Writer、不退役旧 Writer、不宣称最终 Collision Runtime PASS；票 08 可在本票准入 GO 边界内进入受控实现阶段。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `audit/2026-09-26/Implementation-0.2.4.9-CollisionTicket07-1545.md` | 新增 | 汇总票 04–06 证据并形成分层 Go/No-Go 裁决；明确影子证据不等于正式切换证据 |
+| `.scratch/collision-migration-slice/issues/07-cutover-readiness-go-nogo.md` | 已改 | 状态改为 `implemented-pending-runtime`；准入门 GO、正式切换 NO-GO；允许票 08 在准入边界内受控进入实现，不在本票执行切换 |
+| `.scratch/collision-migration-slice/issue.md` | 已改 | 前沿更新为票 07 准入证据闭合但正式切换 No-Go |
+| `audit/README.md` | 已改 | 增加票 07 审计报告映射与 No-Go 边界 |
+| `.scratch/collision-migration-slice/evidence/ticket07-*` | 新增 | 两次 Release 构建、404/404 唯一入口、三项门禁、diff 与当前身份证据 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | 票 04 ARI/SAM/SIG、票 05 CSC、票 06 CEP；唯一入口 `404/404 PASS` |
+| StaticIL | PASS | Readiness、Shadow、Execution Port、Registration Closure 契约全部通过 |
+| BuildArtifact | PASS | 两次 Release Rebuild 身份一致；当前影子插件 SHA-256 `B7C6BE2CD9F17864C3288DB6639552A559D17F9235535C78A92D59A7DDF02182`，MVID `b4fbc814-a1d2-47b1-acd9-475390ee1110`；独立核验 PASS |
+| Runtime | **NO-GO（正式切换未完成）** | 影子 Runtime `Forbidden=0` 仅支持准入门 GO；正式 `Cutover` 三端验收与旧 Writer 调用归零归票 08/09 |
+
+### Go / No-Go 与移交
+
+- 票 04：静态准入不变量保持绿；票 05 影子没有新禁止差异，不回写 04。
+- 票 05：`ReadOnlyShadow` 三端身份一致、主机 25/25 条汇总 `collisionShadowForbidden=0`；不升级为正式 Runtime PASS。
+- 票 06：Execution Port 的身份拒绝、Receipt、Active Demand/所有权原子撤销与局部故障隔离证据通过；端口仍未进入生产注册。
+- **正式切换裁决：当前生产 Cutover NO-GO，准入 GO 允许票 08 受控实现**。票 08 负责会话边界唯一 Writer、旧 Writer 生产调用归零和影子生产调用退出；票 09 必须在票 08 完成后使用正式 `Cutover` 候选完成三端 Runtime 与会话恢复。
+- 当前不切换 Authority Writer、不退役旧 Writer、不在同一会话内保留运行时回退路径；本批没有新增生产代码。
