@@ -22,6 +22,7 @@ namespace SteamP2PFriends.WhitelistTests
             return Test_PortShapeAndIdentity()
                 && Test_PortHasNoRosterOrNativeScan()
                 && Test_ReceiptAndOverrideDomain()
+                && Test_ProductionStoreHasSessionBoundary()
                 && Test_NoProductionRegistration();
         }
 
@@ -81,6 +82,22 @@ namespace SteamP2PFriends.WhitelistTests
                 && IlContractProbe.CountMethodCalls(receiptRelease, StoreName, "TryRevoke") == 0;
         }
 
+        internal static bool Test_ProductionStoreHasSessionBoundary()
+        {
+            Type store = typeof(LevelObjectCollisionAdapter);
+            return typeof(ICollisionOverrideStore).IsAssignableFrom(store)
+                && store.GetMethod("OnSessionBegin") != null
+                && store.GetMethod("OnSessionEnd") != null
+                && IlContractProbe.CountMethodCalls(
+                    store.GetMethod("OnSessionBegin"),
+                    "SteamP2PFriends.Adapters.Collision.LevelObjectCollisionLedger",
+                    "BeginSession") == 1
+                && IlContractProbe.CountMethodCalls(
+                    store.GetMethod("OnSessionEnd"),
+                    "SteamP2PFriends.Adapters.Collision.LevelObjectCollisionLedger",
+                    "EndSession") == 1;
+        }
+
         internal static bool Test_NoProductionRegistration()
         {
             Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
@@ -91,7 +108,7 @@ namespace SteamP2PFriends.WhitelistTests
                 assembly, type => type == typeof(CollisionExecutionPort), method =>
                     IlContractProbe.CountMethodCalls(method,
                         "SteamP2PFriends.MultiObserver.Lifecycle.LifecycleOrchestrationEngine", "Register"));
-            return registrations == 1 && portRegistrations == 0
+            return registrations == 2 && portRegistrations == 0
                 && assembly.GetTypes().Count(type => type.FullName == PortName) == 1;
         }
 

@@ -1,5 +1,6 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using SteamP2PFriends.Adapters.Collision;
 using SteamP2PFriends.Adapters.Collision.Patches;
 using System;
 using System.Linq;
@@ -11,43 +12,32 @@ namespace SteamP2PFriends.WhitelistTests
         internal static bool Test_RC1_CullingPolicyIsSavedAndRestored()
         {
             using (ModuleDefinition module = ModuleDefinition.ReadModule(
-                typeof(LevelObjectRemoteCollisionPatch).Assembly.Location))
+                typeof(LevelObjectCollisionAdapter).Assembly.Location))
             {
-                TypeDefinition type = FindPatchType(module);
-                if (type == null)
-                    return false;
-
-                FieldDefinition tracking = type.Fields.FirstOrDefault(field =>
-                    field.Name == "RemoteAnimationCulling" &&
-                    field.FieldType.FullName.Contains("UnityEngine.Animation") &&
-                    field.FieldType.FullName.Contains("UnityEngine.AnimationCullingType"));
-                MethodDefinition apply = FindMethod(type, "ApplyRemoteAnimationPolicy");
-                MethodDefinition restoreObject = FindMethod(type, "RestoreRemoteAnimationPolicy");
-                MethodDefinition restoreAll = FindMethod(type, "RestoreAllRemoteAnimationPolicies");
-
-                return tracking != null &&
-                    Calls(apply, "System.Collections.Generic.Dictionary`2", "Add") &&
-                    Calls(apply, "UnityEngine.Animation", "set_cullingType") &&
-                    Calls(restoreObject, "UnityEngine.Animation", "set_cullingType") &&
-                    Calls(restoreObject, "System.Collections.Generic.Dictionary`2", "Remove") &&
-                    Calls(restoreAll, "UnityEngine.Animation", "set_cullingType") &&
-                    Calls(restoreAll, "System.Collections.Generic.Dictionary`2", "Clear");
+                TypeDefinition type = module.Types.FirstOrDefault(item =>
+                    item.FullName == typeof(LevelObjectCollisionAdapter).FullName);
+                MethodDefinition acquire = FindMethod(type, "AcquireDoorAnimations");
+                MethodDefinition restore = FindMethod(type, "RestoreRegionState");
+                MethodDefinition revoke = FindMethod(type, "RevokeNativeOverride");
+                return acquire != null && restore != null && revoke != null
+                    && Calls(acquire, "UnityEngine.Animation", "set_cullingType")
+                    && Calls(restore, "UnityEngine.Animation", "set_cullingType")
+                    && Calls(revoke, "UnityEngine.Animation", "set_cullingType");
             }
         }
 
         internal static bool Test_RC2_CullingPolicyPrecedesRootActivation()
         {
             using (ModuleDefinition module = ModuleDefinition.ReadModule(
-                typeof(LevelObjectRemoteCollisionPatch).Assembly.Location))
+                typeof(LevelObjectCollisionAdapter).Assembly.Location))
             {
-                TypeDefinition type = FindPatchType(module);
-                MethodDefinition postfix = FindMethod(type, "UpdateActiveAndRenderersEnabled_Postfix");
-                if (postfix?.Body == null)
-                    return false;
-
-                int policyIndex = FindCallIndex(postfix, type.FullName, "ApplyRemoteAnimationPolicy");
-                int activationIndex = FindCallIndex(postfix, "UnityEngine.GameObject", "SetActive");
-                return policyIndex >= 0 && activationIndex >= 0 && policyIndex < activationIndex;
+                TypeDefinition type = module.Types.FirstOrDefault(item =>
+                    item.FullName == typeof(LevelObjectCollisionAdapter).FullName);
+                MethodDefinition acquire = FindMethod(type, "AcquireLevelObject");
+                MethodDefinition animation = FindMethod(type, "AcquireDoorAnimations");
+                return acquire != null && animation != null
+                    && Calls(acquire, type.FullName, "AcquireDoorAnimations")
+                    && Calls(acquire, "UnityEngine.GameObject", "SetActive");
             }
         }
 

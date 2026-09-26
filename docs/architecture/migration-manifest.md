@@ -659,13 +659,13 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 - **两处扰动无咬合**（P6/P6b：陈旧代次登记的两条撤销路径互为冗余；P10a：闸门读取当时还在日志分支）已如实具名，不作为已验证计入（审计报告 §8-2/§8-3）。
 
 ### 移交票 06/07/08/09（本批不做，具名）
-- Collision 的 Demand Policy、只读影子与执行端口归票 05/06；本批**未新增任何 Collision 执行类型、未切换 Authority Writer**（StaticIL 单域注册点契约仍绿）；
+- Collision 的 Demand Policy、只读影子与执行端口归票 05/06；本批**未新增任何 Collision 执行类型、未切换 Authority Writer**（StaticIL 单域注册点契约仍绿）；票 05 的只读影子 Runtime 已于 2026-09-25 通过三端身份门，详见 `audit/2026-09-25/RuntimeAcceptance-0.2.4.9-CollisionTicket05-2355.md`。
 - 正式切换与旧 RemoteCoverage Writer 退役归票 08；准入门 Go/No-Go 证据闭合归票 07；
 - Runtime（三端、Shadow 与正式候选指纹区分）归票 09：本批只落静态准入不变量，不宣称任何 Runtime PASS。
 
 ## Batch 16：Collision 声明式 Demand Policy 与只读影子验证（0.2.4.9 / 票 05）
 
-状态：**静态完成**——Collision 按自己声明的 Demand Policy（原版物件区域半径的切比雪夫投影）从**同一份** canonical 观察者事实算出 typed Collision Demand，**含 Host**、不扫描客户端名册；只读影子把新旧投影按观察者贡献与聚合 `Domain Id + Region Key` 逐条分类（预期差异 4 类 / 禁止差异 7 类，另带原因词，无法归因即失败闭合），并按「确认离开才清理」消费准入计划（暂缓不等于离开）。**旧 `RemoteCoverage` Writer 仍是唯一生产写入者**，影子零原生写入；只读 1H2G 影子 Runtime 待人工执行，且不得当作正式切换证据（Execution Port 与切换分别归票 06/08，Runtime 归票 09）。
+状态：**完成（静态 + 影子 Runtime）**——Collision 按自己声明的 Demand Policy（原版物件区域半径的切比雪夫投影）从**同一份** canonical 观察者事实算出 typed Collision Demand，**含 Host**、不扫描客户端名册；只读影子把新旧投影按观察者贡献与聚合 `Domain Id + Region Key` 逐条分类（预期差异 4 类 / 禁止差异 7 类，另带原因词，无法归因即失败闭合），并按「确认离开才清理」消费准入计划（暂缓不等于离开）。**旧 `RemoteCoverage` Writer 仍是唯一生产写入者**，影子零原生写入；2026-09-25 已完成 1H2G 影子 Runtime：三端 `ReadOnlyShadow` 指纹一致、主机 25/25 条汇总 `collisionShadowForbidden=0`，可见差异均可解释为 Host 新增覆盖。该影子结果不得当作正式切换证据（Execution Port 与切换分别归票 06/08，正式 Runtime 归票 09）。
 
 ### 变更清单
 
@@ -697,7 +697,7 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 | PureMemory | PASS | 新增 CSC01–CSC17；票 01 表征门、票 02 投影契约、票 03 编排契约、票 04 准入契约全部保持绿 |
 | StaticIL | PASS | 新增 8 项结构契约（含聚合门）；既有 Demand/Lifecycle/Resource/Readiness 契约保持绿 |
 | BuildArtifact | PASS | `Verify-BuildFingerprintArtifact.ps1` PASS（影子候选）；两次 Release Rebuild 指纹逐项一致；候选角色可区分（双角色实测 SHA-256 / MVID `DIFFER`） |
-| Runtime | PENDING | 只读 1H2G 影子运行待人工执行；正式切换候选与三端验收归票 09 |
+| Runtime | PASS（影子 Runtime） | 2026-09-25 三端 ReadOnlyShadow 指纹一致，主机 25/25 条汇总 `collisionShadowForbidden=0`；不构成正式切换 Runtime PASS，正式候选与三端验收归票 09 |
 
 ### 影子候选与正式切换候选的构建指纹
 
@@ -712,12 +712,38 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 - 影子路径「确认离开才清理」：消费准入计划的缺席移除资格与暂缓集合，暂缓者的既有贡献保留（扰动 P14/P15 锁定）；
 - 「含 Host」由门禁把守：影子路径不得按本地玩家过滤（结构契约断言 `IsLocalPlayer` 只被读一次且用于 Host 归因；扰动 P10 证明其有咬合）。
 
-### 移交票 06/07/08/09（本批不做，具名）
+## Batch 17：Collision Execution Port 与 Acquisition Receipt（0.2.4.9 / 票 06）
 
-- Collision 仍**没有** Domain Execution Port、Lifecycle Policy 与 Acquisition Receipt，也**未**进入 Lifecycle Orchestration Engine 的领域注册（`Lifecycle Single Domain Registration` 契约仍绿）——这些归票 06；
-- 影子比较器、旧覆盖快照与协调器影子路径必须在票 08 随旧 Writer 退役一并删除；`Collision Shadow Single Consumer` 契约会在影子仍被调用时变红，作为退役完成度的机械信号；
-- 默认候选角色在票 08 翻转为正式切换候选；票 09 三端验收必须使用该候选且三端同一 SHA-256；
-- 影子运行若报告禁止差异，按票面回写票 04，不在票 05 强行关单。
+状态：**静态/纯内存完成，Runtime Pending**——Collision 作为共享 Lifecycle Orchestration Engine 的 Domain Execution Port 消费 typed Collision Demand；Acquire 产生绑定 Domain/Region/Session Epoch/Region Generation/Acquire Generation 的只读 Acquisition Receipt，记录实际 Collision Override；Release 通过当前 Receipt、Active Demand、Session/Region 代次、身份确定性与原子所有权撤销门，无法证明所有权时保留 Receipt 且非破坏性失败。端口不扫描观察者、不重算需求、不写 Resource 或可采集树，不进入生产注册；旧 Collision Writer 仍是影子期唯一生产 Writer。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Adapters/Collision/CollisionLifecyclePolicy.cs` | 新增 | Collision 自声明 Lifecycle Policy，独立于 Resource 的滞回/retry/heartbeat |
+| `Adapters/Collision/CollisionAcquisitionReceipt.cs` | 新增 | 不可变 Receipt、Collision Override 集合与执行身份；深拷贝、只读暴露、逐项相等性 |
+| `Adapters/Collision/CollisionExecutionPort.cs` | 新增 | `IDomainExecutionPort` 实现；Acquire/Release 身份门、typed Receipt Release、原子所有权撤销与诊断 |
+| `SteamP2PFriends.csproj` | 已改 | 登记 3 个 Collision 执行侧编译项 |
+| `WhitelistTests/Evidence/PureMemory/Adapters/Collision/CollisionExecutionPortTests.cs` | 新增 | CEP01–CEP13，共享引擎接缝、Receipt、Host Demand、陈旧/不确定身份与拒绝诊断 |
+| `WhitelistTests/Evidence/StaticIL/CollisionExecutionStaticILContractTests.cs` | 新增 | 端口形状、零 roster/native scan、Receipt 粒度、原子撤销入口、零生产注册 |
+| `WhitelistTests/Evidence/StaticIL/LifecycleOrchestrationStaticILContractTests.cs` | 已改 | Lifecycle Policy 构造数为 Resource + Collision，Lifecycle 引擎零构造 |
+| `WhitelistTests/Program.cs` | 已改 | 登记票 06 证据，唯一入口 Target=404 |
+| `audit/2026-09-26/Implementation-0.2.4.9-CollisionTicket06-2350.md` | 新增 | 红绿链、验证矩阵、双轴轮次、产物身份与边界 |
+
+### 证据类状态
+
+| Evidence Class | 状态 | 说明 |
+|---|---|---|
+| PureMemory | PASS | CEP01–CEP13；唯一入口 `404/404 PASS` |
+| StaticIL | PASS | Collision Execution、Lifecycle、Shadow、Readiness 与注册契约保持绿 |
+| BuildArtifact | PASS | 双次 Release Rebuild：DLL SHA-256 `4D40F0B68193843A5E38B0F422A344D0690DC2F7C2FCE0677D5DC027BC468306`，MVID `c560aaed-4f28-4c9f-b345-51f8a683f918`；测试 EXE SHA-256 `813108170FA7FCEB0DEE7D3223839A4575A7610BB8B2F2E3227772EEA015EC0B` |
+| Runtime | PENDING | 正式切换与 1 Host + 2 Guest Runtime 归票 08/09；本票不宣称 Runtime PASS |
+
+### 双轴与移交
+
+- 双轴审查第五轮最终：Standards CLEAN、Spec CLEAN；前四轮 BLOCKING 均已修复并重跑 404/404。
+- 负控制扰动均已恢复；直接文本扰动在 `TreatWarningsAsErrors` 编译阶段拦截，未伪称为有效真分支命中。
+- 票 07 消费本票的 Receipt 粒度、原子所有权撤销、Active Demand/身份门与零生产注册证据；票 08 才允许会话边界切换并退役旧 Writer。
 
 ## Batch 18：Collision 正式切换准入证据（0.2.4.9 / 票 07）
 
@@ -749,3 +775,38 @@ Runtime Gate 已于 2026-09-09 通过。同一 `0.2.4.8` DLL（SHA-256 `5DF5A1F3
 - 票 06：Execution Port 的身份拒绝、Receipt、Active Demand/所有权原子撤销与局部故障隔离证据通过；端口仍未进入生产注册。
 - **正式切换裁决：当前生产 Cutover NO-GO，准入 GO 允许票 08 受控实现**。票 08 负责会话边界唯一 Writer、旧 Writer 生产调用归零和影子生产调用退出；票 09 必须在票 08 完成后使用正式 `Cutover` 候选完成三端 Runtime 与会话恢复。
 - 当前不切换 Authority Writer、不退役旧 Writer、不在同一会话内保留运行时回退路径；本批没有新增生产代码。
+
+## Batch 19：Collision 会话边界正式切换与旧 Writer 退役（0.2.4.9 / 票 08）
+
+状态：**静态/纯内存/产物完成，`implemented-pending-runtime`**——正式 `Cutover` 候选在共享生命周期引擎中注册唯一 Collision Execution Port；旧 RemoteCoverage Writer、影子生产调用、Collision 树写入与 Resource 旧谓词读取均退出生产调用图。Deferred Observer Demand 按 Domain 隔离，Runtime、第二连接代次会话恢复与最终三端验收归票 09，本批不宣称 Runtime PASS。
+
+### 变更清单
+
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| `Core/ControlPlane/MultiObserverShadowCoordinator.cs` | 已改 | Resource/Collision 共用唯一投影与生命周期引擎；canonical samples 接入两域；整批拒绝进入 Collision Deferred Observer Demand；正式 Tick 不运行影子比较 |
+| `Adapters/Collision/CollisionExecutionPort.cs` | 已改 | Store Acquire 后读取实际 Region Generation，Receipt 绑定执行后代次 |
+| `Adapters/Collision/LevelObjectCollisionAdapter.cs` | 已改 | 生产 `ICollisionOverrideStore`：真实 LevelObject 根激活、门动画 `AlwaysAnimate` 保活与受控恢复；同区重复 Acquire 完整回填 Receipt；原生所有权按 RegionKey 隔离快照/恢复，支持精确代次、原子撤销与会话清理 |
+| `Adapters/Collision/Patches/LevelObjectRemoteCollisionPatch.cs` | 已退役 | 旧 Harmony 注册、RemoteCoverage 扫描/刷新/写入不再进入生产调用图 |
+| `Adapters/Resource/Patches/LevelGroundRemoteTreeCollisionPatch.cs` | 已收敛 | Resource 不再读取旧 Collision 覆盖谓词；Collision 不写可采集树 |
+| `Core/Registration/*`、`Core/Lifecycle/*`、`Platform/Host/HostManager.cs` | 已收敛 | 移除旧 Writer 手动注册、断线 Remove 与 Host/Abort/Stop Reset |
+| `WhitelistTests/.../CollisionExecutionPortTests.cs` | 已改 | CEP14/CEP15 红→绿：Receipt 绑定 Store 执行后的实际代次，Port 转发 Session Begin/End |
+| `WhitelistTests/.../CollisionShadowStaticILContractTests.cs` | 已改 | 测试语义翻转为旧 Writer 与影子生产消费者均为零 |
+| `WhitelistTests/Program.cs` | 已改 | 单一入口目标更新为 `409` |
+| `audit/2026-09-26/Implementation-0.2.4.9-CollisionTicket08-1130.md` | 新增 | 红绿链、调用图、双次 Cutover 指纹与 Runtime Pending 边界 |
+
+### Evidence Gate
+
+| Evidence Class | 结果 | 证据 |
+|---|---|---|
+| PureMemory | PASS | 票 04 ARI/SAM/SIG、票 05 CSC、票 06 CEP、票 08 Deferred 隔离负向门；唯一入口 `409/409 PASS` |
+| StaticIL | PASS | 旧 Harmony/影子/树写入归零、Store 原生 LevelObject/门动画入口、共享引擎双领域注册、正式端口入口契约 |
+| BuildArtifact | PASS | 两次 Cutover Release Rebuild：插件 DLL SHA-256 `CC29F77911C36F5EF571D4C6DCC28C3C70F51B3A0B88AC8B023EC62945E4F0D6`，MVID `a5465633-3708-4500-affe-fd96d577d180`；测试 EXE SHA-256 `A3FF0772AC26E25A50A42BED85791A3AC7313B98CA8C5B6D6D2DC99BE5A2BF92`，MVID `57d67aaa-013f-44d2-a958-a1418a169e82`；独立核验 PASS |
+| Runtime | PENDING | 正式 1 Host + 2 Guest、第二连接代次会话恢复与三端指纹验收归票 09 |
+
+### 不可变语义与移交
+
+- 正式 Collision Writer 只有 `LifecycleOrchestrationEngine → CollisionExecutionPort → ICollisionOverrideStore`；失败/retry 耗尽不调用旧 Writer。
+- Receipt 绑定 Store 执行后的 Region Generation；Release 对当前 Receipt 做原子所有权预检，身份不确定时 fail-closed。
+- `ReadOnlyShadow` 与 `Cutover` Case-ID/产物身份不可混用；本批正式身份为 `SPF-0.2.4.9-Experimental-CollisionSlice-Cutover`。
+- Runtime Pending 不得由 PureMemory、StaticIL 或 BuildArtifact 替代；票 09 必须补齐真实会话恢复与三端因果日志。

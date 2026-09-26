@@ -82,8 +82,7 @@ namespace SteamP2PFriends.Adapters.Resource.Patches
             {
                 if (Regions.tryGetCoordinate(__instance.point, out byte x, out byte y))
                 {
-                    bool covered = ResourceRegionLifecycleAdapter.IsRegionActive(x, y)
-                        || LevelObjectRemoteCollisionPatch.IsRegionCovered(x, y);
+                    bool covered = ResourceRegionLifecycleAdapter.IsRegionActive(x, y);
                     bool spiActive = MultiObserver.MultiObserverShadowCoordinator.IsResourceProductionActive;
                     if (covered)
                     {

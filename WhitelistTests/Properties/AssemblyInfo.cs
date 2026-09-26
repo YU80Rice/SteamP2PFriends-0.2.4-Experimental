@@ -10,3 +10,4 @@ using SteamP2PFriends.WhitelistTests.Build;
 [assembly: AssemblyMetadata("SteamP2PFriendsReleaseChannel", BuildMetadata.ReleaseChannel)]
 [assembly: AssemblyMetadata("SteamP2PFriendsPluginGuid", BuildMetadata.PluginGuid)]
 [assembly: AssemblyMetadata("SteamP2PFriendsDefaultCaseId", BuildMetadata.DefaultCaseId)]
+[assembly: AssemblyMetadata("SteamP2PFriendsCandidateRole", BuildMetadata.CandidateRole)]

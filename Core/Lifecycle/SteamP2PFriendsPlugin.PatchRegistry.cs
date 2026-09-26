@@ -93,7 +93,7 @@ namespace SteamP2PFriends
             Adapters.Item.Patches.ItemManagerRegionSyncPatch.ResetAll();
             SteamP2PFriends.Adapters.Resource.Patches.ResourceManagerRegionSyncPatch.ResetAll();
             Core.Patches.ObjectManagerRegionSyncPatch.ResetAll();
-            SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.ResetAll();
+            // Collision 会话状态由共享 Lifecycle Orchestration Engine 的 Execution Port 收尾。
             SteamP2PFriends.Host.RemotePlayerRenderProbe.ResetAll();
             SteamP2PFriends.Client.ClientRemotePlayerRenderProbe.ResetAll();
             Core.Patches.WorldSyncDiagnosticCore.ResetAll();

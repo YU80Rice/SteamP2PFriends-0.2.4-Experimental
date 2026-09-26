@@ -69,12 +69,6 @@ namespace SteamP2PFriends.Core.Lifecycle
 
                 if (steamId != 0UL)
                 {
-                    try { LevelObjectRemoteCollisionPatch.RemoveRemotePlayer(steamId); }
-                    catch (Exception collisionEx)
-                    {
-                        RoleLogger.Error("[Shared]", $"OnEnemyDisconnectedHandler(LevelObjectCollision) 异常: {collisionEx.Message}");
-                    }
-
                     try { P2PWorldStatusBroadcaster.OnPlayerDisconnected(player); }
                     catch (Exception bdEx)
                     {

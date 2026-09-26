@@ -30,6 +30,19 @@ namespace SteamP2PFriends.Adapters.Resource
             DemandProjectionEngine projection,
             DemandPolicy resourceDemandPolicy,
             float hysteresisSeconds)
+            : this(lifecycle, replication, generationReader, projection, resourceDemandPolicy,
+                hysteresisSeconds, null)
+        {
+        }
+
+        public ResourceProductionControlSeam(
+            ILifecycleDomainAdapter lifecycle,
+            IStateReplicationAdapter replication,
+            Func<RegionKey, uint> generationReader,
+            DemandProjectionEngine projection,
+            DemandPolicy resourceDemandPolicy,
+            float hysteresisSeconds,
+            LifecycleOrchestrationEngine sharedEngine)
         {
             if (lifecycle == null) throw new ArgumentNullException(nameof(lifecycle));
             if (replication == null) throw new ArgumentNullException(nameof(replication));
@@ -47,7 +60,8 @@ namespace SteamP2PFriends.Adapters.Resource
             LifecyclePolicy lifecyclePolicy = ResourceLifecyclePolicy.Create(hysteresisSeconds);
             var port = new ResourceExecutionPort(
                 lifecycle, replication, generationReader, lifecyclePolicy);
-            _engine = new LifecycleOrchestrationEngine(projection, ResourceLifecycleDiagnostics.Instance);
+            _engine = sharedEngine ?? new LifecycleOrchestrationEngine(
+                projection, ResourceLifecycleDiagnostics.Instance);
             _engine.Register(_policy, port);
         }
 

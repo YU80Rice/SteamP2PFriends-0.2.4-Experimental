@@ -9,6 +9,8 @@ namespace SteamP2PFriends.Adapters.Collision
     public interface ICollisionOverrideStore
     {
         bool IsIdentityCertain { get; }
+        void OnSessionBegin(uint sessionEpoch);
+        void OnSessionEnd();
         IReadOnlyList<CollisionOverride> Acquire(CollisionExecutionIdentity identity);
         bool IsOwned(CollisionOverride item);
         /// <summary>
@@ -65,6 +67,7 @@ namespace SteamP2PFriends.Adapters.Collision
 
         public void OnSessionBegin(uint sessionEpoch)
         {
+            _store.OnSessionBegin(sessionEpoch);
             _sessionEpoch = SessionEpoch.FromNative(sessionEpoch);
             _receipts.Clear();
             _nextAcquireGeneration = 1UL;
@@ -72,6 +75,7 @@ namespace SteamP2PFriends.Adapters.Collision
 
         public void OnSessionEnd()
         {
+            _store.OnSessionEnd();
             _receipts.Clear();
             _sessionEpoch = default(SessionEpoch);
         }
@@ -96,9 +100,10 @@ namespace SteamP2PFriends.Adapters.Collision
             if (acquireGeneration == 0UL) acquireGeneration = _nextAcquireGeneration++;
             var identity = new CollisionExecutionIdentity(ticket, acquireGeneration);
             IReadOnlyList<CollisionOverride> overrides = _store.Acquire(identity);
+            RegionGeneration actualGeneration = ReadRegionGeneration(ticket.RegionKey);
             receipt = new CollisionAcquisitionReceipt(
                 DomainIds.Collision, ticket.RegionKey, ticket.SessionEpoch,
-                ticket.RegionGeneration, acquireGeneration, overrides);
+                actualGeneration, acquireGeneration, overrides);
             if (!receipt.Valid)
             {
                 EmitAcquireDiagnostic(ticket, acquireGeneration, "rejected", "receipt-invalid");

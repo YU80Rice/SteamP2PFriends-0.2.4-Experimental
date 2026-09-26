@@ -31,7 +31,7 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：07（票 07 准入证据：Control-Plane Readiness Gate 的静态与已观测影子子集 GO，允许受控进入票 08；会话恢复 NOT PROVEN 由票 09 补齐；当前正式 Collision Cutover NO-GO。本票不切换 Authority Writer、不退役旧 Writer；票 08 完成切换与旧 Writer 退役后，票 09 执行正式 Runtime 与会话恢复验收。）
+当前前沿：08（票 08 已完成正式 Cutover Writer 接线、旧 RemoteCoverage Writer 原子退役与影子生产调用归零；`409/409 PASS`、StaticIL/BuildArtifact/PureMemory 通过，Runtime Pending 归票 09；双轴审查 CLEAN）
 
 ## 票 05 → 票 06/07/08 的具名移交
 

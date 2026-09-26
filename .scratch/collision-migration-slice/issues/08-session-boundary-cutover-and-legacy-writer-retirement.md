@@ -4,14 +4,14 @@
 
 **Blocked by:** 07 闭合 Collision 正式切换准入证据
 
-**Status:** ready-for-agent
+**Status:** implemented-pending-runtime
 
-- [ ] 正式候选在插件启动或新 Session Epoch 一次性确定唯一 Writer；不做运行中按区域、玩家或比例切流，不保留旧 Writer 开关。
-- [ ] 共享生命周期引擎经 Collision Execution Port 成为唯一插件侧 Collision Writer。
-- [ ] 旧覆盖集合、观察者扫描、reconcile 和刷新写入退出生产调用图。
-- [ ] Collision 不再写可采集树；Resource 不再读取旧覆盖谓词。
-- [ ] 正式生产不再运行影子比较。
-- [ ] 新 Writer 失败或 retry 耗尽不调用旧 Writer；回滚只允许结束会话并部署上一份已验收构建。
-- [ ] StaticIL / 调用图证明旧 Writer 生产调用为零，且新 Writer 是唯一生产入口。
-- [ ] BuildArtifact 为正式切换候选指纹，与影子候选可区分。
-- [ ] 双轴审查 CLEAN；状态 implemented-pending-runtime，不在本票宣称 Runtime PASS。
+- [x] 正式候选在插件启动或新 Session Epoch 一次性确定唯一 Writer；不做运行中按区域、玩家或比例切流，不保留旧 Writer 开关。
+- [x] 共享生命周期引擎经 Collision Execution Port 成为唯一插件侧 Collision Writer。
+- [x] 旧覆盖集合、观察者扫描、reconcile 和刷新写入退出生产调用图。
+- [x] Collision 不再写可采集树；Resource 不再读取旧覆盖谓词。
+- [x] 正式生产不再运行影子比较。
+- [x] 新 Writer 失败或 retry 耗尽不调用旧 Writer；回滚只允许结束会话并部署上一份已验收构建。
+- [x] StaticIL / 调用图证明旧 Writer 生产调用为零，且新 Writer 是唯一生产入口。
+- [x] BuildArtifact 为正式切换候选指纹，与影子候选可区分。
+- [x] 双轴审查 CLEAN；Runtime 仍 Pending，正式运行验收归票 09。

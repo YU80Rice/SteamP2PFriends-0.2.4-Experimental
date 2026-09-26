@@ -5,10 +5,9 @@ using System.Reflection;
 namespace SteamP2PFriends.WhitelistTests
 {
     /// <summary>
-    /// 票 05 的结构门禁：Collision 以自己声明的 Demand Policy（原版物件区域半径、切比雪夫、
-    /// 沿用 World Presence Observer 资格）从共享观察者事实投影 typed Collision Demand；
-    /// 只读影子对照不写原生状态、不扫描客户端名册、不自建观察者索引，旧 Writer 仍是唯一
-    /// 生产写入者。断言只读元数据与 IL，不把静态结构升级成 Runtime 证据。
+    /// 票 08 的 Collision 切换门禁：Collision 继续通过声明式 Demand Policy
+    /// 复用共享观察者事实；正式生产不再运行影子比较，旧 RemoteCoverage Writer
+    /// 也不再登记或写入。断言只读元数据与 IL，不把静态结构升级成 Runtime 证据。
     /// </summary>
     internal static class CollisionShadowStaticILContractTests
     {
@@ -36,8 +35,9 @@ namespace SteamP2PFriends.WhitelistTests
                 && Test_ShadowPathIsPureMemoryWithoutRosterScan()
                 && Test_LegacySnapshotIsReadOnly()
                 && Test_ShadowPathDoesNotWriteNativeState()
-                && Test_LegacyWriterRemainsOnlyProductionWriter()
-                && Test_ShadowComparisonHasSingleReadOnlyConsumer();
+                && Test_LegacyWriterAndShadowHaveNoProductionCalls()
+                && Test_ShadowComparisonHasNoProductionConsumer()
+                && Test_DeferredDemandStaysInItsDomain();
         }
 
         private static Assembly ProductionAssembly => typeof(SteamP2PFriendsPlugin).Assembly;
@@ -103,24 +103,15 @@ namespace SteamP2PFriends.WhitelistTests
         /// </summary>
         internal static bool Test_LegacySnapshotIsReadOnly()
         {
-            MethodInfo snapshot = StaticMethod(LegacyPatchTypeName, "CaptureShadowSnapshot", internalOnly: true);
-            if (snapshot == null) return false;
-
-            bool readsLegacyState =
-                IlContractProbe.CountFieldLoads(snapshot, LegacyPatchTypeName, "RemoteCoverage") == 1
-                && IlContractProbe.CountFieldLoads(snapshot, LegacyPatchTypeName, "RemotePlayerRegions") == 1;
-            // 快照不得调用旧补丁自己的任何方法：那些方法（重建覆盖、刷新区域、移除远端玩家）
-            // 都是写入路径，快照顺手调用它们就等于影子期多了一条写入口。
-            int legacyMutatorCalls = IlContractProbe.CountCallsWhere(snapshot,
-                called => called.DeclaringType?.FullName == LegacyPatchTypeName);
-            int nativeCalls = IlContractProbe.CountCallsWhere(snapshot,
-                called => IsNativeOrUnityType(called.DeclaringType) || IsLegacyWriterEntryPoint(called));
-            return readsLegacyState && legacyMutatorCalls == 0 && nativeCalls == 0;
+            Type legacy = ProductionAssembly.GetType(LegacyPatchTypeName);
+            return legacy != null
+                && legacy.GetMethod("CaptureShadowSnapshot",
+                    BindingFlags.Static | BindingFlags.NonPublic) == null;
         }
 
         /// <summary>
         /// 影子路径不写原生状态：它不激活物件、不改门动画剔除、不写可采集树、不动碰撞账本，
-        /// 也不驱动 Resource 生产接缝——影子期旧 Writer 仍是唯一生产写入者。
+        /// 也不驱动 Resource 生产接缝；正式 Collision 写入只允许经 Execution Port 发生。
         /// </summary>
         internal static bool Test_ShadowPathDoesNotWriteNativeState()
         {
@@ -138,10 +129,10 @@ namespace SteamP2PFriends.WhitelistTests
         }
 
         /// <summary>
-        /// 旧 Writer 仍是唯一生产写入者：旧补丁与碰撞账本适配器都不消费新投影/比较器/政策，
-        /// 因此新投影不可能借它们写入；旧补丁只多出一个只读快照入口。
+        /// 旧 Writer 与 Collision Ledger 均不再消费影子类型、Demand Engine 或 Policy，
+        /// 正式 Collision Writer 由共享编排引擎经 Execution Port 承担。
         /// </summary>
-        internal static bool Test_LegacyWriterRemainsOnlyProductionWriter()
+        internal static bool Test_LegacyWriterAndShadowHaveNoProductionCalls()
         {
             Assembly assembly = ProductionAssembly;
             foreach (string typeName in new[] { LegacyPatchTypeName, LedgerAdapterTypeName })
@@ -161,40 +152,40 @@ namespace SteamP2PFriends.WhitelistTests
             return true;
         }
 
-        /// <summary>
-        /// 比较器在程序集里只有一个调用点（协调器的只读影子路径）：影子对照没有第二个消费者，
-        /// 更不是任何生产权威。该路径同时必须「确认离开才清理」：它消费准入计划的缺席移除资格
-        /// 与暂缓集合，并对确认缺席者走一次 RemoveObserver——否则离开者的需求会永久残留，
-        /// 之后每一拍都会被报成「凭空需求」这种禁止差异。
+        /// 影子比较器与旧快照在正式程序集均没有生产消费者。
+        /// 纯函数比较器只由 PureMemory 测试直接使用，正式协调器不再保留影子空壳。
         /// </summary>
-        internal static bool Test_ShadowComparisonHasSingleReadOnlyConsumer()
+        internal static bool Test_ShadowComparisonHasNoProductionConsumer()
         {
             Assembly assembly = ProductionAssembly;
             int compareCalls = IlContractProbe.CountAssemblyMethodCalls(assembly, ComparatorTypeName, "Compare");
-            MethodInfo runShadow = StaticMethod(CoordinatorTypeName, "RunCollisionShadow", internalOnly: true);
-            MethodInfo snapshot = StaticMethod(LegacyPatchTypeName, "CaptureShadowSnapshot", internalOnly: true);
-            // 缺席移除资格被读两次：一次把住移除动作，一次决定旧侧认领者能否被断言为「离开」。
-            // 暂缓者还必须从控制面最后已知事实合成一条暂缓认领（否则其保留区域会被当成凭空需求）。
-            bool consumesAdmissionPlan = runShadow != null
-                && IlContractProbe.CountMethodCalls(runShadow, AdmissionPlanTypeName, "get_AllowAbsenceRemoval") == 2
-                && IlContractProbe.CountMethodCalls(runShadow, AuthorityTypeName, "TryGet") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, ClaimTypeName, ".ctor") == 2
-                && IlContractProbe.CountMethodCalls(runShadow, AdmissionPlanTypeName, "get_DeferredObserverIds") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, DemandEngineTypeName, "RemoveObserver") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, LegacyClaimTypeName, ".ctor") == 1;
-            return compareCalls == 1
-                && runShadow != null
-                && snapshot != null
-                && consumesAdmissionPlan
-                && IlContractProbe.CountMethodCalls(runShadow, ComparatorTypeName, "Compare") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, DemandEngineTypeName, "Observe") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, DemandEngineTypeName, "GetActiveRegions") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, LegacyPatchTypeName, "CaptureShadowSnapshot") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, PresenceTypeName, ".ctor") == 1
-                && IlContractProbe.CountFieldLoads(runShadow, "SDG.Unturned.Provider", "clients") == 0
-                && IlContractProbe.CountMethodCalls(runShadow,
-                    "SteamP2PFriends.MultiObserver.ObserverShadowSample", "get_IsLocalPlayer") == 1
-                && IlContractProbe.CountMethodCalls(runShadow, FrameTypeName, ".ctor") == 1;
+            int snapshotCalls = IlContractProbe.CountAssemblyMethodCalls(assembly, LegacyPatchTypeName,
+                "CaptureShadowSnapshot");
+            return compareCalls == 0 && snapshotCalls == 0;
+        }
+
+        internal static bool Test_DeferredDemandStaysInItsDomain()
+        {
+            MethodInfo defer = StaticMethod(CoordinatorTypeName, "DeferKnownObservers");
+            if (defer == null) return false;
+            int unionCalls = IlContractProbe.CountCallsWhere(defer,
+                called => called.Name == "UnionWith");
+            int collisionCalls = IlContractProbe.CountCallsWhere(defer,
+                called => called.Name == "DeferObserver"
+                    && called.DeclaringType?.FullName
+                        == "SteamP2PFriends.MultiObserver.Lifecycle.LifecycleOrchestrationEngine");
+            return unionCalls == 0 && collisionCalls == 1;
+        }
+
+        internal static bool Test_CutoverRetiresLegacyHarmonyRegistration()
+        {
+            Type legacy = ProductionAssembly.GetType(LegacyPatchTypeName);
+            if (legacy == null) return false;
+            MethodInfo register = legacy.GetMethod("RegisterManual",
+                BindingFlags.Static | BindingFlags.Public);
+            return register != null
+                && IlContractProbe.CountMethodCalls(register,
+                    "HarmonyLib.Harmony", "Patch") == 0;
         }
 
         private static bool IsCollisionShadowMethod(MethodBase method)

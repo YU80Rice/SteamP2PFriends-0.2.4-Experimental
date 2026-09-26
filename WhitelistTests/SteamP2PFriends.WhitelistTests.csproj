@@ -158,6 +158,7 @@
       <_TestBuildMetadataLines Include="internal const string VersionIdentity = &quot;$(SteamP2PFriendsVersionIdentity)&quot;%3B" />
       <_TestBuildMetadataLines Include="internal const string PluginGuid = &quot;$(SteamP2PFriendsPluginGuid)&quot;%3B" />
       <_TestBuildMetadataLines Include="internal const string DefaultCaseId = &quot;$(SteamP2PFriendsDefaultCaseId)&quot;%3B" />
+      <_TestBuildMetadataLines Include="internal const string CandidateRole = &quot;$(SteamP2PFriendsCandidateRole)&quot;%3B" />
       <_TestBuildMetadataLines Include="}" />
       <_TestBuildMetadataLines Include="}" />
     </ItemGroup>

@@ -2,8 +2,11 @@ using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.SPI;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Shared;
+using SDG.Unturned;
+using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace SteamP2PFriends.Adapters.Collision
 {
@@ -41,6 +44,22 @@ namespace SteamP2PFriends.Adapters.Collision
             _generations.Clear();
             _releases.Clear();
             _activeRegions.Clear();
+        }
+
+        public void EndSession()
+        {
+            _generations.Clear();
+            _releases.Clear();
+            _activeRegions.Clear();
+        }
+
+        public void RestoreRegionState(RegionKey regionKey, bool active, uint generation)
+        {
+            _releases.Remove(regionKey);
+            if (active) _activeRegions.Add(regionKey);
+            else _activeRegions.Remove(regionKey);
+            if (generation == 0U) _generations.Remove(regionKey);
+            else _generations[regionKey] = generation;
         }
 
         public uint GetGeneration(RegionKey regionKey) =>
@@ -109,10 +128,64 @@ namespace SteamP2PFriends.Adapters.Collision
     /// 静态场景物件与权限门物理碰撞适配器 (LevelObjectCollisionAdapter)
     /// 统一管理远区静态物件、刷卡门/钥匙门物理碰撞的按需激活与滞回释放。
     /// </summary>
-    public sealed class LevelObjectCollisionAdapter : ILifecycleDomainAdapter
+    public sealed class LevelObjectCollisionAdapter : ILifecycleDomainAdapter, ICollisionOverrideStore
     {
+        private sealed class RegionState
+        {
+            internal readonly bool Active;
+            internal readonly uint Generation;
+            internal readonly Dictionary<Animation, AnimationOwnership> Animations;
+            internal readonly Dictionary<LevelObject, ulong> Objects;
+
+            internal RegionState(bool active, uint generation,
+                Dictionary<Animation, AnimationOwnership> animations,
+                Dictionary<LevelObject, ulong> objects)
+            {
+                Active = active;
+                Generation = generation;
+                Animations = animations;
+                Objects = objects;
+            }
+        }
+
+        private sealed class AnimationOwnership
+        {
+            internal readonly LevelObject Owner;
+            internal readonly RegionKey Region;
+            internal readonly AnimationCullingType Original;
+            internal ulong AcquireGeneration;
+
+            internal AnimationOwnership(LevelObject owner, RegionKey region,
+                AnimationCullingType original, ulong acquireGeneration)
+            {
+                Owner = owner;
+                Region = region;
+                Original = original;
+                AcquireGeneration = acquireGeneration;
+            }
+        }
+
+        private sealed class ObjectOwnership
+        {
+            internal readonly RegionKey Region;
+            internal ulong AcquireGeneration;
+
+            internal ObjectOwnership(RegionKey region, ulong acquireGeneration)
+            {
+                Region = region;
+                AcquireGeneration = acquireGeneration;
+            }
+        }
+
         private static readonly LevelObjectCollisionLedger Ledger = new LevelObjectCollisionLedger();
+        private static readonly MethodInfo VanillaRefreshMethod =
+            typeof(LevelObject).GetMethod("UpdateActiveAndRenderersEnabled",
+                BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly object SyncLock = new object();
+        private static readonly Dictionary<Animation, AnimationOwnership> OwnedAnimations =
+            new Dictionary<Animation, AnimationOwnership>();
+        private static readonly Dictionary<LevelObject, ObjectOwnership> OwnedObjects =
+            new Dictionary<LevelObject, ObjectOwnership>();
         private static bool _registrationReady;
         private static ulong _currentSessionEpoch = 1UL;
         public const float DefaultHysteresisSeconds = 2.0f;
@@ -140,12 +213,247 @@ namespace SteamP2PFriends.Adapters.Collision
             }
         }
 
+        public bool IsIdentityCertain => _registrationReady;
+
+        public IReadOnlyList<CollisionOverride> Acquire(CollisionExecutionIdentity identity)
+        {
+            if (identity.DomainId != DomainIds.Collision) return Array.Empty<CollisionOverride>();
+            lock (SyncLock)
+            {
+                uint generation = Ledger.CommitAcquire(identity.RegionKey);
+                if (generation == 0U)
+                    throw new InvalidOperationException("Collision region generation is undefined after acquire.");
+                var overrides = new List<CollisionOverride>();
+                overrides.Add(new CollisionOverride(CollisionOverrideKind.RegionLeaseMarker,
+                    identity.RegionKey, identity.AcquireGeneration, true));
+                overrides.AddRange(AcquireNativeOverrides(identity));
+                return overrides;
+            }
+        }
+
+        private IReadOnlyList<CollisionOverride> AcquireNativeOverrides(
+            CollisionExecutionIdentity identity)
+        {
+            var overrides = new List<CollisionOverride>();
+            if (LevelObjects.objects == null) return overrides;
+
+            List<LevelObject> objects = LevelObjects.objects[
+                identity.RegionKey.X, identity.RegionKey.Y];
+            if (objects == null) return overrides;
+
+            for (int index = 0; index < objects.Count; index++)
+            {
+                LevelObject levelObject = objects[index];
+                if (levelObject == null) continue;
+                AcquireLevelObject(levelObject, identity, overrides);
+            }
+            return overrides;
+        }
+
+        private static void AcquireLevelObject(
+            LevelObject levelObject, CollisionExecutionIdentity identity,
+            List<CollisionOverride> overrides)
+        {
+            Transform transform = levelObject.transform;
+            if (!levelObject.canDamageRubble || transform == null
+                || (levelObject.asset != null && levelObject.asset.type == EObjectType.NPC)
+                || transform.Find("Decal") != null
+                || transform.gameObject == null
+                || transform.GetComponentInChildren<Collider>(true) == null)
+                return;
+
+            ObjectOwnership objectOwnership;
+            if (OwnedObjects.TryGetValue(levelObject, out objectOwnership))
+            {
+                if (objectOwnership.Region != identity.RegionKey) return;
+                overrides.Add(new CollisionOverride(CollisionOverrideKind.LevelObject,
+                    identity.RegionKey, identity.AcquireGeneration, true, levelObject));
+            }
+            else if (!transform.gameObject.activeSelf)
+            {
+                transform.gameObject.SetActive(true);
+                OwnedObjects[levelObject] = new ObjectOwnership(
+                    identity.RegionKey, identity.AcquireGeneration);
+                overrides.Add(new CollisionOverride(CollisionOverrideKind.LevelObject,
+                    identity.RegionKey, identity.AcquireGeneration, true, levelObject));
+            }
+            AcquireDoorAnimations(levelObject, transform, identity, overrides);
+        }
+
+        private static void AcquireDoorAnimations(
+            LevelObject levelObject, Transform transform,
+            CollisionExecutionIdentity identity, List<CollisionOverride> overrides)
+        {
+            if (!(levelObject.interactable is InteractableObjectBinaryState)) return;
+            Animation[] animations = transform.GetComponentsInChildren<Animation>(true);
+            for (int index = 0; index < animations.Length; index++)
+            {
+                Animation animation = animations[index];
+                if (animation == null) continue;
+                if (!OwnedAnimations.ContainsKey(animation))
+                    OwnedAnimations.Add(animation, new AnimationOwnership(
+                        levelObject, identity.RegionKey, animation.cullingType,
+                        identity.AcquireGeneration));
+                AnimationOwnership animationOwnership;
+                if (OwnedAnimations.TryGetValue(animation, out animationOwnership)
+                    && animationOwnership.Region == identity.RegionKey)
+                {
+                    overrides.Add(new CollisionOverride(CollisionOverrideKind.DoorAnimation,
+                        identity.RegionKey, identity.AcquireGeneration, true, animation));
+                }
+                if (animation.cullingType != AnimationCullingType.AlwaysAnimate)
+                {
+                    animation.cullingType = AnimationCullingType.AlwaysAnimate;
+                    bool alreadyIncluded = false;
+                    for (int existing = 0; existing < overrides.Count; existing++)
+                        if (ReferenceEquals(overrides[existing].NativeTarget, animation))
+                            alreadyIncluded = true;
+                    if (!alreadyIncluded)
+                        overrides.Add(new CollisionOverride(CollisionOverrideKind.DoorAnimation,
+                            identity.RegionKey, identity.AcquireGeneration, true, animation));
+                }
+            }
+        }
+
+        public bool IsOwned(CollisionOverride item)
+        {
+            if (!item.PluginOwned || !Ledger.IsRegionActive(item.RegionKey)) return false;
+            if (item.NativeTarget is Animation animation)
+            {
+                AnimationOwnership ownership;
+                return OwnedAnimations.TryGetValue(animation, out ownership)
+                    && ownership.Region == item.RegionKey;
+            }
+            if (item.NativeTarget is LevelObject levelObject)
+                return OwnedObjects.TryGetValue(levelObject, out ObjectOwnership ownership)
+                    && ownership.Region == item.RegionKey;
+            return item.Kind == CollisionOverrideKind.RegionLeaseMarker
+                && item.NativeTarget == null;
+        }
+
+        public bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides)
+        {
+            if (overrides == null) return false;
+            lock (SyncLock)
+            {
+                for (int index = 0; index < overrides.Count; index++)
+                    if (!IsOwned(overrides[index])) return false;
+                for (int index = 0; index < overrides.Count; index++)
+                    RevokeNativeOverride(overrides[index]);
+                if (overrides.Count > 0)
+                    Ledger.CleanObserverDisconnect(overrides[0].RegionKey);
+                return true;
+            }
+        }
+
+        private static void RestoreOwnedNativeState()
+        {
+            foreach (KeyValuePair<Animation, AnimationOwnership> pair in OwnedAnimations)
+            {
+                if (pair.Key != null) pair.Key.cullingType = pair.Value.Original;
+            }
+            foreach (LevelObject levelObject in OwnedObjects.Keys)
+            {
+                if (levelObject != null && VanillaRefreshMethod != null)
+                    VanillaRefreshMethod.Invoke(levelObject, null);
+            }
+            OwnedAnimations.Clear();
+            OwnedObjects.Clear();
+        }
+        private static void RestoreRegionNativeState(RegionKey regionKey)
+        {
+            foreach (KeyValuePair<Animation, AnimationOwnership> pair in OwnedAnimations)
+                if (pair.Value.Region == regionKey && pair.Key != null)
+                    pair.Key.cullingType = pair.Value.Original;
+            foreach (KeyValuePair<LevelObject, ObjectOwnership> pair in OwnedObjects)
+                if (pair.Value.Region == regionKey && pair.Key != null
+                    && VanillaRefreshMethod != null)
+                    VanillaRefreshMethod.Invoke(pair.Key, null);
+            foreach (Animation animation in new List<Animation>(OwnedAnimations.Keys))
+            {
+                AnimationOwnership ownership;
+                if (OwnedAnimations.TryGetValue(animation, out ownership)
+                    && ownership.Region == regionKey)
+                    OwnedAnimations.Remove(animation);
+            }
+            foreach (LevelObject levelObject in new List<LevelObject>(OwnedObjects.Keys))
+            {
+                ObjectOwnership ownership;
+                if (OwnedObjects.TryGetValue(levelObject, out ownership)
+                    && ownership.Region == regionKey)
+                    OwnedObjects.Remove(levelObject);
+            }
+        }
+
+        private static void RevokeNativeOverride(CollisionOverride item)
+        {
+            if (item.NativeTarget is Animation animation)
+            {
+                AnimationOwnership ownership;
+                if (OwnedAnimations.TryGetValue(animation, out ownership))
+                {
+                    animation.cullingType = ownership.Original;
+                    OwnedAnimations.Remove(animation);
+                }
+                return;
+            }
+
+            if (item.NativeTarget is LevelObject levelObject)
+            {
+                OwnedObjects.Remove(levelObject);
+                if (VanillaRefreshMethod != null)
+                    VanillaRefreshMethod.Invoke(levelObject, null);
+            }
+        }
+
+        public object CaptureRegionState(RegionKey regionKey)
+        {
+            lock (SyncLock)
+            {
+                var animations = new Dictionary<Animation, AnimationOwnership>();
+                foreach (KeyValuePair<Animation, AnimationOwnership> pair in OwnedAnimations)
+                    if (pair.Value.Region == regionKey) animations[pair.Key] = pair.Value;
+                var objects = new Dictionary<LevelObject, ulong>();
+                foreach (KeyValuePair<LevelObject, ObjectOwnership> pair in OwnedObjects)
+                    if (pair.Value.Region == regionKey) objects[pair.Key] = pair.Value.AcquireGeneration;
+                return new RegionState(Ledger.IsRegionActive(regionKey), Ledger.GetGeneration(regionKey),
+                    animations, objects);
+            }
+        }
+
+        public void RestoreRegionState(RegionKey regionKey, object state)
+        {
+            var snapshot = state as RegionState;
+            if (snapshot == null) return;
+            lock (SyncLock)
+            {
+                RestoreRegionNativeState(regionKey);
+                foreach (KeyValuePair<Animation, AnimationOwnership> pair in snapshot.Animations)
+                {
+                    OwnedAnimations[pair.Key] = pair.Value;
+                    if (pair.Key != null)
+                        pair.Key.cullingType = snapshot.Active
+                            ? AnimationCullingType.AlwaysAnimate
+                            : pair.Value.Original;
+                }
+                foreach (KeyValuePair<LevelObject, ulong> pair in snapshot.Objects)
+                {
+                    OwnedObjects[pair.Key] = new ObjectOwnership(regionKey, pair.Value);
+                    if (pair.Key != null && pair.Key.transform != null
+                        && pair.Key.transform.gameObject != null)
+                        pair.Key.transform.gameObject.SetActive(true);
+                }
+                Ledger.RestoreRegionState(regionKey, snapshot.Active, snapshot.Generation);
+            }
+        }
+
         public void OnSessionBegin(uint sessionEpoch)
         {
             lock (SyncLock)
             {
                 _registrationReady = true;
                 _currentSessionEpoch = sessionEpoch == 0U ? 1UL : sessionEpoch;
+                RestoreOwnedNativeState();
                 Ledger.BeginSession(_currentSessionEpoch);
             }
         }
@@ -155,6 +463,11 @@ namespace SteamP2PFriends.Adapters.Collision
             lock (SyncLock)
             {
                 _registrationReady = false;
+                _currentSessionEpoch = 0UL;
+                RestoreOwnedNativeState();
+                Ledger.EndSession();
+                OwnedAnimations.Clear();
+                OwnedObjects.Clear();
             }
         }
 

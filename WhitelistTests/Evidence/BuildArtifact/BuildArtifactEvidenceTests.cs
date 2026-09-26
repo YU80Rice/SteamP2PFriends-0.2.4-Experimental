@@ -64,7 +64,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             const string expectedVersion = "0.2.4.9";
             const string expectedChannel = "Experimental";
-            const string expectedCaseId = "SPF-0.2.4.9-Experimental-CollisionSlice-ReadOnlyShadow";
+            const string expectedCaseId = "SPF-0.2.4.9-Experimental-CollisionSlice-Cutover";
 
             PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly);
             return string.Equals(PluginBuildMetadata.Version, expectedVersion, StringComparison.Ordinal)
@@ -90,16 +90,16 @@ namespace SteamP2PFriends.WhitelistTests
             Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
             PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(assembly);
 
-            string shadowCaseId = PluginBuildMetadata.DefaultCaseId;
-            string cutoverCaseId = shadowCaseId.Replace(shadowRole, cutoverRole);
-            bool roleIsEmbedded = HasAssemblyMetadata(assembly, "SteamP2PFriendsCandidateRole", shadowRole)
-                && string.Equals(fingerprint.CandidateRole, shadowRole, StringComparison.Ordinal);
-            bool roleIsInCaseId = shadowCaseId.EndsWith("-" + shadowRole, StringComparison.Ordinal);
+            string shadowCaseId = PluginBuildMetadata.DefaultCaseId.Replace(cutoverRole, shadowRole);
+            string cutoverCaseId = PluginBuildMetadata.DefaultCaseId;
+            bool roleIsEmbedded = HasAssemblyMetadata(assembly, "SteamP2PFriendsCandidateRole", cutoverRole)
+                && string.Equals(fingerprint.CandidateRole, cutoverRole, StringComparison.Ordinal);
+            bool roleIsInCaseId = cutoverCaseId.EndsWith("-" + cutoverRole, StringComparison.Ordinal);
             bool rolesAreDistinct = !string.Equals(shadowCaseId, cutoverCaseId, StringComparison.Ordinal)
-                && !string.Equals(fingerprint.CaseId, cutoverCaseId, StringComparison.Ordinal)
+                && string.Equals(fingerprint.CaseId, cutoverCaseId, StringComparison.Ordinal)
                 && fingerprint.IsComplete;
 
-            return string.Equals(PluginBuildMetadata.CandidateRole, shadowRole, StringComparison.Ordinal)
+            return string.Equals(PluginBuildMetadata.CandidateRole, cutoverRole, StringComparison.Ordinal)
                 && roleIsEmbedded
                 && roleIsInCaseId
                 && rolesAreDistinct;
@@ -185,7 +185,8 @@ namespace SteamP2PFriends.WhitelistTests
 
             PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly);
             string output;
-            int exitCode = RunVerifierScript(scriptPath, artifactPath, null, null, out output);
+            int exitCode = RunVerifierScript(scriptPath, artifactPath, PluginBuildMetadata.DefaultCaseId,
+                PluginBuildMetadata.CandidateRole, null, out output);
 
             return exitCode == 0
                 && output != null
@@ -207,7 +208,7 @@ namespace SteamP2PFriends.WhitelistTests
                 File.WriteAllText(logPath, "caseId=" + PluginBuildMetadata.DefaultCaseId + " version=" + PluginBuildMetadata.Version);
                 string output;
                 int exitCode = RunVerifierScript(scriptPath, artifactPath,
-                    PluginBuildMetadata.DefaultCaseId, logPath, out output);
+                    PluginBuildMetadata.DefaultCaseId, PluginBuildMetadata.CandidateRole, logPath, out output);
                 return exitCode > 0;
             }
             finally
@@ -227,12 +228,15 @@ namespace SteamP2PFriends.WhitelistTests
             string scriptPath,
             string artifactPath,
             string expectedCaseId,
+            string expectedCandidateRole,
             string logPath,
             out string output)
         {
             string arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
                 QuotePowerShell(scriptPath) +
                 " -Path " + QuotePowerShell(artifactPath);
+            if (!string.IsNullOrWhiteSpace(expectedCandidateRole))
+                arguments += " -ExpectedCandidateRole " + QuotePowerShell(expectedCandidateRole);
             if (!string.IsNullOrWhiteSpace(expectedCaseId))
                 arguments += " -ExpectedCaseId " + QuotePowerShell(expectedCaseId);
             if (!string.IsNullOrWhiteSpace(logPath))

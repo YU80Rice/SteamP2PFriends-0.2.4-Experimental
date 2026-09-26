@@ -1321,22 +1321,8 @@ namespace SteamP2PFriends
                     $"prefixOwner={Core.Patches.ObjectManagerRegionSyncPatch.PrefixOwnerSummary}");
             }
 
-            bool levelObjectCollisionOk = SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.AllRegistrationsSucceeded;
-            if (!levelObjectCollisionOk)
-            {
-                RoleLogger.Error("[Shared]",
-                    $"[Diag] !!! DIAGNOSTIC BUILD INVALID: LevelObjectRemoteCollisionPatch " +
-                    $"summary={SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.RegistrationSummary} " +
-                    $"rootPostfix={SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.RootActivationPostfixRegistered} " +
-                    $"regionTrackerPostfix={SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.RegionTrackerPostfixRegistered}");
-                allOk = false;
-            }
-            else
-            {
-                RoleLogger.Info("[Shared]",
-                    $"[Diag] OK LevelObjectRemoteCollisionPatch: " +
-                    $"summary={SteamP2PFriends.Adapters.Collision.Patches.LevelObjectRemoteCollisionPatch.RegistrationSummary}");
-            }
+            RoleLogger.Info("[Shared]",
+                "[Diag] OK LevelObjectRemoteCollisionPatch: retired=legacy-remote-coverage-writer");
 
             //   - UseableBarricadeDiagnosticPatch：8 DP（startPrimary/check/checkSpace/checkClaims/ReceiveBarricadeNone/simulate/build/dropBarricade）
             //   - ZombieEntityMappingDiagnosticPatch：7 DP（SendZombies/ReceiveZombies/SendZombieStates/ReceiveZombieStates/onBoundUpdated/sendZombieDead+Alive/ReceiveZombieDead+Alive）

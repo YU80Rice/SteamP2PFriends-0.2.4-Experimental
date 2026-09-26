@@ -10,29 +10,34 @@ namespace SteamP2PFriends.Adapters.Collision
     {
         LevelObject = 0,
         DoorAnimation = 1,
-        ColliderCulling = 2
+        ColliderCulling = 2,
+        RegionLeaseMarker = 3
     }
 
     public readonly struct CollisionOverride : IEquatable<CollisionOverride>
     {
         public CollisionOverride(
-            CollisionOverrideKind kind, RegionKey regionKey, ulong acquireGeneration, bool pluginOwned)
+            CollisionOverrideKind kind, RegionKey regionKey, ulong acquireGeneration,
+            bool pluginOwned, object nativeTarget = null)
         {
             Kind = kind;
             RegionKey = regionKey;
             AcquireGeneration = acquireGeneration;
             PluginOwned = pluginOwned;
+            NativeTarget = nativeTarget;
         }
 
         public CollisionOverrideKind Kind { get; }
         public RegionKey RegionKey { get; }
         public ulong AcquireGeneration { get; }
         public bool PluginOwned { get; }
+        public object NativeTarget { get; }
 
         public bool Equals(CollisionOverride other) => Kind == other.Kind
             && RegionKey == other.RegionKey
             && AcquireGeneration == other.AcquireGeneration
-            && PluginOwned == other.PluginOwned;
+            && PluginOwned == other.PluginOwned
+            && ReferenceEquals(NativeTarget, other.NativeTarget);
         public override bool Equals(object obj) => obj is CollisionOverride other && Equals(other);
         public override int GetHashCode() => (((int)Kind * 397) ^ RegionKey.GetHashCode())
             * 397 ^ AcquireGeneration.GetHashCode();

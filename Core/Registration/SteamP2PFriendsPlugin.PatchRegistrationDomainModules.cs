@@ -68,7 +68,6 @@ namespace SteamP2PFriends
             var animal = new AnimalDomainAdapter();
             ok &= RegisterLifecycle(animal);
             ok &= RegisterReplication(animal);
-            ok &= RegisterLifecycle(new LevelObjectCollisionAdapter());
             return ok;
         }
 

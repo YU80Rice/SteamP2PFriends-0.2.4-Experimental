@@ -201,21 +201,17 @@ namespace SteamP2PFriends.WhitelistTests
             int registrationSites = IlContractProbe.SumOverDeclaredMethods(assembly, method =>
                 IlContractProbe.CountMethodCalls(method, EngineTypeName, "Register"));
             Type seam = LifecycleType(SeamTypeName);
-            ConstructorInfo seamConstructor = seam?.GetConstructors().SingleOrDefault();
+            ConstructorInfo[] seamConstructors = seam?.GetConstructors();
             MethodInfo configure = StaticMethod(CoordinatorTypeName, "ConfigureControlPlane");
 
-            // 唯一注册点位于 Resource 生产接缝的构造函数内；协调器只经该接缝接线。
-            bool registeredOnlyOnResourceWiring = seamConstructor != null
-                && IlContractProbe.CountCallsWhere(seamConstructor,
-                    called => called.DeclaringType?.FullName == EngineTypeName && called.Name == "Register") == 1
+            bool registeredOnlyOnResourceWiring = seamConstructors != null
+                && seamConstructors.Any(constructor =>
+                    IlContractProbe.CountCallsWhere(constructor,
+                        called => called.DeclaringType?.FullName == EngineTypeName && called.Name == "Register") == 1)
                 && configure != null
                 && IlContractProbe.CountMethodCalls(configure, SeamTypeName, ".ctor") == 1;
-            bool collisionHasNoOrchestrationPort = assembly.GetTypes().All(type =>
-                !(type.Namespace ?? string.Empty).StartsWith(LifecycleNamespace, StringComparison.Ordinal)
-                || !string.Equals(type.Name, "CollisionExecutionPort", StringComparison.Ordinal));
-
-            return registrationSites == 1 && registeredOnlyOnResourceWiring
-                && collisionHasNoOrchestrationPort;
+            return registrationSites == 2 && registeredOnlyOnResourceWiring
+                && IlContractProbe.CountMethodCalls(configure, EngineTypeName, "Register") == 1;
         }
 
         /// <summary>

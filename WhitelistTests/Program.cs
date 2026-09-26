@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 404 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 409 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -209,6 +209,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("CEP11 Unowned Override Fail Closed", CollisionExecutionPortTests.Test_CEP11_UnownedOverrideFailsClosed, ref total, ref passed, ref failed);
             RunTest("CEP12 Release Rejection Observable", CollisionExecutionPortTests.Test_CEP12_ReleaseRejectionIsObservable, ref total, ref passed, ref failed);
             RunTest("CEP13 Demand Still Present", CollisionExecutionPortTests.Test_CEP13_DemandStillPresentRejectsRelease, ref total, ref passed, ref failed);
+            RunTest("CEP14 Receipt Actual Generation", CollisionExecutionPortTests.Test_CEP14_ReceiptUsesActualStoreGeneration, ref total, ref passed, ref failed);
+            RunTest("CEP15 Production Store Session Boundary", CollisionExecutionPortTests.Test_CEP15_ProductionStoreFollowsSessionBoundary, ref total, ref passed, ref failed);
+            RunTest("CEP16 Empty Store Receipt Release", CollisionExecutionPortTests.Test_CEP16_EmptyStoreReceiptReleasesRegion, ref total, ref passed, ref failed);
 
             RunTest("CSC01 IdenticalProjections", CollisionShadowComparatorTests.Test_CSC01_IdenticalProjectionsAreInBoth, ref total, ref passed, ref failed);
             RunTest("CSC02 HostAddedCoverage", CollisionShadowComparatorTests.Test_CSC02_HostAddedCoverageIsExpected, ref total, ref passed, ref failed);
@@ -533,9 +536,13 @@ namespace SteamP2PFriends.WhitelistTests
                 ref total, ref passed, ref failed);
             RunTest("Collision Shadow No Native Write", CollisionShadowStaticILContractTests.Test_ShadowPathDoesNotWriteNativeState,
                 ref total, ref passed, ref failed);
-            RunTest("Collision Legacy Writer Sole Writer", CollisionShadowStaticILContractTests.Test_LegacyWriterRemainsOnlyProductionWriter,
+            RunTest("Collision Legacy Writer And Shadow No Production Calls", CollisionShadowStaticILContractTests.Test_LegacyWriterAndShadowHaveNoProductionCalls,
                 ref total, ref passed, ref failed);
-            RunTest("Collision Shadow Single Consumer", CollisionShadowStaticILContractTests.Test_ShadowComparisonHasSingleReadOnlyConsumer,
+            RunTest("Collision Shadow No Production Consumer", CollisionShadowStaticILContractTests.Test_ShadowComparisonHasNoProductionConsumer,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Deferred Demand Domain Isolation", CollisionShadowStaticILContractTests.Test_DeferredDemandStaysInItsDomain,
+                ref total, ref passed, ref failed);
+            RunTest("Collision Cutover Retires Legacy Harmony", CollisionShadowStaticILContractTests.Test_CutoverRetiresLegacyHarmonyRegistration,
                 ref total, ref passed, ref failed);
             // 票 06：Collision Execution Port 与 Acquisition Receipt 结构门禁。
             RunTest("Collision Execution StaticIL", CollisionExecutionStaticILContractTests.Test_All,

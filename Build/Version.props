@@ -13,10 +13,10 @@
     <!--
       候选角色：影子候选与正式切换候选必须是可区分的构建指纹——同一份源码、不同角色
       得到不同的产物身份（角色进程序集元数据与默认 Case-ID，因而 SHA-256 / MVID 不同）。
-      本切片当前交付只读影子候选；正式切换候选由票 08 用
-      -p:SteamP2PFriendsCandidateRole=Cutover 构建，不得与影子候选混用验收日志。
+      本切片正式交付候选由票 08 固定为 `Cutover`；影子候选仍用
+      `-p:SteamP2PFriendsCandidateRole=ReadOnlyShadow` 独立构建，二者不得混用验收日志。
     -->
-    <SteamP2PFriendsCandidateRole Condition="'$(SteamP2PFriendsCandidateRole)' == ''">ReadOnlyShadow</SteamP2PFriendsCandidateRole>
+    <SteamP2PFriendsCandidateRole Condition="'$(SteamP2PFriendsCandidateRole)' == ''">Cutover</SteamP2PFriendsCandidateRole>
     <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-CollisionSlice-$(SteamP2PFriendsCandidateRole)</SteamP2PFriendsDefaultCaseId>
     <SteamP2PFriendsU3SdkCommit>ea7b4973af5ba10f62baad2bfde36ab2e5b060eb</SteamP2PFriendsU3SdkCommit>
   </PropertyGroup>

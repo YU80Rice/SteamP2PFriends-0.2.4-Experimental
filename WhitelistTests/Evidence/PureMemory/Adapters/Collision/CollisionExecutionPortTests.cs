@@ -175,6 +175,42 @@ namespace SteamP2PFriends.WhitelistTests
             return Expect(receipt.Overrides.Count == 1, "receipt must contain only Collision overrides");
         }
 
+        internal static bool Test_CEP14_ReceiptUsesActualStoreGeneration()
+        {
+            var store = new GenerationAdvancingCollisionOverrideStore();
+            CollisionExecutionPort port = new CollisionExecutionPort(
+                store, region => store.Generation, CollisionLifecyclePolicy.Create(2.0f));
+            port.OnSessionBegin(41U);
+            CollisionAcquisitionReceipt receipt;
+            bool acquired = port.TryAcquire(Ticket(new RegionKey(3, 4), generation: 7U), out receipt);
+            return Expect(acquired && receipt.RegionGeneration.Value == store.Generation,
+                "receipt must bind the generation returned by the execution store");
+        }
+
+        internal static bool Test_CEP15_ProductionStoreFollowsSessionBoundary()
+        {
+            var store = new SessionBoundaryStore();
+            CollisionExecutionPort port = new CollisionExecutionPort(
+                store, region => 7U, CollisionLifecyclePolicy.Create(2.0f));
+            port.OnSessionBegin(42U);
+            port.OnSessionEnd();
+            return Expect(store.Begun == 1 && store.Ended == 1,
+                "Collision Port must forward both session boundaries to its Store");
+        }
+        internal static bool Test_CEP16_EmptyStoreReceiptReleasesRegion()
+        {
+            var store = new EmptyOverrideStore();
+            CollisionExecutionPort port = new CollisionExecutionPort(
+                store, region => 7U, CollisionLifecyclePolicy.Create(2.0f));
+            port.OnSessionBegin(41U);
+            CollisionAcquisitionReceipt receipt;
+            bool acquired = port.TryAcquire(Ticket(new RegionKey(3, 4)), out receipt);
+            bool released = port.TryRelease(Ticket(new RegionKey(3, 4)));
+            return Expect(acquired && receipt.Overrides.Count == 1
+                && receipt.Overrides[0].Kind == CollisionOverrideKind.RegionLeaseMarker
+                && released && store.Revoked,
+                "an empty native target set must use a region marker and still release its region ownership");
+        }
         internal static bool Test_CEP13_DemandStillPresentRejectsRelease()
         {
             var store = new FakeCollisionOverrideStore();
@@ -188,6 +224,8 @@ namespace SteamP2PFriends.WhitelistTests
                 && port.LastReleaseReceiptDetail.Contains("reason=release-identity-rejected"),
                 "release must reject while Collision demand remains positive");
         }
+
+
 
         internal static bool Test_CEP12_ReleaseRejectionIsObservable()
         {
@@ -238,6 +276,59 @@ namespace SteamP2PFriends.WhitelistTests
 
     }
 
+    internal sealed class EmptyOverrideStore : ICollisionOverrideStore
+    {
+        internal bool Revoked;
+        public bool IsIdentityCertain => true;
+        public void OnSessionBegin(uint sessionEpoch) { }
+        public void OnSessionEnd() { }
+        public IReadOnlyList<CollisionOverride> Acquire(CollisionExecutionIdentity identity) =>
+            new[] { new CollisionOverride(CollisionOverrideKind.RegionLeaseMarker,
+                identity.RegionKey, identity.AcquireGeneration, true) };
+        public bool IsOwned(CollisionOverride item) => item.PluginOwned;
+        public bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides)
+        {
+            Revoked = true;
+            return true;
+        }
+        public object CaptureRegionState(RegionKey regionKey) => null;
+        public void RestoreRegionState(RegionKey regionKey, object state) { }
+    }
+
+    internal sealed class SessionBoundaryStore : ICollisionOverrideStore
+    {
+        internal int Begun;
+        internal int Ended;
+        public bool IsIdentityCertain => true;
+        public void OnSessionBegin(uint sessionEpoch) { Begun++; }
+        public void OnSessionEnd() { Ended++; }
+        public IReadOnlyList<CollisionOverride> Acquire(CollisionExecutionIdentity identity) =>
+            new[] { new CollisionOverride(CollisionOverrideKind.LevelObject,
+                identity.RegionKey, identity.AcquireGeneration, true) };
+        public bool IsOwned(CollisionOverride item) => true;
+        public bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides) => true;
+        public object CaptureRegionState(RegionKey regionKey) => null;
+        public void RestoreRegionState(RegionKey regionKey, object state) { }
+    }
+
+    internal sealed class GenerationAdvancingCollisionOverrideStore : ICollisionOverrideStore
+    {
+        public uint Generation = 7U;
+        public bool IsIdentityCertain => true;
+        public void OnSessionBegin(uint sessionEpoch) { }
+        public void OnSessionEnd() { }
+        public IReadOnlyList<CollisionOverride> Acquire(CollisionExecutionIdentity identity)
+        {
+            Generation = 8U;
+            return new[] { new CollisionOverride(CollisionOverrideKind.LevelObject,
+                identity.RegionKey, identity.AcquireGeneration, true) };
+        }
+        public bool IsOwned(CollisionOverride item) => true;
+        public bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides) => true;
+        public object CaptureRegionState(RegionKey regionKey) => null;
+        public void RestoreRegionState(RegionKey regionKey, object state) { }
+    }
+
     internal sealed class FakeCollisionOverrideStore : ICollisionOverrideStore
     {
         public readonly List<CollisionOverride> Acquired = new List<CollisionOverride>();
@@ -245,6 +336,8 @@ namespace SteamP2PFriends.WhitelistTests
         public bool IdentityCertain = true;
         public bool ForceUnowned;
         public bool IsIdentityCertain => IdentityCertain;
+        public void OnSessionBegin(uint sessionEpoch) { }
+        public void OnSessionEnd() { }
 
         public IReadOnlyList<CollisionOverride> Acquire(CollisionExecutionIdentity identity)
         {

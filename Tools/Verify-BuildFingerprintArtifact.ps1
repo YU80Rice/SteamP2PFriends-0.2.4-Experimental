@@ -1,6 +1,7 @@
 param(
     [string]$Path = (Join-Path $PSScriptRoot '..\bin\Release\SteamP2PFriends.dll'),
     [string]$ExpectedCaseId = '',
+    [string]$ExpectedCandidateRole = '',
     [string]$LogPath = ''
 )
 
@@ -13,7 +14,7 @@ $namespace.AddNamespace('msb', 'http://schemas.microsoft.com/developer/msbuild/2
 $expectedVersion = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsVersion', $namespace).InnerText
 $expectedReleaseChannel = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsReleaseChannel', $namespace).InnerText
 $expectedPluginGuid = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsPluginGuid', $namespace).InnerText
-$expectedCandidateRole = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsCandidateRole', $namespace).InnerText
+$expectedCandidateRole = if ($ExpectedCandidateRole) { $ExpectedCandidateRole } else { $versionProps.SelectSingleNode('//msb:SteamP2PFriendsCandidateRole', $namespace).InnerText }
 $expectedDefaultCaseId = $versionProps.SelectSingleNode('//msb:SteamP2PFriendsDefaultCaseId', $namespace).InnerText
 $expectedDefaultCaseId = $expectedDefaultCaseId.Replace('$(SteamP2PFriendsVersion)', $expectedVersion).Replace('$(SteamP2PFriendsReleaseChannel)', $expectedReleaseChannel).Replace('$(SteamP2PFriendsCandidateRole)', $expectedCandidateRole)
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($resolvedPath).FileVersion
@@ -55,7 +56,7 @@ $checks = @(
     ($mvid -ne [Guid]::Empty.ToString('D'))
 )
 
-if ($ExpectedCaseId) {
+if ($LogPath) {
     if ([string]::IsNullOrWhiteSpace($LogPath) -or -not (Test-Path -LiteralPath $LogPath)) {
         $checks += $false
     }

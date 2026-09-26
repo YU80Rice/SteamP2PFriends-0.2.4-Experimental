@@ -27,7 +27,11 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | 01 0.2.4.9 迁移基线 + Resource 表征门 | `2026-09-18/Implementation-0.2.4.9-CollisionTicket01-1235.md`（**completed**：版本身份授予、表征门建立、生产 Writer 未变；双轴 round 1–5 最终双 CLEAN；Runtime 归票 09） | — |
 | 02 Resource 经声明式 Demand Policy 接入共享投影引擎 | `2026-09-18/Implementation-0.2.4.9-CollisionTicket02-1418.md`（**implemented-pending-runtime**：唯一空间事实 + 共享投影引擎落地，接缝不再持私有观察者索引；资格不合格＝暂缓；313/313 PASS、三门禁 PASS、双轴 round 1–4 最终双 CLEAN；Runtime 归票 09） | — |
 | 03 Resource 经领域端口迁入共享生命周期编排引擎 | `2026-09-18/Implementation-0.2.4.9-CollisionTicket03-1908.md`（**implemented-pending-runtime**：共享编排引擎 + Domain Execution Port 落地，接缝退化为薄门面、原通用生命周期状态机退出生产权威；335/335 PASS、三门禁 PASS、扰动 12 组证伪、双轴 round 1–4 最终双 CLEAN；Runtime 归票 09） | — |
+| 05 Collision 声明式 Demand Policy 与只读影子验证 | `2026-09-18/Implementation-0.2.4.9-CollisionTicket05-2225.md` + `2026-09-25/RuntimeAcceptance-0.2.4.9-CollisionTicket05-2355.md`（**completed**：三端 ReadOnlyShadow 指纹一致，25/25 条影子汇总 `collisionShadowForbidden=0`；正式切换 Runtime 仍归票 09） | — |
+| 06 Collision Execution Port 与 Acquisition Receipt | `2026-09-26/Implementation-0.2.4.9-CollisionTicket06-2350.md`（**implemented-pending-runtime**：Collision Execution Port + Receipt + 独立 Lifecycle Policy；404/404 PASS、双次 Release Rebuild 身份一致、四门禁 PASS、双轴五轮最终双 CLEAN；正式切换 Runtime 归票 09） | — |
 | 07 Collision 正式切换准入证据 | `2026-09-26/Implementation-0.2.4.9-CollisionTicket07-1545.md`（**静态与已观测影子子集 GO，允许受控进入 08；会话恢复 NOT PROVEN 归 09；当前正式 Collision Cutover NO-GO**：404/404 PASS、影子 Forbidden=0、Execution Port/Receipt 证据通过；本票不切换 Writer、不退役旧 Writer） | — |
+| 08 会话边界原子切换与旧 Writer 退役 | `2026-09-26/Implementation-0.2.4.9-CollisionTicket08-1130.md`（**implemented-pending-runtime**：正式 Cutover 唯一 Writer、旧 Writer/影子生产调用与 Resource 旧谓词/树写入归零；RegionKey 粒度补偿与 Deferred Observer Demand 通过；409/409 PASS；最新双次 Cutover 指纹一致、独立核验 PASS；Runtime 归票 09；Standards/Spec 最终零上下文双轴 CLEAN） | — |
+| 09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单 | 待实施 | — |
 
 ## Listen-Host Dedicated Gate 与 Join Routing 批（01–04 实施 + 共享 05 Runtime）
 

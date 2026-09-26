@@ -143,17 +143,8 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"ObjectManagerRegionSyncPatch.RegisterManual 失败: {ex}");
             }
 
-            //   listen host is a graphical client, so vanilla only keeps static object collision around the host.
-            //   Add remote guests' regional collision coverage while leaving renderer visibility host-local.
-            try
-            {
-                if (!LevelObjectRemoteCollisionPatch.RegisterManual(_harmony)) _registrationStageFailed = true;
-            }
-            catch (System.Exception ex)
-            {
-                _registrationStageFailed = true;
-                RoleLogger.Error("[Shared]", $"LevelObjectRemoteCollisionPatch.RegisterManual 失败: {ex}");
-            }
+            // Collision 正式候选不再登记旧 RemoteCoverage Writer；生产写入由共享 Lifecycle
+            // Orchestration Engine 的 Collision Execution Port 在会话边界内拥有。
 
             //   Add remote guests' resource (trees & ores) regional collision coverage.
             try
