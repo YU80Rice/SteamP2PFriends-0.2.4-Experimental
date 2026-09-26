@@ -31,7 +31,7 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：08（票 08 已完成正式 Cutover Writer 接线、旧 RemoteCoverage Writer 原子退役与影子生产调用归零；`409/409 PASS`、StaticIL/BuildArtifact/PureMemory 通过，Runtime Pending 归票 09；双轴审查 CLEAN）
+当前前沿：09（票 08 候选首次实机启动失败暴露 Closure 要求清单与登记目录漂移；修复轮已闭合：要求清单抽为生产唯一来源 `PatchRegistrationRequirements`、REG04 红→绿 410/410、双次身份一致、双轴 CLEAN；新指纹 `F055B34C…/6db49d84…`，Runtime 验收待用户三端复测归票 09）
 
 ## 票 05 → 票 06/07/08 的具名移交
 

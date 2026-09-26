@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 会话边界原子切换并退役旧 Collision Writer
 
-**Status:** ready-for-human
+**Status:** in-progress（2026-09-26 修复轮：票 08 候选实机启动失败已修复并双轴 CLEAN，新候选指纹 `F055B34CF40FF3D73E4C946CD11BBBF0CBB64E2F98CCE69903ABDEEB92C95CFE`，待三端复测；见 `audit/2026-09-26/RuntimeFix-0.2.4.9-Ticket09-2341.md`）
 
 - [ ] 使用正式切换候选 DLL；三端 SHA-256 / MVID / 版本 / Case-ID 一致。
 - [ ] Resource 迁入共享引擎后的砍树、资源碰撞与租约行为无回归。

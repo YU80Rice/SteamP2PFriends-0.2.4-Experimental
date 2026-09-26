@@ -21,21 +21,8 @@ namespace SteamP2PFriends
 
         private Core.Registration.PatchRegistrationPlan CreatePatchRegistrationPlan()
         {
-            _registrationClosure = new Core.Registration.RegistrationClosure(new[]
-            {
-                new Core.Registration.RegistrationRequirement(
-                    DomainIds.Item, true, true),
-                new Core.Registration.RegistrationRequirement(
-                    DomainIds.Resource, true, true),
-                new Core.Registration.RegistrationRequirement(
-                    DomainIds.Building, true, true),
-                new Core.Registration.RegistrationRequirement(
-                    DomainIds.Zombie, true, true),
-                new Core.Registration.RegistrationRequirement(
-                    DomainIds.Animal, true, true),
-                new Core.Registration.RegistrationRequirement(
-                    DomainIds.Collision, true, false)
-            });
+            _registrationClosure = new Core.Registration.RegistrationClosure(
+                Core.Registration.PatchRegistrationRequirements.Create());
 
             var stages = new List<Core.Registration.PatchRegistrationStage>
             {

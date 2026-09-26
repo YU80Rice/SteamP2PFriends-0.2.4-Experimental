@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 409 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 410 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -26,6 +26,8 @@ namespace SteamP2PFriends.WhitelistTests
             Console.WriteLine("\n=== Evidence Class: PureMemory ===");
             RunTest("EvidenceClass Catalog + Registration Closure", () =>
                 EvidenceClassCatalogTests.Test_All() && RegistrationClosureTests.Test_All(),
+                ref total, ref passed, ref failed);
+            RunTest("REG04 ProductionRequirements", RegistrationClosureTests.Test_REG04_ProductionRequirementsCloseWithDomainCatalog,
                 ref total, ref passed, ref failed);
 
             #region 1. Core & Logging Policy Tests (4 Tests)

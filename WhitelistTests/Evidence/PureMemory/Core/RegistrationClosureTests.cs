@@ -55,6 +55,32 @@ namespace SteamP2PFriends.WhitelistTests
             return failure.IndexOf("状态复制", StringComparison.Ordinal) >= 0;
         }
 
+        internal static bool Test_REG04_ProductionRequirementsCloseWithDomainCatalog()
+        {
+            // 票 09 修复轮回归锁:生产要求清单必须与领域登记目录一致。
+            // Item/Resource/Building/Zombie/Animal 以生命周期+状态复制登记后必须可闭合;
+            // 票 08 退役旧 Collision Writer 后,Collision 不再进 Patch Registration Closure,
+            // 要求清单不得残留其登记要求(残留会在真实启动 TryClose 时失败)。
+            var closure = new RegistrationClosure(PatchRegistrationRequirements.Create());
+            string failure;
+            if (!closure.TryRegisterLifecycle(new ItemDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterReplication(new ItemDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterLifecycle(new ResourceDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterReplication(new ResourceDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterLifecycle(
+                new SteamP2PFriends.Adapters.Structure.BuildingDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterReplication(
+                new SteamP2PFriends.Adapters.Structure.BuildingDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterLifecycle(
+                new SteamP2PFriends.Adapters.Zombie.ZombieDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterReplication(
+                new SteamP2PFriends.Adapters.Zombie.ZombieDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterLifecycle(new AnimalDomainAdapter(), out failure)) return false;
+            if (!closure.TryRegisterReplication(new AnimalDomainAdapter(), out failure)) return false;
+            if (!closure.TryClose(out failure) || !closure.IsClosed) return false;
+            return closure.Snapshot.Count == 10;
+        }
+
         internal static bool Test_All()
         {
             return Test_REG01_ClosureValidatesRolesOrderAndImmutability() &&
