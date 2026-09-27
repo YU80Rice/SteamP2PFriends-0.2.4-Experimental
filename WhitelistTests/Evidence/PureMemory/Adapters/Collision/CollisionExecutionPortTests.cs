@@ -197,6 +197,18 @@ namespace SteamP2PFriends.WhitelistTests
             return Expect(store.Begun == 1 && store.Ended == 1,
                 "Collision Port must forward both session boundaries to its Store");
         }
+        internal static bool Test_CEP17_PortForwardsLifecycleTickToStore()
+        {
+            var store = new SessionBoundaryStore();
+            CollisionExecutionPort port = new CollisionExecutionPort(
+                store, region => 7U, CollisionLifecyclePolicy.Create(2.0f));
+            port.OnSessionBegin(42U);
+            port.OnLifecycleTick(0.016f);
+            port.OnLifecycleTick(0.032f);
+            return Expect(store.Ticks == 2 && store.LastDelta == 0.032f,
+                "Collision Port must forward lifecycle maintenance ticks to its Store");
+        }
+
         internal static bool Test_CEP16_EmptyStoreReceiptReleasesRegion()
         {
             var store = new EmptyOverrideStore();
@@ -293,12 +305,15 @@ namespace SteamP2PFriends.WhitelistTests
         }
         public object CaptureRegionState(RegionKey regionKey) => null;
         public void RestoreRegionState(RegionKey regionKey, object state) { }
+        public void OnLifecycleTick(float deltaTime) { }
     }
 
     internal sealed class SessionBoundaryStore : ICollisionOverrideStore
     {
         internal int Begun;
         internal int Ended;
+        internal int Ticks;
+        internal float LastDelta;
         public bool IsIdentityCertain => true;
         public void OnSessionBegin(uint sessionEpoch) { Begun++; }
         public void OnSessionEnd() { Ended++; }
@@ -309,6 +324,7 @@ namespace SteamP2PFriends.WhitelistTests
         public bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides) => true;
         public object CaptureRegionState(RegionKey regionKey) => null;
         public void RestoreRegionState(RegionKey regionKey, object state) { }
+        public void OnLifecycleTick(float deltaTime) { Ticks++; LastDelta = deltaTime; }
     }
 
     internal sealed class GenerationAdvancingCollisionOverrideStore : ICollisionOverrideStore
@@ -327,6 +343,7 @@ namespace SteamP2PFriends.WhitelistTests
         public bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides) => true;
         public object CaptureRegionState(RegionKey regionKey) => null;
         public void RestoreRegionState(RegionKey regionKey, object state) { }
+        public void OnLifecycleTick(float deltaTime) { }
     }
 
     internal sealed class FakeCollisionOverrideStore : ICollisionOverrideStore
@@ -367,5 +384,6 @@ namespace SteamP2PFriends.WhitelistTests
 
         public object CaptureRegionState(RegionKey regionKey) => null;
         public void RestoreRegionState(RegionKey regionKey, object state) { }
+        public void OnLifecycleTick(float deltaTime) { }
     }
 }

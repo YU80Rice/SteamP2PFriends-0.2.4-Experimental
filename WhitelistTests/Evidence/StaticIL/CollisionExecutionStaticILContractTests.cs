@@ -23,7 +23,27 @@ namespace SteamP2PFriends.WhitelistTests
                 && Test_PortHasNoRosterOrNativeScan()
                 && Test_ReceiptAndOverrideDomain()
                 && Test_ProductionStoreHasSessionBoundary()
+                && Test_ProductionStoreReassertsOwnedOverrides()
                 && Test_NoProductionRegistration();
+        }
+
+        /// <summary>
+        /// 票 09 实机 S3 缺陷回归锁：生产 Store 必须在生命周期维护拍重申已拥有的原生覆盖——
+        /// 原版按主机本地剔除策略反复停用远区物件（旧 Writer 时代由
+        /// UpdateActiveAndRenderersEnabled postfix 每次刷新后翻回激活），
+        /// 切换后 OnLifecycleTick 是唯一的持续再断言点。
+        /// </summary>
+        internal static bool Test_ProductionStoreReassertsOwnedOverrides()
+        {
+            MethodInfo tick = typeof(LevelObjectCollisionAdapter).GetMethod(
+                "OnLifecycleTick", BindingFlags.Instance | BindingFlags.Public);
+            if (tick == null) return false;
+            int activate = IlContractProbe.CountMethodCalls(tick, "UnityEngine.GameObject", "SetActive");
+            int culling = IlContractProbe.CountMemberReferences(tick,
+                type => type != null && type.FullName == "UnityEngine.Animation");
+            int ledger = IlContractProbe.CountMethodCalls(tick,
+                "SteamP2PFriends.Adapters.Collision.LevelObjectCollisionLedger", "IsRegionActive");
+            return activate >= 1 && culling >= 1 && ledger >= 1;
         }
 
         internal static bool Test_PortShapeAndIdentity()

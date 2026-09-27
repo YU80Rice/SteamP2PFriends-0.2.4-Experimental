@@ -19,6 +19,13 @@ namespace SteamP2PFriends.Adapters.Collision
         bool TryRevokeOwnedAtomically(IReadOnlyList<CollisionOverride> overrides);
         object CaptureRegionState(RegionKey regionKey);
         void RestoreRegionState(RegionKey regionKey, object state);
+        /// <summary>
+        /// 生命周期维护拍：租约活跃期间重申已拥有的原生覆盖。
+        /// 原版会按主机本地剔除策略反复停用远区物件（旧 Writer 时代由
+        /// UpdateActiveAndRenderersEnabled postfix 每次刷新后翻回激活），
+        /// 切换后本拍是唯一的持续再断言点；已释放区域不得触碰。
+        /// </summary>
+        void OnLifecycleTick(float deltaTime);
     }
 
     public sealed class CollisionExecutionPort : IDomainExecutionPort
@@ -195,7 +202,7 @@ namespace SteamP2PFriends.Adapters.Collision
                 && _generationReader(ticket.RegionKey) == ticket.RegionGeneration.Value;
         }
 
-        public void OnLifecycleTick(float deltaTime) { }
+        public void OnLifecycleTick(float deltaTime) => _store.OnLifecycleTick(deltaTime);
         public void OnReplicationTick(float deltaTime) { }
         public void OnObserverReplicationEntered(ulong observerId, ulong connectionToken, RegionKey regionKey) { }
         public void OnObserverReplicationExited(ulong observerId, ulong connectionToken, RegionKey regionKey) { }

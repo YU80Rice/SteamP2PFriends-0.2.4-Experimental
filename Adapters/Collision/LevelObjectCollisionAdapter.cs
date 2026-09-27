@@ -188,6 +188,12 @@ namespace SteamP2PFriends.Adapters.Collision
             new Dictionary<LevelObject, ObjectOwnership>();
         private static bool _registrationReady;
         private static ulong _currentSessionEpoch = 1UL;
+        private static int _reassertEventCount;
+        private static int _reassertLogCount;
+        private static int _reassertAttempts;
+        private static int _reassertFaultCount;
+        private static int _reassertFaultLogCount;
+        private static bool _reassertRecoveryPending;
         public const float DefaultHysteresisSeconds = 2.0f;
 
         public DomainId DomainId => DomainIds.Collision;
@@ -464,6 +470,7 @@ namespace SteamP2PFriends.Adapters.Collision
             {
                 _registrationReady = false;
                 _currentSessionEpoch = 0UL;
+                _reassertRecoveryPending = false;
                 RestoreOwnedNativeState();
                 Ledger.EndSession();
                 OwnedAnimations.Clear();
@@ -491,6 +498,116 @@ namespace SteamP2PFriends.Adapters.Collision
                     Ledger.ScheduleRelease(ticket.RegionKey, 0f, DefaultHysteresisSeconds);
                 }
             }
+        }
+
+        public void OnLifecycleTick(float deltaTime)
+        {
+            // 维护拍：租约活跃期间重申已拥有的原生覆盖。原版按主机本地剔除策略
+            // 反复停用远区物件（旧 Writer 时代由 UpdateActiveAndRenderersEnabled
+            // postfix 每次刷新后翻回激活），切换后本方法是唯一的持续再断言点；
+            // 只重申已拥有条目，已释放区域不得触碰，也不产生新的所有权。
+            try
+            {
+                lock (SyncLock)
+                {
+                    if (!_registrationReady) return;
+                    _reassertAttempts = 0;
+                    Dictionary<RegionKey, int[]> reasserted = null;
+                    foreach (KeyValuePair<LevelObject, ObjectOwnership> pair in OwnedObjects)
+                    {
+                        if (!Ledger.IsRegionActive(pair.Value.Region)) continue;
+                        LevelObject levelObject = pair.Key;
+                        if (levelObject == null || levelObject.transform == null
+                            || levelObject.transform.gameObject == null) continue;
+                        if (!levelObject.transform.gameObject.activeSelf)
+                        {
+                            levelObject.transform.gameObject.SetActive(true);
+                            reasserted = CountReassert(reasserted, pair.Value.Region, 0);
+                            _reassertAttempts++;
+                        }
+                    }
+                    foreach (KeyValuePair<Animation, AnimationOwnership> pair in OwnedAnimations)
+                    {
+                        if (!Ledger.IsRegionActive(pair.Value.Region)) continue;
+                        Animation animation = pair.Key;
+                        if (animation == null) continue;
+                        if (animation.cullingType != AnimationCullingType.AlwaysAnimate)
+                        {
+                            animation.cullingType = AnimationCullingType.AlwaysAnimate;
+                            reasserted = CountReassert(reasserted, pair.Value.Region, 1);
+                            _reassertAttempts++;
+                        }
+                    }
+                    EmitReassertDiagnostics(reasserted);
+                    RecoverReassertFault();
+                }
+            }
+            catch (Exception ex)
+            {
+                CountReassertFault(ex);
+            }
+        }
+
+        private static Dictionary<RegionKey, int[]> CountReassert(
+            Dictionary<RegionKey, int[]> counts, RegionKey regionKey, int slot)
+        {
+            if (counts == null) counts = new Dictionary<RegionKey, int[]>();
+            if (!counts.TryGetValue(regionKey, out int[] entry))
+                counts[regionKey] = entry = new int[2];
+            entry[slot]++;
+            return counts;
+        }
+
+        private static void EmitReassertDiagnostics(Dictionary<RegionKey, int[]> counts)
+        {
+            if (counts == null) return;
+            foreach (KeyValuePair<RegionKey, int[]> pair in counts)
+            {
+                _reassertEventCount++;
+                if (_reassertLogCount < 12 || _reassertEventCount % 600 == 0)
+                {
+                    _reassertLogCount++;
+                    RoleLogger.Info("[Host]",
+                        "[LevelObjectCollision] event=LifecycleReassert domain=Collision" +
+                        " transition=LifecycleReassert" +
+                        " region=" + pair.Key +
+                        " sessionEpoch=" + _currentSessionEpoch +
+                        " regionGeneration=" + Ledger.GetGeneration(pair.Key) +
+                        " attempts=" + (pair.Value[0] + pair.Value[1]) +
+                        " roots=" + pair.Value[0] + " animations=" + pair.Value[1] +
+                        " outcome=success reason=lifecycle-maintain");
+                }
+            }
+        }
+
+        private static void CountReassertFault(Exception ex)
+        {
+            _reassertFaultCount++;
+            _reassertRecoveryPending = true;
+            if (_reassertFaultLogCount < 3 || _reassertFaultCount % 600 == 0)
+            {
+                _reassertFaultLogCount++;
+                RoleLogger.Warn("[Shared]",
+                    "[LevelObjectCollision] event=LifecycleReassert scope=heartbeat" +
+                    " domain=Collision transition=LifecycleReassert" +
+                    " sessionEpoch=" + _currentSessionEpoch +
+                    " attempts=" + _reassertAttempts +
+                    " outcome=failed faultCount=" + _reassertFaultCount +
+                    " reason=" + ex.GetType().Name);
+            }
+        }
+
+        private static void RecoverReassertFault()
+        {
+            if (!_reassertRecoveryPending) return;
+            _reassertRecoveryPending = false;
+            RoleLogger.Info("[Shared]",
+                "[LevelObjectCollision] event=LifecycleReassert scope=heartbeat" +
+                " domain=Collision transition=LifecycleReassert" +
+                " sessionEpoch=" + _currentSessionEpoch +
+                " attempts=" + _reassertAttempts +
+                " outcome=recovered faultCount=" + _reassertFaultCount +
+                " reason=reassert-resumed");
         }
 
         public void OnTick(float deltaTime)

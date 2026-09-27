@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 410 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 411 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -214,6 +214,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("CEP14 Receipt Actual Generation", CollisionExecutionPortTests.Test_CEP14_ReceiptUsesActualStoreGeneration, ref total, ref passed, ref failed);
             RunTest("CEP15 Production Store Session Boundary", CollisionExecutionPortTests.Test_CEP15_ProductionStoreFollowsSessionBoundary, ref total, ref passed, ref failed);
             RunTest("CEP16 Empty Store Receipt Release", CollisionExecutionPortTests.Test_CEP16_EmptyStoreReceiptReleasesRegion, ref total, ref passed, ref failed);
+            RunTest("CEP17 Lifecycle Tick Forward", CollisionExecutionPortTests.Test_CEP17_PortForwardsLifecycleTickToStore, ref total, ref passed, ref failed);
 
             RunTest("CSC01 IdenticalProjections", CollisionShadowComparatorTests.Test_CSC01_IdenticalProjectionsAreInBoth, ref total, ref passed, ref failed);
             RunTest("CSC02 HostAddedCoverage", CollisionShadowComparatorTests.Test_CSC02_HostAddedCoverageIsExpected, ref total, ref passed, ref failed);
