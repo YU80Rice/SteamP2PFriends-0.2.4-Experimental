@@ -209,6 +209,69 @@ namespace SteamP2PFriends.WhitelistTests
                 "Collision Port must forward lifecycle maintenance ticks to its Store");
         }
 
+        /// <summary>
+        /// 票 10 回归锁（生产接线自举路径）：引擎 Acquire 路径以
+        /// beforeAcquire = port.ReadRegionGeneration 开票，而生产端口代次源接的是
+        /// LevelObjectCollisionAdapter.GetGeneration（读静态 Ledger）。从未 Acquire 的区域在
+        /// Ledger 无条目，代次源必须读出已定义初始代次，否则 IsDefined 门恒拒、首次 Acquire
+        /// 永不成立（实机 S3 轮 4293 条 acquire-identity-rejected regionGeneration=0 死锁签名）。
+        /// 既有 CEP 系测试均以显式 generation:7 开票，未覆盖本自举路径。
+        /// Store 用可证身份的 Fake：纯内存宿主无法执行真实 Store 的 OnSessionBegin
+        /// （RestoreOwnedNativeState 含 Unity extern 调用点，JIT 编译即抛 ECall），
+        /// 而本票缺陷在代次源与身份门，不在 Store。
+        /// </summary>
+        internal static bool Test_CEP18_NeverAcquiredRegionFirstAcquireSucceeds()
+        {
+            var store = new FakeCollisionOverrideStore();
+            CollisionExecutionPort port = new CollisionExecutionPort(
+                store, LevelObjectCollisionAdapter.GetGeneration, CollisionLifecyclePolicy.Create(2.0f));
+            port.OnSessionBegin(41U);
+            RegionKey region = new RegionKey(21, 37);
+            RegionGeneration beforeAcquire = port.ReadRegionGeneration(region);
+            if (!beforeAcquire.IsDefined)
+                throw new InvalidOperationException(
+                    "never-acquired region must read a defined initial generation");
+            var ticket = new LeaseTicket(
+                DomainIds.Collision, region, new SessionEpoch(41UL), beforeAcquire, 1, true);
+            CollisionAcquisitionReceipt receipt;
+            bool acquired = port.TryAcquire(ticket, out receipt);
+            return Expect(acquired && receipt.Valid
+                && receipt.RegionGeneration.IsDefined
+                && receipt.RegionGeneration.Value == beforeAcquire.Value
+                && port.ReceiptCount == 1
+                && port.LastAcquireDetail.Contains("outcome=success"),
+                "never-acquired region must succeed on its first acquire");
+        }
+
+        /// <summary>
+        /// 票 10 回归锁（代次源自举与推进）：真实 LevelObjectCollisionAdapter 的代次源对从未
+        /// Acquire 的区域必须读出已定义初始代次（恰好等于 InitialRegionGeneration）；经生产
+        /// 提交入口 ICollisionOverrideStore.Acquire（执行端口过身份门后调用的正是它）首次提交
+        /// 即落在该初始代次（Ledger 0+1），再次提交照常 +1 推进——自举不得把代次楔死。
+        /// Acquire→AcquireNativeOverrides 链不含 Unity extern 调用点（LevelObjects.objects
+        /// 为托管属性，宿主中为 null 提前返回），可纯内存执行；用独立区域键与 CEP18 隔离。
+        /// </summary>
+        internal static bool Test_CEP19_GenerationSourceBootstrapsAndAdvances()
+        {
+            RegionKey region = new RegionKey(22, 38);
+            var adapter = new LevelObjectCollisionAdapter();
+            // 钉死字面量 1（= 生产侧 InitialRegionGeneration）：契约级精确值，
+            // 生产侧若改动自举初始代次必须同步更新本测试。
+            uint initial = LevelObjectCollisionAdapter.GetGeneration(region);
+            if (initial != 1U)
+                throw new InvalidOperationException(
+                    "never-acquired region must read the defined initial generation 1");
+            var bootstrapTicket = new LeaseTicket(
+                DomainIds.Collision, region, new SessionEpoch(41UL),
+                new RegionGeneration(initial), 1, true);
+            adapter.Acquire(new CollisionExecutionIdentity(bootstrapTicket, 1UL));
+            uint firstCommitted = LevelObjectCollisionAdapter.GetGeneration(region);
+            adapter.Acquire(new CollisionExecutionIdentity(bootstrapTicket, 2UL));
+            uint secondCommitted = LevelObjectCollisionAdapter.GetGeneration(region);
+            return Expect(firstCommitted == 1U && secondCommitted == firstCommitted + 1U,
+                "first commit must establish the bootstrap generation and later commits must advance it");
+        }
+
         internal static bool Test_CEP16_EmptyStoreReceiptReleasesRegion()
         {
             var store = new EmptyOverrideStore();

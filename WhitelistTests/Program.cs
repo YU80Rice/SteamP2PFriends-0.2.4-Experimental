@@ -215,6 +215,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("CEP15 Production Store Session Boundary", CollisionExecutionPortTests.Test_CEP15_ProductionStoreFollowsSessionBoundary, ref total, ref passed, ref failed);
             RunTest("CEP16 Empty Store Receipt Release", CollisionExecutionPortTests.Test_CEP16_EmptyStoreReceiptReleasesRegion, ref total, ref passed, ref failed);
             RunTest("CEP17 Lifecycle Tick Forward", CollisionExecutionPortTests.Test_CEP17_PortForwardsLifecycleTickToStore, ref total, ref passed, ref failed);
+            RunTest("CEP18 NeverAcquired First Acquire", CollisionExecutionPortTests.Test_CEP18_NeverAcquiredRegionFirstAcquireSucceeds, ref total, ref passed, ref failed);
+            RunTest("CEP19 Generation Source Bootstrap", CollisionExecutionPortTests.Test_CEP19_GenerationSourceBootstrapsAndAdvances, ref total, ref passed, ref failed);
 
             RunTest("CSC01 IdenticalProjections", CollisionShadowComparatorTests.Test_CSC01_IdenticalProjectionsAreInBoth, ref total, ref passed, ref failed);
             RunTest("CSC02 HostAddedCoverage", CollisionShadowComparatorTests.Test_CSC02_HostAddedCoverageIsExpected, ref total, ref passed, ref failed);

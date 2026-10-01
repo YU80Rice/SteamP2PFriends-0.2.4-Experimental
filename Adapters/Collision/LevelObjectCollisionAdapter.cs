@@ -211,11 +211,22 @@ namespace SteamP2PFriends.Adapters.Collision
             }
         }
 
+        /// <summary>
+        /// 从未 Acquire 的区域首次读出的已定义初始代次（读侧自举）。执行端口 CanCommit
+        /// 身份门要求 RegionGeneration.IsDefined（非零），代次源对无条目区域返回 0 会让
+        /// 首次 Acquire 被恒拒（自举死锁）。取 1 与 Ledger 首次 CommitAcquire 的落点（0+1）
+        /// 一致，首次提交即把该代次写入 Ledger，其后由 CommitAcquire 照常推进。本合成是
+        /// 只读呈现，不新增第二写入路径；与 Resource 写入侧条件提交（TryCommitAcquire
+        /// 接受 0 代次开票）语义不同，勿照搬为通用模式。
+        /// </summary>
+        public const uint InitialRegionGeneration = 1U;
+
         public static uint GetGeneration(RegionKey regionKey)
         {
             lock (SyncLock)
             {
-                return Ledger.GetGeneration(regionKey);
+                uint generation = Ledger.GetGeneration(regionKey);
+                return generation == 0U ? InitialRegionGeneration : generation;
             }
         }
 

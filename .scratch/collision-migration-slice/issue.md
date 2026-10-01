@@ -32,7 +32,7 @@ version: "0.2.4.9"
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
   - [10 Collision 代次源自举——让租约首次 Acquire 成立](./issues/10-collision-generation-source-bootstrap.md)
 
-当前前沿：10（取证定案：S3 实机失败期间 Collision 租约从未成立——4293 条 Acquire 全部 `acquire-identity-rejected`，票面 `regionGeneration=0`；缺陷=Ledger 代次源自举死锁（首读 0→票 0→恒拒），落 06/08 执行路径，已开票 **10**；维护拍（411/411、四轮双轴 CLEAN、`7C0ADF80…`）保留为租约成立后的必需机制；09 不关单，修复在新窗口按票 10 进行，完成后再入 09 诊断复测）
+当前前沿：09（票 10 已 implemented-pending-runtime：读侧自举 `InitialRegionGeneration=1U` 修复代次源自举死锁，CanCommit/Ledger/M6C 冻结面未动，413/413、双次 Cutover 指纹 `F6C46B82…/bcd76cfa…` 一致、独立核验 PASS、双轴两轮最终双 CLEAN，报告 `audit/2026-10-01/RuntimeFix-0.2.4.9-Ticket10-2159.md`；候选已交付，待人工部署三端指纹核验后入 **09 诊断复测**——三问：门区域 Collision Acquire success、门被记进所有权、客机在需求范围内而超出房主相机剔除距离；09 不关单）
 
 ## 票 05 → 票 06/07/08 的具名移交
 
