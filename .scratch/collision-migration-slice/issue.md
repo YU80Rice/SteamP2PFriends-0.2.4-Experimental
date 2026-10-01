@@ -30,8 +30,9 @@ version: "0.2.4.9"
   - [07 闭合 Collision 正式切换准入证据](./issues/07-cutover-readiness-go-nogo.md)
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
+  - [10 Collision 代次源自举——让租约首次 Acquire 成立](./issues/10-collision-generation-source-bootstrap.md)
 
-当前前沿：09（取证定案：S3 实机失败期间 Collision 租约从未成立——4293 条 Acquire 全部 `acquire-identity-rejected`，票面 `regionGeneration=0`；缺陷=Ledger 代次源自举死锁（首读 0→票 0→恒拒），落 06/08 执行路径；维护拍（411/411、四轮双轴 CLEAN、`7C0ADF80…`）保留为租约成立后的必需机制但非本缺陷修复；下一刀=代次源自举语义，从当前 HEAD 继续；09 不关单）
+当前前沿：10（取证定案：S3 实机失败期间 Collision 租约从未成立——4293 条 Acquire 全部 `acquire-identity-rejected`，票面 `regionGeneration=0`；缺陷=Ledger 代次源自举死锁（首读 0→票 0→恒拒），落 06/08 执行路径，已开票 **10**；维护拍（411/411、四轮双轴 CLEAN、`7C0ADF80…`）保留为租约成立后的必需机制；09 不关单，修复在新窗口按票 10 进行，完成后再入 09 诊断复测）
 
 ## 票 05 → 票 06/07/08 的具名移交
 
