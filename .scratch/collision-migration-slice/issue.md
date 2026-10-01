@@ -31,7 +31,7 @@ version: "0.2.4.9"
   - [08 会话边界原子切换并退役旧 Collision Writer](./issues/08-session-boundary-cutover-and-legacy-writer-retirement.md)
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
 
-当前前沿：09（S3 修复轮二闭合：实机暴露旧 postfix 持续强制退役后缺每拍维护——补 ICollisionOverrideStore.OnLifecycleTick 契约、端口转发与适配器持续再断言（仅活跃租约区域、仅已拥有条目），红→绿 411/411、四轮双轴最终双 CLEAN；新指纹 `7C0ADF80…/a3c09f2b…`，待三端复测归票 09）
+当前前沿：09（取证定案：S3 实机失败期间 Collision 租约从未成立——4293 条 Acquire 全部 `acquire-identity-rejected`，票面 `regionGeneration=0`；缺陷=Ledger 代次源自举死锁（首读 0→票 0→恒拒），落 06/08 执行路径；维护拍（411/411、四轮双轴 CLEAN、`7C0ADF80…`）保留为租约成立后的必需机制但非本缺陷修复；下一刀=代次源自举语义，从当前 HEAD 继续；09 不关单）
 
 ## 票 05 → 票 06/07/08 的具名移交
 

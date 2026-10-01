@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 会话边界原子切换并退役旧 Collision Writer
 
-**Status:** in-progress（2026-09-27 S3 修复轮二：仅客机区域门碰撞不同步已修复（生命周期维护拍），四轮双轴最终双 CLEAN，新候选指纹 `7C0ADF80E3CF83C1402F227AB1DC0D6A4AAFFB045802C370CCBF17329A16CC7B`，待三端复测；见 `audit/2026-09-27/RuntimeFix-0.2.4.9-Ticket09-0938.md`）
+**Status:** in-progress（2026-09-27 取证定案：上一轮 S3 失败的直接原因不是维护拍缺失，而是 **Collision 租约从未成立**——4293 条 Acquire 全部 `acquire-identity-rejected`（`regionGeneration=0`，Ledger 代次源自举死锁）；下一刀落 06/08 执行路径（代次源自举语义），从当前 HEAD 继续改；维护拍保留但非本缺陷修复；09 不关单；见 `audit/2026-09-27/Forensics-0.2.4.9-Ticket09-2051.md`，其推翻 0938 报告 §2 根因叙事）
 
 - [ ] 使用正式切换候选 DLL；三端 SHA-256 / MVID / 版本 / Case-ID 一致。
 - [ ] Resource 迁入共享引擎后的砍树、资源碰撞与租约行为无回归。
