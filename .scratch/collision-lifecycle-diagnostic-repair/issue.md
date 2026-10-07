@@ -1,10 +1,10 @@
 ---
 title: "Collision 生命周期诊断修复：真实领域归属、Reentry 与 receipt 取证"
-status: "implemented-pending-runtime"
+status: "completed"
 labels:
-  - "ready-for-agent"
+  - "ready-for-human"
 created_at: "2026-10-07T00:00:00+08:00"
-updated_at: "2026-10-07T10:42:00+08:00"
+updated_at: "2026-10-07T11:30:00+08:00"
 ---
 
 # Collision 生命周期诊断修复（票 09 的独立返修票）
@@ -13,7 +13,7 @@ updated_at: "2026-10-07T10:42:00+08:00"
 
 **Blocked by:** 无待完成的实现依赖；消费 Collision Slice 06/08/10 的现有实现与票 09 日志。不以票 09 关单为前置，避免循环依赖。
 
-**Status:** implemented-pending-runtime（2026-10-07 实现收口：红先行 10 测试 + 双轴三轮双 CLEAN + 双 Rebuild 身份一致；见 `audit/2026-10-07/Implementation-0.2.4.9-09-R1-1042.md`。Runtime 补证归票 09 验收轮，未部署）
+**Status:** completed（2026-10-07，用户关单裁定）。实现、红绿测试、双轴三轮 CLEAN、双 Rebuild 身份一致均已完成；09-R1 候选已部署。用户确认既有 1H+2G 功能体验证据继续有效，本次 1H+1G 仅作为诊断播报探针补证，不替代上一轮多观察者覆盖。
 
 ## 问题与已核实根因
 

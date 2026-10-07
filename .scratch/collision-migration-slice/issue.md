@@ -1,10 +1,10 @@
 ---
 title: "Collision Migration Slice：共享控制面第二域与旧 RemoteCoverage 退役"
-status: "ready-for-agent"
+status: "completed"
 labels:
-  - "ready-for-agent"
+  - "ready-for-human"
 created_at: "2026-09-18T22:00:00+08:00"
-updated_at: "2026-09-18T22:00:00+08:00"
+updated_at: "2026-10-07T11:30:00+08:00"
 version: "0.2.4.9"
 ---
 
@@ -32,7 +32,7 @@ version: "0.2.4.9"
   - [09 共享 1 Host + 2 Guest Runtime 验收与 Collision Slice 关单](./issues/09-shared-1h2g-runtime-acceptance.md)
   - [10 Collision 代次源自举——让租约首次 Acquire 成立](./issues/10-collision-generation-source-bootstrap.md)
 
-当前前沿：09（票 10 已 implemented-pending-runtime：读侧自举 `InitialRegionGeneration=1U` 修复代次源自举死锁，CanCommit/Ledger/M6C 冻结面未动，413/413、双次 Cutover 指纹 `F6C46B82…/bcd76cfa…` 一致、独立核验 PASS、双轴两轮最终双 CLEAN，报告 `audit/2026-10-01/RuntimeFix-0.2.4.9-Ticket10-2159.md`；候选已交付，待人工部署三端指纹核验后入 **09 诊断复测**——三问：门区域 Collision Acquire success、门被记进所有权、客机在需求范围内而超出房主相机剔除距离；09 不关单）
+当前状态：P1 Collision Migration Slice **completed（2026-10-07，用户关单裁定）**。既有 2026-10-05 1 Host + 2 Guest P2P 全流程作为功能与多观察者证据继续有效：三端同轮指纹，observers 1→2→3→2→1，Collision/Resource Acquire 与 Release、连接代次恢复、旧 Writer 退役、人工碰撞/门动画/开关门正常；38 条 Resource observation-incomplete 均 fail-closed 且未跨域。09-R1 已完成诊断修复并部署，其本次 1 Host + 1 Guest 仅作为播报探针补证，不替代既有 1H2G 覆盖；用户确认以两类证据合并关单。陈旧 receipt 未自然触发不再归因于用户流程，保留为诊断/规格边界记录。实施报告：`audit/2026-10-07/Implementation-0.2.4.9-09-R1-1042.md`。
 
 ## 票 05 → 票 06/07/08 的具名移交
 

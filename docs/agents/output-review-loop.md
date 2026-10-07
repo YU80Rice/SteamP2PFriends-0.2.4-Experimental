@@ -10,7 +10,7 @@ A hard rule for every artifact this workspace outputs: production source changes
 
 2. **Dual-axis review** — dispatch the Standards and Spec reviewers as two independent subagents, each in its own context, each reviewing the current round's incremental diff per the `/code-review` flow.
    - Done when: both axes have returned their own reports. Two fresh contexts, one per axis, every round.
-   - **Fresh-instance rule**: every round spawns two NEW subagent instances, dispatched with `subagent_type` explicitly set (`standards-reviewer` / `Spec-Reviewer`). Never resume a previous round's reviewer instance (no SendMessage continuation, no persistent-session reuse): a carried-over context anchors the reviewer on its own earlier analysis and **voids the round** — verdicts produced by continuation do not count toward the CLEAN chain.
+   - **Fresh-instance rule**: every round spawns two NEW subagent instances in parallel, dispatched with `subagent_type` explicitly set (`standards-reviewer` / `spec-reviewer`). On Kimi Code, also pass `model=好维AI-中转站/claude-sonnet-5` for Standards and `model=好维AI-中转站/gpt-5.6-sol` for Spec. Never resume a previous round's reviewer instance (no continuation, no persistent-session reuse): a carried-over context anchors the reviewer on its own earlier analysis and **voids the round** — verdicts produced by continuation do not count toward the CLEAN chain. Same-round clarification/rebuttal on the current instances is allowed.
 
 3. **Re-review** — a finding means a fix, and the fixed increment returns to step 2.
    - Done when: Standards reports no hard violation and Spec reports no gap or deviation.

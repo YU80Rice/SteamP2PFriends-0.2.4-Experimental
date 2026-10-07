@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 会话边界原子切换并退役旧 Collision Writer
 
-**Status:** in-progress（2026-09-27 取证定案：上一轮 S3 失败的直接原因不是维护拍缺失，而是 **Collision 租约从未成立**——4293 条 Acquire 全部 `acquire-identity-rejected`（`regionGeneration=0`，Ledger 代次源自举死锁）；下一刀落 06/08 执行路径（代次源自举语义），从当前 HEAD 继续改；维护拍保留但非本缺陷修复；09 不关单；见 `audit/2026-09-27/Forensics-0.2.4.9-Ticket09-2051.md`，其推翻 0938 报告 §2 根因叙事）
+**Status:** completed（2026-10-07，用户关单裁定：既有 1 Host + 2 Guest 功能与多观察者证据继续有效；09-R1 诊断修复后的 1 Host + 1 Guest 仅补播报探针，不替代 1H2G。用户确认碰撞、集装箱门/洗衣机门动画与碰撞正常，并接受“历史三端功能证据 + 本轮诊断修复证据”合并收口。）
 
 - [ ] 使用正式切换候选 DLL；三端 SHA-256 / MVID / 版本 / Case-ID 一致。
 - [ ] Resource 迁入共享引擎后的砍树、资源碰撞与租约行为无回归。
