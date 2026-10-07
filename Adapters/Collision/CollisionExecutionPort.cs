@@ -129,27 +129,29 @@ namespace SteamP2PFriends.Adapters.Collision
 
         public bool TryRelease(LeaseTicket ticket)
         {
-            CollisionAcquisitionReceipt receipt = default(CollisionAcquisitionReceipt);
+            CollisionAcquisitionReceipt receipt;
+            bool hasReceipt = _receipts.TryGetValue(ticket.RegionKey, out receipt) && receipt.Valid;
             if (!CanCommit(ticket) || ticket.ActiveDemandCount != 0 || !_store.IsIdentityCertain
-                || !_receipts.TryGetValue(ticket.RegionKey, out receipt)
-                || !receipt.Valid
+                || !hasReceipt
                 || receipt.SessionEpoch != ticket.SessionEpoch
                 || receipt.RegionGeneration != ticket.RegionGeneration)
             {
-                LastReleaseReceiptDetail = DescribeReleaseRejection(ticket, receipt);
+                LastReleaseReceiptDetail = FormatReleaseDiagnostic(
+                    ticket, hasReceipt ? receipt : default(CollisionAcquisitionReceipt), hasReceipt,
+                    "reason=release-identity-rejected");
                 _diagnosticSink(LastReleaseReceiptDetail);
                 return false;
             }
 
             if (!_store.TryRevokeOwnedAtomically(receipt.Overrides))
             {
-                LastReleaseReceiptDetail = "receiptAcquireGeneration=" + receipt.AcquireGeneration
-                    + " ownership-unproven";
+                LastReleaseReceiptDetail = FormatReleaseDiagnostic(
+                    ticket, receipt, true, "ownership-unproven");
                 _diagnosticSink(LastReleaseReceiptDetail);
                 return false;
             }
             _receipts.Remove(ticket.RegionKey);
-            LastReleaseReceiptDetail = "receiptAcquireGeneration=" + receipt.AcquireGeneration;
+            LastReleaseReceiptDetail = FormatReleaseDiagnostic(ticket, receipt, true, null);
             _diagnosticSink(LastReleaseReceiptDetail);
             return true;
         }
@@ -161,8 +163,9 @@ namespace SteamP2PFriends.Adapters.Collision
                 && current.Equals(expectedReceipt);
             if (!IsCurrentReceipt(expectedReceipt) || !currentMatches)
             {
-                LastReleaseReceiptDetail = "receiptAcquireGeneration=" + expectedReceipt.AcquireGeneration
-                    + " current=" + current.AcquireGeneration;
+                LastReleaseReceiptDetail = FormatReleaseDiagnostic(
+                    ticket, expectedReceipt, expectedReceipt.Valid,
+                    "reason=stale-receipt currentAcquireGeneration=" + current.AcquireGeneration);
                 _diagnosticSink(LastReleaseReceiptDetail);
                 return false;
             }
@@ -183,14 +186,24 @@ namespace SteamP2PFriends.Adapters.Collision
             _diagnosticSink(LastAcquireDetail);
         }
 
-        private string DescribeReleaseRejection(
-            LeaseTicket ticket, CollisionAcquisitionReceipt receipt)
+        /// <summary>
+        /// Release 命令与 receipt 的双侧身份行：领域、区域、命令 SessionEpoch/RegionGeneration、
+        /// receipt SessionEpoch/RegionGeneration/AcquireGeneration。receipt 缺失显式标记
+        /// receipt=missing，不虚构零值为有效身份；跨会话的相同数字代次因此仍可靠会话身份区分。
+        /// </summary>
+        private string FormatReleaseDiagnostic(
+            LeaseTicket ticket, CollisionAcquisitionReceipt receipt, bool hasReceipt, string suffix)
         {
-            ulong receiptGeneration = receipt.Valid ? receipt.AcquireGeneration : 0UL;
-            return "receiptAcquireGeneration=" + receiptGeneration
-                + " releaseEpoch=" + ticket.SessionEpoch.Value
-                + " releaseRegionGeneration=" + ticket.RegionGeneration.Value
-                + " reason=release-identity-rejected";
+            return "domain=" + DomainIds.Collision
+                + " region=" + ticket.RegionKey
+                + " sessionEpoch=" + ticket.SessionEpoch.Value
+                + " regionGeneration=" + ticket.RegionGeneration.Value
+                + (hasReceipt
+                    ? " receiptSessionEpoch=" + receipt.SessionEpoch.Value
+                    + " receiptRegionGeneration=" + receipt.RegionGeneration.Value
+                    + " receiptAcquireGeneration=" + receipt.AcquireGeneration
+                    : " receipt=missing")
+                + (string.IsNullOrEmpty(suffix) ? string.Empty : " " + suffix);
         }
 
         private bool CanCommit(LeaseTicket ticket)

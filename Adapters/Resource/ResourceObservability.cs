@@ -106,6 +106,16 @@ namespace SteamP2PFriends.Adapters.Resource
             }
         }
 
+        /// <summary>
+        /// 只读审计探针：该 key 是否已进入一次通知去重集合。诊断出口本身无状态可观测，
+        /// 身份路由的契约测试用它证明「某条转换确实到达/未到达 Resource 一次通知出口」，
+        /// 不改变任何去重或输出行为。
+        /// </summary>
+        internal static bool IsNoticeRecorded(string key)
+        {
+            lock (SyncLock) return OneTimeNotices.Contains(key ?? string.Empty);
+        }
+
         internal static void QuotaSuppressed(
             string role,
             string eventName,

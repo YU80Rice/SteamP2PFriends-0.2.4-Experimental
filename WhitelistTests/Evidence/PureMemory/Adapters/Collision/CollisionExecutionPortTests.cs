@@ -349,6 +349,173 @@ namespace SteamP2PFriends.WhitelistTests
                 "release diagnostic must identify the receipt generation");
         }
 
+        /// <summary>
+        /// 票 09-R1：无 receipt 的释放拒绝必须显式标记 receipt=missing，并携带领域、区域与
+        /// 命令身份。旧实现打印 receiptAcquireGeneration=0，把「不存在」伪装成零值身份，
+        /// 与真实 receipt 的数字混同后无法判读证据。
+        /// </summary>
+        internal static bool Test_CEP20_MissingReceiptIsMarkedExplicitly()
+        {
+            var store = new FakeCollisionOverrideStore();
+            CollisionExecutionPort port = CreatePort(store);
+            port.OnSessionBegin(41U);
+            bool released = port.TryRelease(Ticket(new RegionKey(3, 4)));
+            string detail = port.LastReleaseReceiptDetail;
+            return Expect(!released
+                && detail.Contains("receipt=missing")
+                && !detail.Contains("receiptAcquireGeneration=0")
+                && detail.Contains("domain=Collision")
+                && detail.Contains("region=(3,4)")
+                && detail.Contains("sessionEpoch=41")
+                && detail.Contains("regionGeneration=7")
+                && detail.Contains("reason=release-identity-rejected"),
+                "detail=" + detail);
+        }
+
+        /// <summary>
+        /// 票 09-R1：receipt 在场但代次不匹配的拒绝行必须同时携带命令身份（sessionEpoch/
+        /// regionGeneration）与 receipt 身份（receiptSessionEpoch/receiptRegionGeneration/
+        /// receiptAcquireGeneration）——两侧同列才能判读「谁拒绝谁」。
+        /// </summary>
+        internal static bool Test_CEP21_RejectionCarriesCommandAndReceiptIdentities()
+        {
+            var store = new FakeCollisionOverrideStore();
+            CollisionExecutionPort port = CreatePort(store);
+            port.OnSessionBegin(41U);
+            RegionKey region = new RegionKey(3, 4);
+            CollisionAcquisitionReceipt receipt;
+            port.TryAcquire(Ticket(region), out receipt);
+            bool released = port.TryRelease(Ticket(region, generation: 8U));
+            string detail = port.LastReleaseReceiptDetail;
+            return Expect(!released
+                && detail.Contains("reason=release-identity-rejected")
+                && detail.Contains("domain=Collision")
+                && detail.Contains("region=(3,4)")
+                && detail.Contains("sessionEpoch=41")
+                && detail.Contains("regionGeneration=8")
+                && detail.Contains("receiptSessionEpoch=41")
+                && detail.Contains("receiptRegionGeneration=7")
+                && detail.Contains("receiptAcquireGeneration=" + receipt.AcquireGeneration),
+                "detail=" + detail);
+        }
+
+        /// <summary>
+        /// 票 09-R1：成功释放行与拒绝行同规格——领域、区域、命令与会话/区域代次、receipt
+        /// 三个身份字段一个不缺，使释放证据无需关联其它行即可判读。
+        /// </summary>
+        internal static bool Test_CEP22_SuccessReleaseCarriesFullIdentity()
+        {
+            var store = new FakeCollisionOverrideStore();
+            CollisionExecutionPort port = CreatePort(store);
+            port.OnSessionBegin(41U);
+            RegionKey region = new RegionKey(3, 4);
+            CollisionAcquisitionReceipt receipt;
+            port.TryAcquire(Ticket(region), out receipt);
+            bool released = port.TryRelease(Ticket(region));
+            string detail = port.LastReleaseReceiptDetail;
+            return Expect(released
+                && detail.Contains("domain=Collision")
+                && detail.Contains("region=(3,4)")
+                && detail.Contains("sessionEpoch=41")
+                && detail.Contains("regionGeneration=7")
+                && detail.Contains("receiptSessionEpoch=41")
+                && detail.Contains("receiptRegionGeneration=7")
+                && detail.Contains("receiptAcquireGeneration=" + receipt.AcquireGeneration)
+                && !detail.Contains("reason=release-identity-rejected"),
+                "detail=" + detail);
+        }
+
+        /// <summary>
+        /// 票 09-R1：显式 receipt 比对失败的拒绝行（TryRelease 带期望 receipt 的重载）同样
+        /// 携带双侧身份并具名 stale-receipt——旧 receipt 与当前 receipt 的代次差在同一行可判读。
+        /// </summary>
+        internal static bool Test_CEP25_StaleReceiptRejectionNamesBothReceipts()
+        {
+            var store = new FakeCollisionOverrideStore();
+            CollisionExecutionPort port = CreatePort(store);
+            port.OnSessionBegin(41U);
+            RegionKey region = new RegionKey(3, 4);
+            CollisionAcquisitionReceipt first;
+            CollisionAcquisitionReceipt second;
+            port.TryAcquire(Ticket(region), out first);
+            port.TryAcquire(Ticket(region), out second);
+            bool staleReleased = port.TryRelease(Ticket(region), first);
+            string detail = port.LastReleaseReceiptDetail;
+            return Expect(!staleReleased && store.Revoked.Count == 0 && port.ReceiptCount == 1
+                && detail.Contains("reason=stale-receipt")
+                && detail.Contains("receiptSessionEpoch=41")
+                && detail.Contains("receiptAcquireGeneration=" + first.AcquireGeneration)
+                && detail.Contains("currentAcquireGeneration=" + second.AcquireGeneration),
+                "detail=" + detail);
+        }
+
+        /// <summary>
+        /// 票 09-R1：跨会话的相同数字代次不得混同。两个会话各自的首次 Acquire 得到相同的
+        /// receiptAcquireGeneration=1，拒绝行必须各带自己的 receiptSessionEpoch——身份由
+        /// 会话/区域代次与 Acquire 代次共同构成，不靠单一数字。
+        /// </summary>
+        internal static bool Test_CEP23_SameNumericGenerationsAcrossSessionsStayDistinguishable()
+        {
+            RegionKey region = new RegionKey(3, 4);
+            var firstStore = new FakeCollisionOverrideStore();
+            CollisionExecutionPort firstPort = CreatePort(firstStore);
+            firstPort.OnSessionBegin(41U);
+            CollisionAcquisitionReceipt firstReceipt;
+            firstPort.TryAcquire(Ticket(region), out firstReceipt);
+            firstPort.TryRelease(Ticket(region, generation: 8U));
+            string firstDetail = firstPort.LastReleaseReceiptDetail;
+
+            var secondStore = new FakeCollisionOverrideStore();
+            CollisionExecutionPort secondPort = CreatePort(secondStore);
+            secondPort.OnSessionBegin(42U);
+            CollisionAcquisitionReceipt secondReceipt;
+            secondPort.TryAcquire(Ticket(region, epoch: 42UL), out secondReceipt);
+            secondPort.TryRelease(Ticket(region, epoch: 42UL, generation: 8U));
+            string secondDetail = secondPort.LastReleaseReceiptDetail;
+
+            return Expect(firstReceipt.AcquireGeneration == secondReceipt.AcquireGeneration
+                && firstDetail.Contains("receiptSessionEpoch=41")
+                && secondDetail.Contains("receiptSessionEpoch=42")
+                && !string.Equals(firstDetail, secondDetail, StringComparison.Ordinal),
+                "first=" + firstDetail + " second=" + secondDetail);
+        }
+
+        /// <summary>
+        /// 票 09-R1：旧 receipt 拒绝必须走真实生产身份门。可执行接缝 = 真实
+        /// CollisionExecutionPort（CanCommit 会话/区域代次门 + receipt 比对）+ 真实代次源
+        /// LevelObjectCollisionAdapter.GetGeneration（读侧自举初始代次）。
+        /// 具名接缝缺口：纯内存宿主无法执行真实 Store 的 OnSessionBegin
+        /// （RestoreOwnedNativeState 含 Unity extern 调用点，JIT 编译即抛 ECall，与可达
+        /// 无关），故 Store 用可证身份的 Fake——本票缺陷在端口诊断身份，不在 Store。
+        /// 断言：异会话命令被显式拒绝、Store 零原生写入、拒绝行携带命令与 receipt 双侧身份。
+        /// </summary>
+        internal static bool Test_CEP24_RealIdentityGateDeniesForeignSessionCommand()
+        {
+            var store = new FakeCollisionOverrideStore();
+            RegionKey region = new RegionKey(23, 39);
+            CollisionExecutionPort port = new CollisionExecutionPort(
+                store, LevelObjectCollisionAdapter.GetGeneration, CollisionLifecyclePolicy.Create(2.0f));
+            port.OnSessionBegin(41U);
+            var currentTicket = new LeaseTicket(
+                DomainIds.Collision, region, new SessionEpoch(41UL),
+                new RegionGeneration(LevelObjectCollisionAdapter.GetGeneration(region)), 0, true);
+            CollisionAcquisitionReceipt receipt;
+            port.TryAcquire(currentTicket, out receipt);
+            var foreignSessionTicket = new LeaseTicket(
+                DomainIds.Collision, region, new SessionEpoch(42UL),
+                new RegionGeneration(LevelObjectCollisionAdapter.GetGeneration(region)), 0, true);
+            bool released = port.TryRelease(foreignSessionTicket);
+            string detail = port.LastReleaseReceiptDetail;
+            return Expect(!released && store.Revoked.Count == 0 && port.ReceiptCount == 1
+                && detail.Contains("reason=release-identity-rejected")
+                && detail.Contains("domain=Collision")
+                && detail.Contains("region=(23,39)")
+                && detail.Contains("sessionEpoch=42")
+                && detail.Contains("receiptSessionEpoch=41")
+                && detail.Contains("receiptAcquireGeneration=" + receipt.AcquireGeneration),
+                "detail=" + detail);
+        }
+
     }
 
     internal sealed class EmptyOverrideStore : ICollisionOverrideStore

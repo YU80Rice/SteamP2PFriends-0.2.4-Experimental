@@ -90,6 +90,12 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("LOE13 RegistrationClosure", LifecycleOrchestrationEngineTests.Test_LOE13_RegistrationClosureFreezesDomainSet, ref total, ref passed, ref failed);
             RunTest("LOE14 AcquireObservable", LifecycleOrchestrationEngineTests.Test_LOE14_SuccessfulAcquireIsObservable, ref total, ref passed, ref failed);
             RunTest("LOE15 FaultedDomainIsolation", LifecycleOrchestrationEngineTests.Test_LOE15_FaultedDomainDoesNotStallOthers, ref total, ref passed, ref failed);
+            // 票 09-R1：共享生命周期诊断的身份路由契约（领域身份不丢失、不错标）。
+            RunTest("LIR01 BridgeRejectsForeignDomain", LifecycleIdentityRoutingTests.Test_LIR01_BridgeRejectsForeignDomainAtFormattingExit, ref total, ref passed, ref failed);
+            RunTest("LIR02 RoutingSinkPreservesDomain", LifecycleIdentityRoutingTests.Test_LIR02_RoutingSinkPreservesDomainPerRoute, ref total, ref passed, ref failed);
+            RunTest("LIR03 DefaultLineReentryContract", LifecycleIdentityRoutingTests.Test_LIR03_DefaultLineCarriesReentryContract, ref total, ref passed, ref failed);
+            RunTest("LIR04 DefaultSinkOnceKeyDedup", LifecycleIdentityRoutingTests.Test_LIR04_DefaultSinkDeduplicatesOnceKeys, ref total, ref passed, ref failed);
+            RunTest("LOE16 ReentryAuthorityAndDomain", LifecycleOrchestrationEngineTests.Test_LOE16_ReentryCarriesAuthorityAndDomain, ref total, ref passed, ref failed);
             // 票 04：共享控制面正式切换准入不变量（暂缓不冻结/不释放、身份有界恢复或熔断、
             // retry 事务粒度、故障隔离单元与有界心跳）。
             RunTest("ARI01 DeferredSampleDoesNotFreeze", LifecycleOrchestrationEngineTests.Test_ARI01_UnusableSampleDefersOnlyThatObserver, ref total, ref passed, ref failed);
@@ -217,6 +223,13 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("CEP17 Lifecycle Tick Forward", CollisionExecutionPortTests.Test_CEP17_PortForwardsLifecycleTickToStore, ref total, ref passed, ref failed);
             RunTest("CEP18 NeverAcquired First Acquire", CollisionExecutionPortTests.Test_CEP18_NeverAcquiredRegionFirstAcquireSucceeds, ref total, ref passed, ref failed);
             RunTest("CEP19 Generation Source Bootstrap", CollisionExecutionPortTests.Test_CEP19_GenerationSourceBootstrapsAndAdvances, ref total, ref passed, ref failed);
+            // 票 09-R1：Release/receipt 诊断的会话绑定与身份关联契约。
+            RunTest("CEP20 Missing Receipt Explicit", CollisionExecutionPortTests.Test_CEP20_MissingReceiptIsMarkedExplicitly, ref total, ref passed, ref failed);
+            RunTest("CEP21 Rejection Dual Identity", CollisionExecutionPortTests.Test_CEP21_RejectionCarriesCommandAndReceiptIdentities, ref total, ref passed, ref failed);
+            RunTest("CEP22 Success Full Identity", CollisionExecutionPortTests.Test_CEP22_SuccessReleaseCarriesFullIdentity, ref total, ref passed, ref failed);
+            RunTest("CEP23 CrossSession Generations", CollisionExecutionPortTests.Test_CEP23_SameNumericGenerationsAcrossSessionsStayDistinguishable, ref total, ref passed, ref failed);
+            RunTest("CEP24 Real Gate Foreign Session", CollisionExecutionPortTests.Test_CEP24_RealIdentityGateDeniesForeignSessionCommand, ref total, ref passed, ref failed);
+            RunTest("CEP25 Stale Receipt Dual Naming", CollisionExecutionPortTests.Test_CEP25_StaleReceiptRejectionNamesBothReceipts, ref total, ref passed, ref failed);
 
             RunTest("CSC01 IdenticalProjections", CollisionShadowComparatorTests.Test_CSC01_IdenticalProjectionsAreInBoth, ref total, ref passed, ref failed);
             RunTest("CSC02 HostAddedCoverage", CollisionShadowComparatorTests.Test_CSC02_HostAddedCoverageIsExpected, ref total, ref passed, ref failed);
@@ -413,6 +426,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("ID StaticIL", IdentityStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("Resource/Collision StaticIL", ResourceCollisionOwnershipStaticILContractTests.Test_All, ref total, ref passed, ref failed);
             RunTest("Resource Production Control StaticIL", ResourceProductionControlStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            // 票 09-R1：共享引擎诊断出口的领域路由接线门禁。
+            RunTest("Diagnostics Wiring Routes By Domain", ResourceProductionControlStaticILContractTests.Test_ProductionDiagnosticsWiringRoutesByDomain,
                 ref total, ref passed, ref failed);
             RunTest("Resource Authority Retirement StaticIL", ResourceAuthorityRetirementStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);

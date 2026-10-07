@@ -216,6 +216,7 @@
     <Compile Include="Core\ControlPlane\Lifecycle\LifecycleDiagnostic.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecycleEvents.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\ILifecycleDiagnostics.cs" />
+    <Compile Include="Core\ControlPlane\Lifecycle\DomainRoutingLifecycleDiagnostics.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\IDomainExecutionPort.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecyclePolicy.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecycleOrchestrationEngine.cs" />

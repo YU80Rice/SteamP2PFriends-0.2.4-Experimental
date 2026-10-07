@@ -111,6 +111,34 @@ namespace SteamP2PFriends.WhitelistTests
             return ContainsStringLiteral(capture, "native-resource-trees-unavailable");
         }
 
+        /// <summary>
+        /// 票 09-R1：共享编排引擎的诊断出口必须经领域路由接线。ConfigureControlPlane 必须
+        /// 构造 DomainRoutingLifecycleDiagnostics 并交给引擎，不得把 Resource 桥直接作为
+        /// 共享引擎的唯一出口——那会让 Collision 转换被格式化成 [ResourceObs] domain=Resource。
+        /// </summary>
+        internal static bool Test_ProductionDiagnosticsWiringRoutesByDomain()
+        {
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            Type coordinator = assembly.GetType(
+                "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator");
+            Type router = assembly.GetType(
+                "SteamP2PFriends.MultiObserver.Lifecycle.DomainRoutingLifecycleDiagnostics");
+            MethodInfo configure = coordinator?.GetMethod("ConfigureControlPlane",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            if (configure == null || router == null) return false;
+            return CountMethodCalls(configure, router.FullName, ".ctor") == 1
+                && CountMethodCalls(configure,
+                    "SteamP2PFriends.MultiObserver.Lifecycle.LifecycleOrchestrationEngine", ".ctor") == 1
+                // 路由表内容：Resource 桥必须被登记（漏登记会让 Resource 转换静默落到 fallback）。
+                // Instance 是静态只读字段（非属性），经字段加载进栈；键值对经 Dictionary`2.Add 写入。
+                && CountFieldLoads(configure,
+                    "SteamP2PFriends.Adapters.Resource.ResourceLifecycleDiagnostics", "Instance") == 1
+                && CountCallsWhere(configure, called =>
+                    called.DeclaringType != null
+                    && called.DeclaringType.Name == "Dictionary`2"
+                    && called.Name == "Add") == 2;
+        }
+
         internal static bool Test_NativeRestoreValidatesBeforeApplyAndCanRollback()
         {
             MethodInfo restore = typeof(ResourceRegionLifecycleAdapter).GetMethod(
@@ -263,6 +291,11 @@ namespace SteamP2PFriends.WhitelistTests
         private static int CountFieldLoads(MethodInfo method, string declaringTypeName, string fieldName)
         {
             return IlContractProbe.CountFieldLoads(method, declaringTypeName, fieldName);
+        }
+
+        private static int CountCallsWhere(MethodInfo method, Func<MethodBase, bool> matches)
+        {
+            return IlContractProbe.CountCallsWhere(method, matches);
         }
 
         private static int CountAssemblyMethodCalls(Assembly assembly, string declaringTypeName, string methodName)

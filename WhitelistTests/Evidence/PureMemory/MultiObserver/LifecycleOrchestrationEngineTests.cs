@@ -1482,5 +1482,75 @@ namespace SteamP2PFriends.WhitelistTests
                 + " releases=" + port.Releases.Count
                 + " leased=" + engine.IsLeased(PrimaryDomain, region));
         }
+
+        /// <summary>
+        /// 票 09-R1：滞回内重入行必须携带权威身份。event=LeaseReentry 的记录来自实际执行
+        /// 端口，domain 与 authority 都必须是端口自己的领域；同区双领域各自保留身份，不得
+        /// 互相覆盖。旧实现 detail 只有 hysteresisCancelled=true，单行无法识别 Collision。
+        /// </summary>
+        internal static bool Test_LOE16_ReentryCarriesAuthorityAndDomain()
+        {
+            var sink = new RecordingDiagnostics();
+            LifecycleOrchestrationEngine engine =
+                CreateEngineWithDiagnostics(sink, out FakeDomainPort resource, out FakeDomainPort collision);
+            engine.BeginSession(new SessionEpoch(11UL));
+            RegionKey region = new RegionKey(10, 10);
+
+            engine.Observe(DomainIds.Resource, 100UL, 1001UL, region.X, region.Y, true);
+            engine.Observe(DomainIds.Collision, 200UL, 2002UL, region.X, region.Y, true);
+            engine.RemoveObserver(DomainIds.Resource, 100UL);
+            engine.RemoveObserver(DomainIds.Collision, 200UL);
+            engine.AdvanceTime(1.0f);
+            engine.Observe(DomainIds.Resource, 100UL, 1001UL, region.X, region.Y, true);
+            engine.Observe(DomainIds.Collision, 200UL, 2002UL, region.X, region.Y, true);
+
+            LifecycleDiagnostic resourceReentry = sink.Entries.Find(entry =>
+                entry.EventName == LifecycleEvents.RegionReentry && entry.Domain == DomainIds.Resource);
+            LifecycleDiagnostic collisionReentry = sink.Entries.Find(entry =>
+                entry.EventName == LifecycleEvents.RegionReentry && entry.Domain == DomainIds.Collision);
+            bool collisionIdentityCorrelates = collisionReentry != null
+                && collisionReentry.Outcome == ELifecycleOutcome.Success
+                && collisionReentry.HasRegion && collisionReentry.Region == region
+                && collisionReentry.SessionEpoch == 11UL
+                && collisionReentry.ObserverId == 200UL
+                && collisionReentry.ConnectionGeneration == 2002UL
+                && collisionReentry.RegionGeneration == 1U
+                && collisionReentry.Detail != null
+                && collisionReentry.Detail.Contains("authority=Collision")
+                && collisionReentry.Detail.Contains("hysteresisCancelled=true");
+            bool resourceIdentityRetained = resourceReentry != null
+                && resourceReentry.Outcome == ELifecycleOutcome.Success
+                && resourceReentry.Detail != null
+                && resourceReentry.Detail.Contains("authority=Resource")
+                && !resourceReentry.Detail.Contains("authority=Collision");
+            bool reentryCancelledPendingWithoutSecondAcquire =
+                engine.PendingReleaseCount(DomainIds.Resource) == 0
+                && engine.PendingReleaseCount(DomainIds.Collision) == 0
+                && engine.IsLeased(DomainIds.Resource, region)
+                && engine.IsLeased(DomainIds.Collision, region)
+                && resource.Acquires.Count == 1 && collision.Acquires.Count == 1
+                && resource.Releases.Count == 0 && collision.Releases.Count == 0;
+            // 最高接缝记录 → 真实生产格式化出口：[LifecycleObs] 行单行可判读 Reentry 契约。
+            string collisionReentryLine = collisionReentry == null
+                ? string.Empty
+                : DefaultLifecycleDiagnostics.FormatLine(collisionReentry);
+            bool lineCarriesContract = collisionReentryLine.Contains("event=LeaseReentry")
+                && collisionReentryLine.Contains("domain=Collision")
+                && collisionReentryLine.Contains("authority=Collision")
+                && collisionReentryLine.Contains("outcome=Success")
+                && collisionReentryLine.Contains("hysteresisCancelled=true")
+                && collisionReentryLine.Contains("region=(10,10)")
+                && collisionReentryLine.Contains("sessionEpoch=11")
+                && collisionReentryLine.Contains("regionGeneration=1")
+                && collisionReentryLine.Contains("observer=200")
+                && collisionReentryLine.Contains("connectionGeneration=2002");
+
+            return Expect(collisionIdentityCorrelates, resourceIdentityRetained,
+                reentryCancelledPendingWithoutSecondAcquire, lineCarriesContract,
+                "collision=" + Describe(collisionReentry) + " resource=" + Describe(resourceReentry)
+                + " line=" + collisionReentryLine
+                + " resourceAcquires=" + resource.Acquires.Count + " collisionAcquires=" + collision.Acquires.Count
+                + " resourceReleases=" + resource.Releases.Count + " collisionReleases=" + collision.Releases.Count);
+        }
     }
 }

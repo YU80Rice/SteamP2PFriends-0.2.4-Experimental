@@ -18,6 +18,11 @@ namespace SteamP2PFriends.Adapters.Resource
         public void Transition(LifecycleDiagnostic diagnostic)
         {
             if (diagnostic == null) return;
+            if (!IsResourceDiagnostic(diagnostic))
+            {
+                DefaultLifecycleDiagnostics.Instance.Transition(diagnostic);
+                return;
+            }
             Write(diagnostic);
         }
 
@@ -25,6 +30,11 @@ namespace SteamP2PFriends.Adapters.Resource
         public void TransitionOnce(string onceKey, LifecycleDiagnostic diagnostic)
         {
             if (diagnostic == null) return;
+            if (!IsResourceDiagnostic(diagnostic))
+            {
+                DefaultLifecycleDiagnostics.Instance.TransitionOnce(onceKey, diagnostic);
+                return;
+            }
             ResourceObservability.NoticeOnce(
                 onceKey,
                 diagnostic.Role,
@@ -69,6 +79,14 @@ namespace SteamP2PFriends.Adapters.Resource
 
         private static string FormatRegion(LifecycleDiagnostic diagnostic) =>
             diagnostic.HasRegion ? diagnostic.Region.ToString() : "-";
+
+        /// <summary>
+        /// 防错标守门：本出口只格式化 Resource 域转换——[ResourceObs] 行内的
+        /// domain=Resource 是记录事实，不是出口默认值。外来领域（含引擎级转换）原样
+        /// 转投默认出口，绝不进入 [ResourceObs] 格式化路径。
+        /// </summary>
+        private static bool IsResourceDiagnostic(LifecycleDiagnostic diagnostic) =>
+            diagnostic.Domain == DomainIds.Resource;
 
         private static ResourceObservationPath ToPath(ELifecyclePath path)
         {

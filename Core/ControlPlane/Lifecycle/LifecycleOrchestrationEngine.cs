@@ -899,7 +899,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 state.PendingReleases.Remove(region);
                 state.ReentryCount++;
                 Report(state, LifecycleEvents.RegionReentry, ELifecycleOutcome.Success,
-                    ELifecyclePath.Spi, state.SessionEpoch.Value, "hysteresisCancelled=true",
+                    ELifecyclePath.Spi, state.SessionEpoch.Value,
+                    "authority=" + state.Port.DisplayName + " hysteresisCancelled=true",
                     region, connectionToken, observerId, state.Port.ReadRegionGeneration(region).Value);
             }
 

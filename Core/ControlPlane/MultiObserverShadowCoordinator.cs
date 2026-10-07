@@ -136,8 +136,18 @@ namespace SteamP2PFriends.MultiObserver
             var demandProjection = new DemandProjectionEngine(observerAuthority);
             demandProjection.Register(resourceDemandPolicy);
             demandProjection.Register(collisionDemandPolicy);
+            // 共享引擎服务多个领域：诊断出口按记录自带的领域身份路由（Resource 走既有
+            // [ResourceObs] 取证格式，Collision 与引擎级转换走默认 [LifecycleObs] 格式），
+            // 领域身份来自实际执行端口，不由资源出口默认值改写。
+            var lifecycleDiagnostics = new DomainRoutingLifecycleDiagnostics(
+                new Dictionary<DomainId, ILifecycleDiagnostics>
+                {
+                    { DomainIds.Resource, ResourceLifecycleDiagnostics.Instance },
+                    { DomainIds.Collision, DefaultLifecycleDiagnostics.Instance }
+                },
+                DefaultLifecycleDiagnostics.Instance);
             ControlPlaneLifecycle = new LifecycleOrchestrationEngine(
-                demandProjection, ResourceLifecycleDiagnostics.Instance);
+                demandProjection, lifecycleDiagnostics);
             ResourceProduction = new ResourceProductionControlSeam(
                 adapter,
                 adapter,
