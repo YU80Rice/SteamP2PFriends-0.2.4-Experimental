@@ -1,0 +1,11 @@
+C-P2-Item-03 交付回报。
+
+状态：implemented-pending-runtime；Spec 终审仍为非CLEAN，故不宣称双轴闭环CLEAN，也不报 Runtime PASS。提交：a688981。工作目录：D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental。
+
+变更文件：Adapters/Item/ItemDemandCycle.cs、ItemExecutionPort.cs、ItemPreparationAuthority.cs、ItemProductionControlSeam.cs、ItemReturnSettlement.cs、ItemSettlementGate.cs、Patches/ItemSettlementConsumptionPatch.cs；Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs；SteamP2PFriends.csproj；WhitelistTests 的 Item PureMemory/StaticIL/Program；本票 issue、delivery、audit。
+
+验证：Red 首轮 IT39=472/473、IT42=475/476、IT44=477/478、IT47=481/482；修复后插件 Rebuild 通过、测试 Rebuild 通过，完整 WhitelistTests=484/484 PASS，git diff --check 通过。
+
+审查证据：Standards 最终实例 ses_ed9a299e1ffei5GRZctUrdRpPr CLEAN，指定 standards-reviewer；其原生模型/variant 元数据需由主调度按新配置核验。Spec 最终实例 ses_ed9a064a3ffeS9k8AwjjY38W45 非CLEAN，指出 Host 原生 step5 本地实例化仍可能绕过结算门；已修复 instanceID 待实例化取消，但 Host step5 门控仍是剩余问题。更早 Spec ses_ed9c34a58ffeMKCVMUgKbXTpi9、Standards ses_ed9c7f340ffe0HQW3c7HkABBha 为历史轮次。
+
+交付路径：.scratch/c-p2-item-03-return-reconciliation/delivery.md；审计：audit/2026-10-10/Implementation-0.2.4.10-Item03.md。Runtime 边界：人工 1 Host+2 Guest 仍由 06 采证；不领取04。剩余问题：Host onRegionUpdated step5 本地实例化完成门需后续修复/复审；因此请主调度不要创建04，先处理本票复审闭环。
