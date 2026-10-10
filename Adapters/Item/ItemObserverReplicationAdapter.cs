@@ -264,8 +264,7 @@ namespace SteamP2PFriends.Adapters.Item
     }
 
     /// <summary>
-    /// M2 owner for per-observer map-item baselines. It supervises the native reliable
-    /// askItems RPC and does not own pickup removals or player/zombie drop incrementals.
+    /// 每个观察者地面物品基线的 M2 所有者。监督原生可靠 askItems，不拥有拾取移除或玩家/僵尸掉落增量。
     /// </summary>
     internal static class ItemObserverReplicationAdapter
     {
@@ -305,6 +304,48 @@ namespace SteamP2PFriends.Adapters.Item
         private static int _commitLogs;
         private static int _skipLogs;
         private static int _rejectLogs;
+        [ThreadStatic]
+        private static int _candidateOwnedAskItemsDepth;
+        [ThreadStatic]
+        private static bool _askItemsOriginalObserved;
+        [ThreadStatic]
+        private static bool _askItemsOriginalRan;
+
+        internal static bool IsCandidateOwnedAskItemsSend => _candidateOwnedAskItemsDepth > 0;
+
+        internal static IDisposable EnterCandidateOwnedAskItems()
+        {
+            _candidateOwnedAskItemsDepth++;
+            return new CandidateOwnedAskItemsScope();
+        }
+
+        private sealed class CandidateOwnedAskItemsScope : IDisposable
+        {
+            public void Dispose()
+            {
+                if (_candidateOwnedAskItemsDepth > 0) _candidateOwnedAskItemsDepth--;
+            }
+        }
+
+        internal static void NoteAskItemsOriginalRan(bool ran)
+        {
+            _askItemsOriginalObserved = true;
+            _askItemsOriginalRan = ran;
+        }
+
+        internal static void DispatchCandidateGuestAskItems(System.Action invokeNativeAskItems, System.Action markLoaded)
+        {
+            if (invokeNativeAskItems == null) throw new ArgumentNullException(nameof(invokeNativeAskItems));
+            using (EnterCandidateOwnedAskItems())
+            {
+                _askItemsOriginalObserved = false;
+                _askItemsOriginalRan = false;
+                invokeNativeAskItems();
+                if (!_askItemsOriginalObserved || !_askItemsOriginalRan)
+                    throw new InvalidOperationException("Guest baseline askItems did not execute.");
+                markLoaded?.Invoke();
+            }
+        }
 
         internal static bool IsReady => _registrationReady;
 
@@ -362,10 +403,14 @@ namespace SteamP2PFriends.Adapters.Item
         {
             state = new BaselineCallState();
             if (Dedicator.IsDedicatedServer) return true;
-            // The internal overload is normally reached only from the dedicated/listen
-            // region loop, but explicit pass-through preserves any SP/non-P2P caller.
+            // 该内部重载通常只从专用服或听主机区域循环进入；显式放行保留普通单机与非 P2P 调用方的原生路径。
             if (!HostManager.IsP2PHostMode || !Provider.isServer) return true;
             if (!_registrationReady) return false;
+            if (MultiObserver.MultiObserverShadowCoordinator.ItemProductionMode == ItemProductionMode.Candidate)
+            {
+                if (!IsCandidateOwnedAskItemsSend) return false;
+                return true;
+            }
             ThreadUtil.assertIsGameThread();
 
             if (!TryResolve(connection, out SteamPlayer steamPlayer, out ulong observerId, out ulong connectionToken))
@@ -521,7 +566,7 @@ namespace SteamP2PFriends.Adapters.Item
             return false;
         }
 
-        private static ulong EnsureConnectionToken(ulong observerId, object connection)
+        internal static ulong EnsureConnectionToken(ulong observerId, object connection)
         {
             if (observerId == 0UL || connection == null) return 0UL;
             if (Connections.TryGetValue(observerId, out ConnectionBinding binding)

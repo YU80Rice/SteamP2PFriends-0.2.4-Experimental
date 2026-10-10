@@ -333,6 +333,16 @@ namespace SteamP2PFriends
                 RoleLogger.Error("[Shared]", $"AuthoritativeItemGenerationGatePatch.RegisterManual failed: {ex}");
             }
 
+            try
+            {
+                Adapters.Item.Patches.ItemCreationTrackingPatch.RegisterManual(_harmony);
+            }
+            catch (System.Exception ex)
+            {
+                _registrationStageFailed = true;
+                RoleLogger.Error("[Shared]", $"ItemCreationTrackingPatch.RegisterManual 失败: {ex}");
+            }
+
             // Alpha inventory/world authority probe: read-only fingerprints and transaction tracing.
             try
             {

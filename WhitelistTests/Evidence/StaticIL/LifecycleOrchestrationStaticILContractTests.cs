@@ -184,9 +184,14 @@ namespace SteamP2PFriends.WhitelistTests
                 "SteamP2PFriends.Adapters.Collision.CollisionLifecyclePolicy");
             MethodInfo collisionFactory = collisionDeclaration?.GetMethod("Create",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            Type itemDeclaration = ProductionAssembly.GetType(
+                "SteamP2PFriends.Adapters.Item.ItemLifecyclePolicy");
+            MethodInfo itemFactory = itemDeclaration?.GetMethod("Create",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             return IlContractProbe.CountMethodCalls(factory, PolicyTypeName, ".ctor") == 1
                 && IlContractProbe.CountMethodCalls(collisionFactory, PolicyTypeName, ".ctor") == 1
-                && assemblyConstructions == 2
+                && IlContractProbe.CountMethodCalls(itemFactory, PolicyTypeName, ".ctor") == 1
+                && assemblyConstructions == 3
                 && engineConstructions == 0
                 && engineDeclarations == 0;
         }
@@ -210,7 +215,15 @@ namespace SteamP2PFriends.WhitelistTests
                         called => called.DeclaringType?.FullName == EngineTypeName && called.Name == "Register") == 1)
                 && configure != null
                 && IlContractProbe.CountMethodCalls(configure, SeamTypeName, ".ctor") == 1;
-            return registrationSites == 2 && registeredOnlyOnResourceWiring
+
+            Type itemSeam = LifecycleType("SteamP2PFriends.Adapters.Item.ItemProductionControlSeam");
+            ConstructorInfo[] itemConstructors = itemSeam?.GetConstructors();
+            bool itemSeamRegisters = itemConstructors != null
+                && itemConstructors.Any(constructor =>
+                    IlContractProbe.CountCallsWhere(constructor,
+                        called => called.DeclaringType?.FullName == EngineTypeName && called.Name == "Register") == 1);
+
+            return registrationSites == 3 && registeredOnlyOnResourceWiring && itemSeamRegisters
                 && IlContractProbe.CountMethodCalls(configure, EngineTypeName, "Register") == 1;
         }
 

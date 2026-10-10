@@ -1,0 +1,98 @@
+using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.MultiObserver.Demand;
+using SteamP2PFriends.MultiObserver.Lifecycle;
+using SteamP2PFriends.MultiObserver.SPI;
+using System;
+
+namespace SteamP2PFriends.Adapters.Item
+{
+    public enum ItemProductionMode : byte
+    {
+        LegacyWriter = 0,
+        Candidate = 1
+    }
+
+    /// <summary>
+    /// Item 的唯一生产控制接缝：连接真实共享观察者空间事实、ItemDemandPolicy、
+    /// 共享需求投影与生命周期编排引擎，并驱动 ItemExecutionPort 与 ItemPreparationAuthority。
+    /// 01–04 受控候选独占旧 Writer，05 才正式切换。
+    /// </summary>
+    public sealed class ItemProductionControlSeam
+    {
+        private readonly ItemPreparationAuthority _preparationAuthority;
+        private readonly ItemMetadataStore _metadataStore;
+        private readonly ItemExecutionPort _executionPort;
+        private readonly DemandProjectionEngine _projection;
+        private readonly DemandPolicy _policy;
+        private readonly LifecycleOrchestrationEngine _engine;
+
+        public ItemProductionControlSeam(
+            ItemPreparationAuthority preparationAuthority,
+            ItemMetadataStore metadataStore,
+            ItemExecutionPort executionPort,
+            DemandProjectionEngine projection,
+            DemandPolicy itemDemandPolicy,
+            float hysteresisSeconds,
+            LifecycleOrchestrationEngine sharedEngine = null)
+        {
+            _preparationAuthority = preparationAuthority ?? throw new ArgumentNullException(nameof(preparationAuthority));
+            _metadataStore = metadataStore ?? throw new ArgumentNullException(nameof(metadataStore));
+            _executionPort = executionPort ?? throw new ArgumentNullException(nameof(executionPort));
+            _projection = projection ?? throw new ArgumentNullException(nameof(projection));
+            _policy = itemDemandPolicy ?? throw new ArgumentNullException(nameof(itemDemandPolicy));
+            if (_policy.Domain != DomainIds.Item)
+                throw new ArgumentException("Item 生产接缝只消费 Item 域 Demand Policy。", nameof(itemDemandPolicy));
+            if (hysteresisSeconds < 0f) throw new ArgumentOutOfRangeException(nameof(hysteresisSeconds));
+
+            _engine = sharedEngine ?? new LifecycleOrchestrationEngine(projection, DefaultLifecycleDiagnostics.Instance);
+            _engine.Register(_policy, _executionPort);
+        }
+
+        public DemandPolicy DemandPolicy => _policy;
+        public int ProjectedDemandRegionCount => _projection.GetDemandRegionCount(_policy);
+        public bool IsSessionActive => _engine.IsSessionActive;
+        public SessionEpoch SessionEpoch => _engine.SessionEpoch;
+        public int ObserverCount => _engine.ObserverCount(DomainIds.Item);
+        public int ActiveLeaseCount => _engine.ActiveLeaseCount(DomainIds.Item);
+        public int PendingReleaseCount => _engine.PendingReleaseCount(DomainIds.Item);
+        public int DemandRegionCount => _engine.DemandRegionCount(DomainIds.Item);
+        public int ReentryCount => _engine.ReentryCount(DomainIds.Item);
+        public int PendingAcquireRetryCount => _engine.PendingAcquireRetryCount(DomainIds.Item);
+        public bool RepairRequired => _engine.IsRepairRequired(DomainIds.Item);
+
+        public ItemPreparationAuthority PreparationAuthority => _preparationAuthority;
+        public ItemMetadataStore MetadataStore => _metadataStore;
+        public ItemExecutionPort ExecutionPort => _executionPort;
+
+        public void BeginSession(SessionEpoch sessionEpoch) => _engine.BeginSession(sessionEpoch);
+        public void EndSession() => _engine.EndSession();
+        public void AdvanceTime(float deltaTime) => _engine.AdvanceTime(deltaTime);
+        public void Flush(float deltaTime) => _engine.Flush(deltaTime);
+        public void Tick(float deltaTime) => _engine.Tick(deltaTime);
+
+        public DomainDemandProjection UpdateObserver(
+            ulong observerId,
+            ulong connectionToken,
+            byte centerX,
+            byte centerY,
+            bool gameplayAuthorized = true)
+        {
+            return _engine.Observe(DomainIds.Item, observerId, connectionToken, centerX, centerY, gameplayAuthorized);
+        }
+
+        public void DeferObserver(ulong observerId, string reason) =>
+            _engine.DeferObserver(DomainIds.Item, observerId, reason);
+
+        public void RemoveObserver(ulong observerId) =>
+            _engine.RemoveObserver(DomainIds.Item, observerId);
+
+        public bool IsLeased(RegionKey regionKey) =>
+            _engine.IsLeased(DomainIds.Item, regionKey);
+
+        public int GetDemand(RegionKey regionKey) =>
+            _engine.GetDemand(DomainIds.Item, regionKey);
+
+        public bool TryGetConnectionGeneration(ulong observerId, out ulong connectionGeneration) =>
+            _engine.TryGetConnectionGeneration(DomainIds.Item, observerId, out connectionGeneration);
+    }
+}

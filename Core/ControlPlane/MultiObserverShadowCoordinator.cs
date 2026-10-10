@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.Adapters.Collision;
 using SteamP2PFriends.Adapters.Collision.Patches;
+using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Adapters.Item.Patches;
 using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.MultiObserver.Demand;
@@ -92,6 +93,12 @@ namespace SteamP2PFriends.MultiObserver
         private static DemandPolicy _collisionDemandPolicy;
         private static readonly HashSet<ulong> CollisionObservers = new HashSet<ulong>();
 
+        private static ItemProductionControlSeam ItemProduction;
+        private static ItemPreparationAuthority ItemPreparation;
+        private static ItemExecutionPort ItemExecution;
+        private static DemandPolicy _itemDemandPolicy;
+        private static readonly HashSet<ulong> ItemObservers = new HashSet<ulong>();
+
         private static readonly HashSet<ulong> ResourceObservers = new HashSet<ulong>();
 
         private static ulong _nextConnectionToken;
@@ -100,6 +107,8 @@ namespace SteamP2PFriends.MultiObserver
         private static int _eventLogCount;
         private static int _summaryLogCount;
         private static string _hostSessionId;
+
+        internal static ItemProductionMode ItemProductionMode { get; set; } = ItemProductionMode.LegacyWriter;
 
         internal static ulong SessionEpoch => Ledger.SessionEpoch;
         internal static int ObserverCount => Ledger.ObserverCount;
@@ -163,9 +172,45 @@ namespace SteamP2PFriends.MultiObserver
                 CollisionLifecyclePolicy.Create(),
                 message => RoleLogger.Info("[Host]", "[CollisionExecution] " + message));
             ControlPlaneLifecycle.Register(collisionDemandPolicy, CollisionProduction);
+
+            ConfigureItemControlPlane(demandProjection, worldSize);
+
             ResourceObservers.Clear();
             CollisionObservers.Clear();
+            ItemObservers.Clear();
             _collisionDemandPolicy = collisionDemandPolicy;
+        }
+
+        private static void ConfigureItemControlPlane(DemandProjectionEngine demandProjection, byte worldSize)
+        {
+            DemandPolicy itemDemandPolicy = ItemDemandPolicy.Create(
+                checked((byte)ItemManager.ITEM_REGIONS), worldSize);
+            demandProjection.Register(itemDemandPolicy);
+            _itemDemandPolicy = itemDemandPolicy;
+
+            ItemPreparation = new ItemPreparationAuthority();
+            var itemMetaStore = new ItemMetadataStore();
+            ItemExecution = new ItemExecutionPort(
+                ItemPreparation,
+                itemMetaStore,
+                regionKey => AuthoritativeItemGenerationGatePatch.TryGetCommittedGeneration((byte)regionKey.X, (byte)regionKey.Y, out _, out int gen) ? (uint)gen : 1U,
+                ItemLifecyclePolicy.Create(),
+                () => Time.realtimeSinceStartup,
+                message => RoleLogger.Info("[Host]", "[ItemExecution] " + message),
+                observerId => IsHostObserver(observerId),
+                regionKey => PresentItemRegionToHost(regionKey),
+                (observerId, token, regionKey) => BindGuestItemBaseline(observerId, token, regionKey),
+                regionKey => UnpresentItemRegionFromHost(regionKey),
+                (observerId, token, regionKey) => UnbindGuestItemBaseline(observerId, token, regionKey),
+                isCandidateActive: () => ItemProductionMode == ItemProductionMode.Candidate);
+            ItemProduction = new ItemProductionControlSeam(
+                ItemPreparation,
+                itemMetaStore,
+                ItemExecution,
+                demandProjection,
+                itemDemandPolicy,
+                ItemLifecyclePolicy.HysteresisSeconds,
+                ControlPlaneLifecycle);
         }
 
         internal static void Initialize()
@@ -258,14 +303,26 @@ namespace SteamP2PFriends.MultiObserver
                 LastMismatch.Clear();
                 ResourceObservers.Clear();
                 CollisionObservers.Clear();
+                ItemObservers.Clear();
                 if (ResourceProduction != null)
                 {
                     ResourceProduction.BeginSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch));
                 }
+                ItemPreparation?.BindCoreSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch), worldIdentity);
+                ItemProduction?.BeginSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch));
                 _eventLogCount = 0;
                 _summaryLogCount = 0;
                 _nextSummaryAt = now;
                     SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
+                if (ItemProductionMode == ItemProductionMode.Candidate)
+                {
+                    TryPrepareItemFullMap(worldIdentity, now);
+                }
+            }
+
+            if (ItemProductionMode == ItemProductionMode.Candidate && ItemPreparation != null && !ItemPreparation.IsReady)
+            {
+                TryPrepareItemFullMap(worldIdentity, now);
             }
 
             ResourceProduction?.AdvanceTime(Time.deltaTime);
@@ -309,9 +366,14 @@ namespace SteamP2PFriends.MultiObserver
                     plan.AllowAbsenceRemoval);
             ReconcileResourceProduction(capture.Samples, deferred, plan);
             ReconcileCollisionProduction(capture.Samples, deferred, plan);
+            ReconcileItemProduction(capture.Samples, deferred, plan);
             ControlPlaneLifecycle?.AdvanceTime(Time.deltaTime);
             ControlPlaneLifecycle?.Flush(0f);
             ResourceProduction?.Flush(0f);
+            if (ItemProductionMode == ItemProductionMode.Candidate)
+            {
+                ItemProduction?.Flush(0f);
+            }
 
             foreach (ShadowTransition transition in transitions)
             {
@@ -353,7 +415,13 @@ namespace SteamP2PFriends.MultiObserver
                         $"collisionActiveLeases={ControlPlaneLifecycle?.ActiveLeaseCount(DomainIds.Collision) ?? 0} " +
                         $"collisionPendingReleases={ControlPlaneLifecycle?.PendingReleaseCount(DomainIds.Collision) ?? 0} " +
                         $"collisionRadiusSource={_collisionDemandPolicy?.RadiusSource ?? "none"} " +
-                        "collisionWriter=CollisionExecutionPort controlPlane=active");
+                        "collisionWriter=CollisionExecutionPort controlPlane=active " +
+                        $"itemDemandRegions={ItemProduction?.DemandRegionCount ?? 0} " +
+                        $"itemActiveLeases={ItemProduction?.ActiveLeaseCount ?? 0} " +
+                        $"itemPendingReleases={ItemProduction?.PendingReleaseCount ?? 0} " +
+                        $"itemRadiusSource={_itemDemandPolicy?.RadiusSource ?? "none"} " +
+                        $"itemWriter={(ItemProductionMode == ItemProductionMode.Candidate ? "suppressed" : "legacy")} " +
+                        $"itemCandidate={(ItemProductionMode == ItemProductionMode.Candidate ? "active" : "dormant")}");
                 }
             }
 
@@ -821,6 +889,8 @@ namespace SteamP2PFriends.MultiObserver
             foreach (ulong observerId in CollisionObservers)
                 ControlPlaneLifecycle?.DeferObserver(
                     DomainIds.Collision, observerId, reason);
+            foreach (ulong observerId in ItemObservers)
+                ItemProduction?.DeferObserver(observerId, reason);
         }
 
         private static void EndSessionIfNeeded(string reason)
@@ -831,14 +901,17 @@ namespace SteamP2PFriends.MultiObserver
             try
             {
                 ResourceProduction?.EndSession();
+                ItemProduction?.EndSession();
             }
             catch (Exception ex)
             {
-                SafeWarn($"session-end resource cleanup failed type={ex.GetType().Name}; managed state cleared fail-closed");
+                SafeWarn($"session-end resource/item cleanup failed type={ex.GetType().Name}; managed state cleared fail-closed");
             }
             finally
             {
                 ResourceObservers.Clear();
+                CollisionObservers.Clear();
+                ItemObservers.Clear();
                 if (ledgerEnded)
                 {
                     SafeInfo($"session-end nextEpoch={Ledger.SessionEpoch} reason={reason}");
@@ -851,6 +924,7 @@ namespace SteamP2PFriends.MultiObserver
             Connections.Clear();
             ResourceObservers.Clear();
             CollisionObservers.Clear();
+            ItemObservers.Clear();
             LastMismatch.Clear();
 
             if (resetLogQuotas)
@@ -968,6 +1042,112 @@ namespace SteamP2PFriends.MultiObserver
             }
             foreach (ulong observerId in seen) CollisionObservers.Add(observerId);
             foreach (ulong observerId in deferred) CollisionObservers.Add(observerId);
+        }
+
+        private static void ReconcileItemProduction(
+            IReadOnlyList<ObserverShadowSample> samples,
+            HashSet<ulong> deferred,
+            ObserverSampleAdmissionPlan plan)
+        {
+            if (ItemProduction == null || ItemProductionMode != ItemProductionMode.Candidate) return;
+            var seen = new HashSet<ulong>();
+            foreach (ObserverShadowSample sample in samples)
+            {
+                if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
+                    || !seen.Add(sample.ObserverId)) continue;
+                ItemProduction.UpdateObserver(sample.ObserverId, sample.ConnectionToken,
+                    sample.ItemRegionX, sample.ItemRegionY, sample.GameplayAuthorized);
+            }
+            foreach (ulong observerId in deferred)
+                ItemProduction.DeferObserver(observerId, "observer-sample-unusable");
+            if (plan.AllowAbsenceRemoval)
+            {
+                var removed = new List<ulong>();
+                foreach (ulong observerId in ItemObservers)
+                    if (!seen.Contains(observerId) && !deferred.Contains(observerId)) removed.Add(observerId);
+                foreach (ulong observerId in removed)
+                {
+                    ItemProduction.RemoveObserver(observerId);
+                    ItemObservers.Remove(observerId);
+                }
+            }
+            foreach (ulong observerId in seen) ItemObservers.Add(observerId);
+            foreach (ulong observerId in deferred) ItemObservers.Add(observerId);
+        }
+
+        private static bool IsHostObserver(ulong observerId)
+        {
+            if (observerId == 0UL) return false;
+            try
+            {
+                return Provider.client != CSteamID.Nil && Provider.client.m_SteamID == observerId;
+            }
+            catch { }
+            return false;
+        }
+
+        private static void PresentItemRegionToHost(RegionKey regionKey)
+        {
+            if (ItemProductionMode != ItemProductionMode.Candidate) return;
+            var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for PresentRegionToHost.");
+            bridge.PresentRegionToHost((byte)regionKey.X, (byte)regionKey.Y);
+        }
+
+        private static void UnpresentItemRegionFromHost(RegionKey regionKey)
+        {
+            if (ItemProductionMode != ItemProductionMode.Candidate) return;
+            var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for UnpresentRegionFromHost.");
+            bridge.UnpresentRegionFromHost((byte)regionKey.X, (byte)regionKey.Y);
+        }
+
+        private static void BindGuestItemBaseline(ulong observerId, ulong connectionToken, RegionKey regionKey)
+        {
+            if (ItemProductionMode != ItemProductionMode.Candidate) return;
+            var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for BindGuestBaseline.");
+            bridge.BindGuestBaseline(observerId, connectionToken, (byte)regionKey.X, (byte)regionKey.Y);
+        }
+
+        private static void UnbindGuestItemBaseline(ulong observerId, ulong connectionToken, RegionKey regionKey)
+        {
+            if (ItemProductionMode != ItemProductionMode.Candidate) return;
+            var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for UnbindGuestBaseline.");
+            bridge.UnbindGuestBaseline(observerId, connectionToken, (byte)regionKey.X, (byte)regionKey.Y);
+        }
+
+        private static void TryPrepareItemFullMap(string worldIdentity, float now)
+        {
+            if (ItemProductionMode != ItemProductionMode.Candidate) return;
+            if (ItemPreparation == null || ItemPreparation.IsReady || Ledger.SessionEpoch == 0UL)
+                return;
+            if (ItemPreparation.Status == ItemPreparationStatus.Failed)
+                return;
+
+            try
+            {
+                byte worldSize = checked((byte)Regions.WORLD_SIZE);
+                bool prepared = ItemPreparation.PrepareFullMap(
+                    Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch),
+                    worldIdentity,
+                    worldSize,
+                    ItemProduction?.MetadataStore,
+                    now);
+                if (prepared)
+                {
+                    SafeInfo($"item-full-map-prepared epoch={Ledger.SessionEpoch} world={worldIdentity} regions={ItemPreparation.PreparedRegionCount}");
+                }
+                else if (ItemPreparation.Status == ItemPreparationStatus.WaitingForInputs)
+                {
+                    SafeInfo($"item-full-map-preparation-waiting-inputs epoch={Ledger.SessionEpoch} world={worldIdentity}");
+                }
+                else
+                {
+                    SafeWarn($"item-full-map-preparation-failed epoch={Ledger.SessionEpoch} world={worldIdentity} status={ItemPreparation.Status}");
+                }
+            }
+            catch (Exception ex)
+            {
+                SafeWarn($"item-full-map-preparation-deferred reason={ex.GetType().Name}");
+            }
         }
 
         private static RegionKey[] ToRegionArray(HashSet<RegionKey> regions)

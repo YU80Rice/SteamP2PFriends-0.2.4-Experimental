@@ -6,18 +6,19 @@
     Assembly attributes and runtime fingerprint wiring are generated from this source.
   -->
   <PropertyGroup>
-    <SteamP2PFriendsVersion>0.2.4.9</SteamP2PFriendsVersion>
+    <SteamP2PFriendsVersion>0.2.4.10</SteamP2PFriendsVersion>
     <SteamP2PFriendsReleaseChannel>Experimental</SteamP2PFriendsReleaseChannel>
     <SteamP2PFriendsVersionIdentity>$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)</SteamP2PFriendsVersionIdentity>
     <SteamP2PFriendsPluginGuid>com.yu80rice.steamp2pfriends</SteamP2PFriendsPluginGuid>
     <!--
       候选角色：影子候选与正式切换候选必须是可区分的构建指纹——同一份源码、不同角色
       得到不同的产物身份（角色进程序集元数据与默认 Case-ID，因而 SHA-256 / MVID 不同）。
-      本切片正式交付候选由票 08 固定为 `Cutover`；影子候选仍用
+      Collision 已完成正式切换，继续保留默认 `Cutover` 以维持其已接线角色；影子候选仍用
       `-p:SteamP2PFriendsCandidateRole=ReadOnlyShadow` 独立构建，二者不得混用验收日志。
     -->
     <SteamP2PFriendsCandidateRole Condition="'$(SteamP2PFriendsCandidateRole)' == ''">Cutover</SteamP2PFriendsCandidateRole>
-    <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-CollisionSlice-$(SteamP2PFriendsCandidateRole)</SteamP2PFriendsDefaultCaseId>
+    <!-- 当前阶段为 Item；Case-ID 命名不代表 Item Writer 已实施或 Runtime 通过。 -->
+    <SteamP2PFriendsDefaultCaseId>SPF-$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)-ItemSlice-$(SteamP2PFriendsCandidateRole)</SteamP2PFriendsDefaultCaseId>
     <SteamP2PFriendsU3SdkCommit>ea7b4973af5ba10f62baad2bfde36ab2e5b060eb</SteamP2PFriendsU3SdkCommit>
   </PropertyGroup>
 </Project>

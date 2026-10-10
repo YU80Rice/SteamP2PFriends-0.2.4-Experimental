@@ -62,9 +62,9 @@ namespace SteamP2PFriends.WhitelistTests
         /// </summary>
         internal static bool Test_SliceIdentityIsPinnedToMigrationStage()
         {
-            const string expectedVersion = "0.2.4.9";
+            const string expectedVersion = "0.2.4.10";
             const string expectedChannel = "Experimental";
-            const string expectedCaseId = "SPF-0.2.4.9-Experimental-CollisionSlice-Cutover";
+            const string expectedCaseId = "SPF-0.2.4.10-Experimental-ItemSlice-Cutover";
 
             PluginFingerprintSnapshot fingerprint = PluginFingerprint.Capture(typeof(SteamP2PFriendsPlugin).Assembly);
             return string.Equals(PluginBuildMetadata.Version, expectedVersion, StringComparison.Ordinal)

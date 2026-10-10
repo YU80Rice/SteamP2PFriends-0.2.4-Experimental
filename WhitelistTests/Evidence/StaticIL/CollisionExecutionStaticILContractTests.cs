@@ -128,7 +128,7 @@ namespace SteamP2PFriends.WhitelistTests
                 assembly, type => type == typeof(CollisionExecutionPort), method =>
                     IlContractProbe.CountMethodCalls(method,
                         "SteamP2PFriends.MultiObserver.Lifecycle.LifecycleOrchestrationEngine", "Register"));
-            return registrations == 2 && portRegistrations == 0
+            return registrations == 3 && portRegistrations == 0
                 && assembly.GetTypes().Count(type => type.FullName == PortName) == 1;
         }
 

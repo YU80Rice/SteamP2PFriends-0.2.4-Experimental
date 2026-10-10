@@ -494,9 +494,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
                         && codes[i - 1].Calls(playerChannelGetter);
                     if (localPlayerCallCount == 2 && exactPlayerChannelSequence)
                     {
-                        // Keep ldarg.1 and preserve the original instruction objects so all
-                        // labels/exception blocks remain attached. The channel getter becomes
-                        // a no-op and the local-player getter becomes the Player-based M1 policy.
+                        // 保留 ldarg.1 与原始指令对象，使标签和异常块仍然附着。通道 getter 变为空操作，本地玩家 getter 变为基于 Player 的 M1 政策。
                         codes[i - 1].opcode = OpCodes.Nop;
                         codes[i - 1].operand = null;
                         instr.opcode = OpCodes.Call;
@@ -521,7 +519,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
         }
 
         /// <summary>
-        /// Relevance release runs before vanilla step 0 clears the compatibility loaded bit.
+        /// 相关性释放发生在原版 step 0 清除兼容 loaded 位之前。
         /// </summary>
         [HarmonyPrefix]
         [HarmonyPatch(typeof(ItemManager), TargetMethodName)]
@@ -532,8 +530,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
         }
 
         /// <summary>
-        /// Begin a per-observer baseline transaction. False suppresses only a duplicate or
-        /// invalid native baseline call; pickup/drop delta RPCs are separate methods.
+        /// 开始每个观察者的基线事务。返回 false 只抑制重复或无效的原生基线调用；拾取与掉落增量 RPC 是独立方法。
         /// </summary>
         [HarmonyPrefix]
         [HarmonyPatch(typeof(ItemManager), AskItemsMethodName)]
@@ -591,6 +588,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
             ItemObserverReplicationAdapter.BaselineCallState __state,
             bool __runOriginal)
         {
+            ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(__runOriginal);
             ItemObserverReplicationAdapter.CompleteBaseline(__state, __runOriginal);
         }
 

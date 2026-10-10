@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using SteamP2PFriends.Core.Build;
@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 411 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 446 PASS) ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -137,6 +137,34 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M2I08 ExplicitCapability", ItemObserverReplicationAdapterTests.Test_M2I08_CapabilityIsExplicitReliableEnqueue, ref total, ref passed, ref failed);
             RunTest("M2I10 LoadedRollback", ItemObserverReplicationAdapterTests.Test_M2I10_LoadedProjectionRollbackRequiresCurrentConnection, ref total, ref passed, ref failed);
             RunTest("M2I11 ExactDisconnect", ItemObserverReplicationAdapterTests.Test_M2I11_ExactDisconnectInvalidatesEvenReusedConnectionToken, ref total, ref passed, ref failed);
+            // 0.2.4.10 C-P2-Item-01: 全图准备与首次到访
+            RunTest("IT01 EarlyUnpreparedDeferred", ItemPreparationAndFirstDemandTests.Test_IT01_EarlyOnlineOperationBeforePreparationIsDeferred, ref total, ref passed, ref failed);
+            RunTest("IT02 FullMapPreparationOnce", ItemPreparationAndFirstDemandTests.Test_IT02_FullMapPreparationPreparesOnceIncludingEmptyRegions, ref total, ref passed, ref failed);
+            RunTest("IT03 FirstDemandActivatesTiming", ItemPreparationAndFirstDemandTests.Test_IT03_FirstObserverDemandActivatesNaturalTimingWithoutModifyingDroppedAge, ref total, ref passed, ref failed);
+            RunTest("IT04 SecondObserverBaseline", ItemPreparationAndFirstDemandTests.Test_IT04_SecondObserverReceivesIndependentBaselineWithoutRegenerationOrTimingReset, ref total, ref passed, ref failed);
+            RunTest("IT05 CoreBindingRetainsData", ItemPreparationAndFirstDemandTests.Test_IT05_CoreSessionBindingRetainsPreparedDataWhileStaleEpochIsRejected, ref total, ref passed, ref failed);
+            RunTest("IT06 NestedDroppedPreserved", ItemPreparationAndFirstDemandTests.Test_IT06_OriginTrackingPreservesNestedDroppedItemsDuringPreparation, ref total, ref passed, ref failed);
+            RunTest("IT07 ExpiryAlignsWithU3DS", ItemPreparationAndFirstDemandTests.Test_IT07_ExpiryClassificationAlignsWithU3DS, ref total, ref passed, ref failed);
+            RunTest("IT08 FailedPrepNotReady", ItemPreparationAndFirstDemandTests.Test_IT08_FailedPreparationDoesNotMarkReady, ref total, ref passed, ref failed);
+            RunTest("IT09 DemandPolicyDeclaration", ItemPreparationAndFirstDemandTests.Test_IT09_ItemDemandPolicyDeclaration, ref total, ref passed, ref failed);
+            RunTest("IT10 PortAndSharedEngine", ItemPreparationAndFirstDemandTests.Test_IT10_ItemExecutionPortAndSharedEngineIntegration, ref total, ref passed, ref failed);
+            RunTest("IT11 StaleSessionAcquireRejected", ItemPreparationAndFirstDemandTests.Test_IT11_StaleOrUnboundSessionAcquireIsRejected, ref total, ref passed, ref failed);
+            RunTest("IT12 StaleReleaseRejected", ItemPreparationAndFirstDemandTests.Test_IT12_StaleReceiptOrEpochReleaseIsRejected, ref total, ref passed, ref failed);
+            RunTest("IT13 PrepBoundaryAndEpoch", ItemPreparationAndFirstDemandTests.Test_IT13_PreparationRejectsOutOfBoundsRegionsAndZeroEpoch, ref total, ref passed, ref failed);
+            RunTest("IT14 ReceiptIdentityInvariants", ItemPreparationAndFirstDemandTests.Test_IT14_ReceiptFullIdentityAndEquality, ref total, ref passed, ref failed);
+            RunTest("IT15 MetadataStoreCleanup", ItemPreparationAndFirstDemandTests.Test_IT15_MetadataStoreItemRemovalAndSessionCleanup, ref total, ref passed, ref failed);
+            RunTest("IT16 WarehouseBridgePreparation", ItemPreparationAndFirstDemandTests.Test_IT16_ProductionSeamFullMapPreparationWithWarehouseBridge, ref total, ref passed, ref failed);
+            RunTest("IT17 FirstDemandAgePreservation", ItemPreparationAndFirstDemandTests.Test_IT17_ProductionSeamFirstDemandTimingAndAgePreservation, ref total, ref passed, ref failed);
+            RunTest("IT18 IndependentObserverBaselines", ItemPreparationAndFirstDemandTests.Test_IT18_ProductionSeamIndependentObserverBaselinesAndHostPresentation, ref total, ref passed, ref failed);
+            RunTest("IT19 UnpreparedGateRejection", ItemPreparationAndFirstDemandTests.Test_IT19_ProductionSeamUnpreparedOperationGateRejection, ref total, ref passed, ref failed);
+            RunTest("IT20 BridgeExceptionAndIdentity", ItemPreparationAndFirstDemandTests.Test_IT20_WarehouseBridgeExceptionPropagationAndIdentityCheck, ref total, ref passed, ref failed);
+            RunTest("IT21 CreationPathAndNestedDrops", ItemPreparationAndFirstDemandTests.Test_IT21_CreationPathTrackingAndNestedDropPreservation, ref total, ref passed, ref failed);
+            RunTest("IT22 MutualExclusionAndGates", ItemPreparationAndFirstDemandTests.Test_IT22_CandidateLegacyMutualExclusionAndPreparationGates, ref total, ref passed, ref failed);
+            RunTest("IT23 NativeBridgeAndListSafety", ItemPreparationAndFirstDemandTests.Test_IT23_NativeBridgeValidationAndListReplacementSafety, ref total, ref passed, ref failed);
+            RunTest("IT24 OriginTrackingAndTimingBinding", ItemPreparationAndFirstDemandTests.Test_IT24_StrictCreationPathTrackingAndNativeTimingBinding, ref total, ref passed, ref failed);
+            RunTest("IT25 ActivateRegionTimingValidation", ItemPreparationAndFirstDemandTests.Test_IT25_ActivateRegionTimingFailsOnMissingRegionOrField, ref total, ref passed, ref failed);
+            RunTest("IT26 TimingRollbackAndAcquireClassification", ItemPreparationAndFirstDemandTests.Test_IT26_ActivateRegionTimingRollbackAndAcquireFailureClassification, ref total, ref passed, ref failed);
+            RunTest("IT27 CandidateAskItemsSend", ItemCandidateGuestBaselineSendTests.Test_IT27_CandidateOwnedAskItemsRunsAndRejectedSendDoesNotCommit, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -575,6 +603,25 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Collision Receipt Domain", CollisionExecutionStaticILContractTests.Test_ReceiptAndOverrideDomain,
                 ref total, ref passed, ref failed);
             RunTest("Collision No Production Registration", CollisionExecutionStaticILContractTests.Test_NoProductionRegistration,
+                ref total, ref passed, ref failed);
+            // 0.2.4.10 C-P2-Item-01: Item Execution Port 与 Demand Policy 结构门禁
+            RunTest("Item Execution StaticIL", ItemExecutionStaticILContractTests.Test_All,
+                ref total, ref passed, ref failed);
+            RunTest("Item Port Shape", ItemExecutionStaticILContractTests.Test_PortShapeAndIdentity,
+                ref total, ref passed, ref failed);
+            RunTest("Item Demand Policy StaticIL", ItemExecutionStaticILContractTests.Test_DemandPolicyDeclaration,
+                ref total, ref passed, ref failed);
+            RunTest("Item Port No Roster Scan", ItemExecutionStaticILContractTests.Test_PortHasNoRosterOrSpatialIndexScan,
+                ref total, ref passed, ref failed);
+            RunTest("Item Preparation Authority Exists", ItemExecutionStaticILContractTests.Test_PreparationAuthorityAndMetadataStoreExist,
+                ref total, ref passed, ref failed);
+            RunTest("Item Receipt Domain StaticIL", ItemExecutionStaticILContractTests.Test_ReceiptDomain,
+                ref total, ref passed, ref failed);
+            RunTest("Item Production Coordinator Wiring", ItemExecutionStaticILContractTests.Test_ProductionCoordinatorWiresItemDemandAndLifecycle,
+                ref total, ref passed, ref failed);
+            RunTest("Item Native Action And Gate", ItemExecutionStaticILContractTests.Test_NativeActionInvocationsAndPreparationGate,
+                ref total, ref passed, ref failed);
+            RunTest("Item Coordinator Native Actions", ItemExecutionStaticILContractTests.Test_CoordinatorCallsNativeBridgeAndPreparationChain,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;
