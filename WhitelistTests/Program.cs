@@ -165,6 +165,15 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT25 ActivateRegionTimingValidation", ItemPreparationAndFirstDemandTests.Test_IT25_ActivateRegionTimingFailsOnMissingRegionOrField, ref total, ref passed, ref failed);
             RunTest("IT26 TimingRollbackAndAcquireClassification", ItemPreparationAndFirstDemandTests.Test_IT26_ActivateRegionTimingRollbackAndAcquireFailureClassification, ref total, ref passed, ref failed);
             RunTest("IT27 CandidateAskItemsSend", ItemCandidateGuestBaselineSendTests.Test_IT27_CandidateOwnedAskItemsRunsAndRejectedSendDoesNotCommit, ref total, ref passed, ref failed);
+            RunTest("IT28 CoDemandNaturalCycle", ItemPreparationAndFirstDemandTests.Test_IT28_OneObserverLeavingDoesNotStopTheOtherDemandCycle, ref total, ref passed, ref failed);
+            RunTest("IT30 UnvisitedDroppedExpiry", ItemPreparationAndFirstDemandTests.Test_IT30_UnvisitedDroppedExpiresWithoutStartingNaturalCycle, ref total, ref passed, ref failed);
+            RunTest("IT31 DemandRespawnEffect", ItemPreparationAndFirstDemandTests.Test_IT31_DemandRunsRespawnAndRecordsOnlyRealCreation, ref total, ref passed, ref failed);
+            RunTest("IT32 NestedRespawnDrop", ItemPreparationAndFirstDemandTests.Test_IT32_NestedRespawnDropStaysDroppedAndIsNotReplaced, ref total, ref passed, ref failed);
+            RunTest("IT33 HysteresisNotDemand", ItemPreparationAndFirstDemandTests.Test_IT33_HysteresisDoesNotResetAgeOrImpersonateDemand, ref total, ref passed, ref failed);
+            RunTest("IT34 DistinctExpiryLimits", ItemPreparationAndFirstDemandTests.Test_IT34_NaturalAndDroppedUseDifferentU3dsLimits, ref total, ref passed, ref failed);
+            RunTest("IT36 BoundedDroppedExpiry", ItemPreparationAndFirstDemandTests.Test_IT36_OneStepDoesNotClearEveryExpiredDrop, ref total, ref passed, ref failed);
+            RunTest("IT37 DeclineAndModeException", ItemPreparationAndFirstDemandTests.Test_IT37_DeclinedRespawnDoesNotCommitTimeAndArenaSkipsExpiry, ref total, ref passed, ref failed);
+            RunTest("IT38 ReentryKeepsTiming", ItemPreparationAndFirstDemandTests.Test_IT38_ReentryDoesNotRestartNaturalTiming, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -620,6 +629,10 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Item Production Coordinator Wiring", ItemExecutionStaticILContractTests.Test_ProductionCoordinatorWiresItemDemandAndLifecycle,
                 ref total, ref passed, ref failed);
             RunTest("Item Native Action And Gate", ItemExecutionStaticILContractTests.Test_NativeActionInvocationsAndPreparationGate,
+                ref total, ref passed, ref failed);
+            RunTest("Item Demand Cycle Destroy Binding", ItemExecutionStaticILContractTests.Test_DemandCycleRemovalInvokesNativeDestroy,
+                ref total, ref passed, ref failed);
+            RunTest("Item Demand Cycle Native Binding", ItemExecutionStaticILContractTests.Test_DemandCycleBindsNativeRespawnAndSuppressesLegacyWriter,
                 ref total, ref passed, ref failed);
             RunTest("Item Coordinator Native Actions", ItemExecutionStaticILContractTests.Test_CoordinatorCallsNativeBridgeAndPreparationChain,
                 ref total, ref passed, ref failed);

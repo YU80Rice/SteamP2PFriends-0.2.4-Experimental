@@ -131,6 +131,8 @@
     <Compile Include="Adapters\Item\ItemPreparationAuthority.cs" />
     <Compile Include="Adapters\Item\ItemExecutionPort.cs" />
     <Compile Include="Adapters\Item\ItemProductionControlSeam.cs" />
+    <Compile Include="Adapters\Item\ItemCycleThresholds.cs" />
+    <Compile Include="Adapters\Item\ItemDemandCycle.cs" />
     <Compile Include="Adapters\Item\ItemOriginTrackingSeam.cs" />
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapter.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapter.cs" />

@@ -152,5 +152,43 @@ namespace SteamP2PFriends.WhitelistTests
 
             return directPolicyCtors == 1 && directEngineRegisters == 1;
         }
+
+        internal static bool Test_DemandCycleBindsNativeRespawnAndSuppressesLegacyWriter()
+        {
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            Type bridge = assembly.GetType("SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge");
+            FieldInfo respawn = bridge?.GetField("RespawnItemsMethod", BindingFlags.NonPublic | BindingFlags.Static);
+            MethodInfo bound = respawn?.GetValue(null) as MethodInfo;
+            bool nativeBound = bound != null
+                && bound.Name == "respawnItems"
+                && bound.DeclaringType == typeof(SDG.Unturned.ItemManager);
+
+            Type patch = assembly.GetType("SteamP2PFriends.Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch");
+            MethodInfo skip = patch?.GetMethod("SkipLegacyCycleWhenCandidateOwnsSession",
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            int gateLoads = skip == null ? 0 : IlContractProbe.CountMethodCalls(
+                skip, "SteamP2PFriends.Adapters.Item.ItemLegacyCycleGate", "get_ShouldSkipLegacy");
+
+            int suppressSets = IlContractProbe.CountAssemblyMethodCalls(
+                assembly,
+                "SteamP2PFriends.Adapters.Item.ItemLegacyCycleGate",
+                "set_SuppressFullMapWriter");
+            return nativeBound && gateLoads > 0 && suppressSets > 0;
+        }
+
+        internal static bool Test_DemandCycleRemovalInvokesNativeDestroy()
+        {
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            Type bridge = assembly.GetType("SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge");
+            FieldInfo cached = bridge?.GetField("SendDestroyItemField", BindingFlags.NonPublic | BindingFlags.Static);
+            FieldInfo native = cached?.GetValue(null) as FieldInfo;
+            MethodInfo remove = bridge?.GetMethod("TryRemoveItem");
+            int usesCache = remove == null ? 0 : IlContractProbe.CountFieldLoads(
+                remove, "SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge", "SendDestroyItemField");
+            return native != null
+                && native.Name == "SendDestroyItem"
+                && native.DeclaringType == typeof(SDG.Unturned.ItemManager)
+                && usesCache > 0;
+        }
     }
 }

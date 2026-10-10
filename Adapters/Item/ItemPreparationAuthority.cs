@@ -1,3 +1,4 @@
+using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Core.Identity;
 using System;
@@ -16,6 +17,11 @@ namespace SteamP2PFriends.Adapters.Item
         void BindGuestBaseline(ulong observerId, ulong connectionToken, byte x, byte y);
         void UnbindGuestBaseline(ulong observerId, ulong connectionToken, byte x, byte y);
         bool ActivateRegionTiming(byte x, byte y, float activationTime, Func<uint, bool> isNaturalItem = null);
+        bool TryRemoveItem(byte x, byte y, uint instanceId);
+        int CountSpawnPoints(byte x, byte y);
+        float ReadLastRespawn(byte x, byte y);
+        bool TryApplyNativeRespawn(byte x, byte y, float now);
+        bool CommitRespawnTime(byte x, byte y, float now);
         void BindOriginTracker(IItemOriginTracker tracker);
     }
 
@@ -71,6 +77,18 @@ namespace SteamP2PFriends.Adapters.Item
         private static readonly System.Reflection.FieldInfo LastDroppedField =
             typeof(ItemData).GetField("_lastDropped",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        private static readonly System.Reflection.MethodInfo RespawnItemsMethod =
+            typeof(ItemManager).GetMethod("respawnItems",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        private static readonly System.Reflection.FieldInfo RespawnCursorXField =
+            typeof(ItemManager).GetField("respawnItems_X",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        private static readonly System.Reflection.FieldInfo RespawnCursorYField =
+            typeof(ItemManager).GetField("respawnItems_Y",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        private static readonly System.Reflection.FieldInfo SendDestroyItemField =
+            typeof(ItemManager).GetField("SendDestroyItem",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
         private static ItemRegion[,] SafeGetRegions()
         {
@@ -351,6 +369,101 @@ namespace SteamP2PFriends.Adapters.Item
             }
         }
 
+        public bool TryRemoveItem(byte x, byte y, uint instanceId)
+        {
+            if (instanceId == 0U) return false;
+            ItemRegion[,] regions = SafeGetRegions();
+            if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1)) return false;
+            ItemRegion region = regions[x, y];
+            if (region?.items == null) return false;
+            int index = -1;
+            for (int i = 0; i < region.items.Count; i++)
+            {
+                if (region.items[i] != null && region.items[i].instanceID == instanceId)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) return false;
+            ItemData removed = region.items[index];
+            region.items.RemoveAt(index);
+            if (ContainsInstance(region.items, instanceId)) return false;
+            object sender = SendDestroyItemField?.GetValue(null);
+            if (!BroadcastDestroy(sender, x, y, instanceId))
+            {
+                region.items.Insert(index, removed);
+                return false;
+            }
+            return !ContainsInstance(region.items, instanceId);
+        }
+
+        private static bool ContainsInstance(System.Collections.Generic.List<ItemData> items, uint instanceId)
+        {
+            for (int i = 0; i < items.Count; i++)
+                if (items[i] != null && items[i].instanceID == instanceId) return true;
+            return false;
+        }
+
+        private static bool BroadcastDestroy(object sender, byte x, byte y, uint instanceId)
+        {
+            if (sender == null) return false;
+            var connections = Regions.GatherClientConnections(x, y, ItemManager.ITEM_REGIONS);
+            var invoke = sender.GetType().GetMethod("Invoke", new[]
+            {
+                typeof(ENetReliability),
+                typeof(System.Collections.Generic.List<ITransportConnection>),
+                typeof(byte), typeof(byte), typeof(uint), typeof(bool)
+            });
+            if (invoke == null) return false;
+            invoke.Invoke(sender, new object[] { ENetReliability.Reliable, connections, x, y, instanceId, false });
+            return true;
+        }
+
+        public int CountSpawnPoints(byte x, byte y)
+        {
+            try
+            {
+                var spawns = LevelItems.spawns;
+                if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1)) return 0;
+                return spawns[x, y] == null ? 0 : spawns[x, y].Count;
+            }
+            catch (Exception) { return 0; }
+        }
+
+        public float ReadLastRespawn(byte x, byte y)
+        {
+            ItemRegion[,] regions = SafeGetRegions();
+            if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1)) return 0f;
+            return regions[x, y] == null ? 0f : regions[x, y].lastRespawn;
+        }
+
+        public bool TryApplyNativeRespawn(byte x, byte y, float now)
+        {
+            object manager = ManagerField?.GetValue(null);
+            if (manager == null || RespawnItemsMethod == null || RespawnCursorXField == null || RespawnCursorYField == null)
+                return false;
+            ItemLegacyCycleGate.InOwnerStep = true;
+            try
+            {
+                RespawnCursorXField.SetValue(null, x);
+                RespawnCursorYField.SetValue(null, y);
+                RespawnItemsMethod.Invoke(manager, null);
+                return true;
+            }
+            catch (Exception) { return false; }
+            finally { ItemLegacyCycleGate.InOwnerStep = false; }
+        }
+
+        public bool CommitRespawnTime(byte x, byte y, float now)
+        {
+            ItemRegion[,] regions = SafeGetRegions();
+            if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1) || regions[x, y] == null)
+                return false;
+            regions[x, y].lastRespawn = now;
+            return Math.Abs(regions[x, y].lastRespawn - now) <= 0.001f;
+        }
+
         public void UnbindGuestBaseline(ulong observerId, ulong connectionToken, byte x, byte y)
         {
             if (observerId == 0UL) return;
@@ -396,6 +509,7 @@ namespace SteamP2PFriends.Adapters.Item
         public ItemPreparationStatus Status => _status;
         public bool IsReady => _status == ItemPreparationStatus.Ready;
         public int PreparedRegionCount => _preparedRegions.Count;
+        public byte WorldSize => _worldSize;
         public string WorldIdentity => _worldIdentity;
         public SessionEpoch SessionEpoch => _sessionEpoch;
 

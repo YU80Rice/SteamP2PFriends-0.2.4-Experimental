@@ -25,6 +25,7 @@ namespace SteamP2PFriends.Adapters.Item
         private readonly DemandProjectionEngine _projection;
         private readonly DemandPolicy _policy;
         private readonly LifecycleOrchestrationEngine _engine;
+        private readonly ItemDemandCycle _cycle;
 
         public ItemProductionControlSeam(
             ItemPreparationAuthority preparationAuthority,
@@ -46,6 +47,13 @@ namespace SteamP2PFriends.Adapters.Item
 
             _engine = sharedEngine ?? new LifecycleOrchestrationEngine(projection, DefaultLifecycleDiagnostics.Instance);
             _engine.Register(_policy, _executionPort);
+            _cycle = new ItemDemandCycle(
+                _preparationAuthority.Bridge,
+                _metadataStore,
+                region => _engine.GetDemand(DomainIds.Item, region),
+                () => _executionPort.CurrentTime,
+                () => _preparationAuthority.WorldSize,
+                region => _executionPort.IsRegionActivated(region));
         }
 
         public DemandPolicy DemandPolicy => _policy;
@@ -67,8 +75,17 @@ namespace SteamP2PFriends.Adapters.Item
         public void BeginSession(SessionEpoch sessionEpoch) => _engine.BeginSession(sessionEpoch);
         public void EndSession() => _engine.EndSession();
         public void AdvanceTime(float deltaTime) => _engine.AdvanceTime(deltaTime);
-        public void Flush(float deltaTime) => _engine.Flush(deltaTime);
-        public void Tick(float deltaTime) => _engine.Tick(deltaTime);
+        public void Flush(float deltaTime)
+        {
+            _engine.Flush(deltaTime);
+            _cycle.Step();
+        }
+        public void Tick(float deltaTime)
+        {
+            _engine.Tick(deltaTime);
+            _cycle.Step();
+        }
+        public ItemDemandCycle DemandCycle => _cycle;
 
         public DomainDemandProjection UpdateObserver(
             ulong observerId,

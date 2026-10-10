@@ -172,7 +172,25 @@ namespace SteamP2PFriends.Adapters.Item.Patches
 
             return GenerateProbePrefixRegistered
                 && DespawnProbePrefixRegistered && DespawnProbePostfixRegistered
-                && RespawnProbePrefixRegistered && RespawnProbePostfixRegistered;
+                && RespawnProbePrefixRegistered && RespawnProbePostfixRegistered
+                && RegisterLegacyCycleSkip(harmony);
+        }
+
+        internal static bool SkipLegacyCycleWhenCandidateOwnsSession()
+        {
+            return !ItemLegacyCycleGate.ShouldSkipLegacy;
+        }
+
+        private static bool RegisterLegacyCycleSkip(Harmony harmony)
+        {
+            MethodInfo skip = AccessTools.Method(typeof(ItemManagerUpdateDedicatedGatePatch), nameof(SkipLegacyCycleWhenCandidateOwnsSession));
+            MethodInfo despawn = AccessTools.Method(typeof(ItemManager), "despawnItems");
+            MethodInfo respawn = AccessTools.Method(typeof(ItemManager), "respawnItems");
+            if (skip == null || despawn == null || respawn == null) return false;
+            var prefix = new HarmonyMethod(skip) { priority = Priority.First };
+            harmony.Patch(despawn, prefix: prefix);
+            harmony.Patch(respawn, prefix: prefix);
+            return true;
         }
 
         private static bool RegisterTranspiler(Harmony harmony)

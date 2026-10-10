@@ -92,6 +92,7 @@ namespace SteamP2PFriends.Adapters.Item
 
         public int ReceiptCount => _receipts.Count;
         public int ActivatedRegionCount => _activationTimes.Count;
+        public float CurrentTime => _timeReader();
 
         public bool IsRegionActivated(RegionKey regionKey) =>
             _activationTimes.ContainsKey(regionKey);

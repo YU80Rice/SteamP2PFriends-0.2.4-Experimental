@@ -314,6 +314,7 @@ namespace SteamP2PFriends.MultiObserver
                 _summaryLogCount = 0;
                 _nextSummaryAt = now;
                     SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
+                ItemLegacyCycleGate.SuppressFullMapWriter = ItemProductionMode == ItemProductionMode.Candidate;
                 if (ItemProductionMode == ItemProductionMode.Candidate)
                 {
                     TryPrepareItemFullMap(worldIdentity, now);
@@ -370,6 +371,7 @@ namespace SteamP2PFriends.MultiObserver
             ControlPlaneLifecycle?.AdvanceTime(Time.deltaTime);
             ControlPlaneLifecycle?.Flush(0f);
             ResourceProduction?.Flush(0f);
+            ItemLegacyCycleGate.SuppressFullMapWriter = ItemProductionMode == ItemProductionMode.Candidate;
             if (ItemProductionMode == ItemProductionMode.Candidate)
             {
                 ItemProduction?.Flush(0f);
@@ -902,6 +904,7 @@ namespace SteamP2PFriends.MultiObserver
             {
                 ResourceProduction?.EndSession();
                 ItemProduction?.EndSession();
+                ItemLegacyCycleGate.SuppressFullMapWriter = false;
             }
             catch (Exception ex)
             {
