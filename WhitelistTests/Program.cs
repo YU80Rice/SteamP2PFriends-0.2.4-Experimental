@@ -174,6 +174,17 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT36 BoundedDroppedExpiry", ItemPreparationAndFirstDemandTests.Test_IT36_OneStepDoesNotClearEveryExpiredDrop, ref total, ref passed, ref failed);
             RunTest("IT37 DeclineAndModeException", ItemPreparationAndFirstDemandTests.Test_IT37_DeclinedRespawnDoesNotCommitTimeAndArenaSkipsExpiry, ref total, ref passed, ref failed);
             RunTest("IT38 ReentryKeepsTiming", ItemPreparationAndFirstDemandTests.Test_IT38_ReentryDoesNotRestartNaturalTiming, ref total, ref passed, ref failed);
+            RunTest("IT39 ReturnClearsBeforeRestock", ItemPreparationAndFirstDemandTests.Test_IT39_ReturnClearsAllExpiredBeforeAnyRestock, ref total, ref passed, ref failed);
+            RunTest("IT40 SurvivorAgeAndFailedRestock", ItemPreparationAndFirstDemandTests.Test_IT40_SurvivorAgeKeptAndFailedRestockStops, ref total, ref passed, ref failed);
+            RunTest("IT41 ReturnWaitAndDeliver", ItemPreparationAndFirstDemandTests.Test_IT41_ReturnWaitsAndDeliversWithoutFailureBudget, ref total, ref passed, ref failed);
+            RunTest("IT42 HysteresisReentrySettles", ItemPreparationAndFirstDemandTests.Test_IT42_HysteresisReentryStillSettlesBeforePresent, ref total, ref passed, ref failed);
+            RunTest("IT43 LastDemandFinishesQuiet", ItemPreparationAndFirstDemandTests.Test_IT43_LastDemandLeavesFinishesWithoutList, ref total, ref passed, ref failed);
+            RunTest("IT44 UnreadyPickupRejected", ItemPreparationAndFirstDemandTests.Test_IT44_UnreadyPickupDoesNotWriteOrDelete, ref total, ref passed, ref failed);
+            RunTest("IT45 SharedSettlementBudget", ItemPreparationAndFirstDemandTests.Test_IT45_RegionsShareOneSettlementAction, ref total, ref passed, ref failed);
+            RunTest("IT46 LaterGuestSameResult", ItemPreparationAndFirstDemandTests.Test_IT46_LaterGuestWaitsForSameResult, ref total, ref passed, ref failed);
+            RunTest("IT47 StaleIdentityIsolates", ItemPreparationAndFirstDemandTests.Test_IT47_StaleRegionIdentityIsolatesTheJob, ref total, ref passed, ref failed);
+            RunTest("IT48 DropDuringSettlement", ItemPreparationAndFirstDemandTests.Test_IT48_DropExpiresDuringSettlementWithoutResurrection, ref total, ref passed, ref failed);
+            RunTest("IT49 WrapUpReentryAndNextReturn", ItemPreparationAndFirstDemandTests.Test_IT49_WrapUpReentryDoesNotRedoAndNextReturnRejudges, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -635,6 +646,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Item Demand Cycle Native Binding", ItemExecutionStaticILContractTests.Test_DemandCycleBindsNativeRespawnAndSuppressesLegacyWriter,
                 ref total, ref passed, ref failed);
             RunTest("Item Coordinator Native Actions", ItemExecutionStaticILContractTests.Test_CoordinatorCallsNativeBridgeAndPreparationChain,
+                ref total, ref passed, ref failed);
+            RunTest("Item Settlement Consumption Gate", ItemExecutionStaticILContractTests.Test_SettlementConsumptionBindsPickupIncrementAndHost,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

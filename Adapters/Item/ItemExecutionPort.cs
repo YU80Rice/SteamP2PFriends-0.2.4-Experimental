@@ -260,6 +260,23 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void OnLifecycleTick(float deltaTime) { }
         public void OnReplicationTick(float deltaTime) { }
+        private ItemReturnSettlement _returnSettlement;
+
+        public void BindReturnSettlement(ItemReturnSettlement settlement) =>
+            _returnSettlement = settlement;
+
+        public void DeliverSettlementBaseline(ulong observerId, ulong connectionToken, RegionKey regionKey, bool host)
+        {
+            if (host)
+            {
+                _hostPresenter?.Invoke(regionKey);
+                _hostPresentationCount++;
+                return;
+            }
+            _guestBaselineBinder?.Invoke(observerId, connectionToken, regionKey);
+            _guestBaselineBindingCount++;
+        }
+
         public void OnObserverReplicationEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             if (!_preparationAuthority.IsRegionPrepared(regionKey))
@@ -276,7 +293,15 @@ namespace SteamP2PFriends.Adapters.Item
                 return;
             }
 
-            if (_isHostObserver != null && _isHostObserver(observerId))
+            bool host = _isHostObserver != null && _isHostObserver(observerId);
+            if (_returnSettlement != null && _returnSettlement.Hold(regionKey, observerId, connectionToken, host))
+            {
+                LastReplicationDetail = $"domain={DomainIds.Item} observer={observerId} region={regionKey} outcome=waiting-settlement";
+                _diagnosticSink(LastReplicationDetail);
+                return;
+            }
+
+            if (host)
             {
                 _hostPresenter?.Invoke(regionKey);
                 _hostPresentationCount++;
@@ -293,6 +318,7 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void OnObserverReplicationExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
+            _returnSettlement?.ReleaseWaiter(regionKey, observerId);
             if (_isHostObserver != null && _isHostObserver(observerId))
             {
                 _hostPresentationCleaner?.Invoke(regionKey);
@@ -303,7 +329,8 @@ namespace SteamP2PFriends.Adapters.Item
             }
         }
 
-        public void OnObserverDisconnected(ulong observerId, ulong connectionToken) { }
+        public void OnObserverDisconnected(ulong observerId, ulong connectionToken) =>
+            _returnSettlement?.ReleaseObserver(observerId, connectionToken);
 
         public RegionGeneration ReadRegionGeneration(RegionKey regionKey) =>
             RegionGeneration.FromNative(_generationReader(regionKey));

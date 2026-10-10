@@ -21,6 +21,7 @@ namespace SteamP2PFriends.Adapters.Item
         int CountSpawnPoints(byte x, byte y);
         float ReadLastRespawn(byte x, byte y);
         bool TryApplyNativeRespawn(byte x, byte y, float now);
+        bool TryCreateOneNatural(byte x, byte y, float now);
         bool CommitRespawnTime(byte x, byte y, float now);
         void BindOriginTracker(IItemOriginTracker tracker);
     }
@@ -47,6 +48,9 @@ namespace SteamP2PFriends.Adapters.Item
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         private static readonly System.Reflection.MethodInfo CancelInstantiationsInRegionMethod =
             typeof(ItemManager).GetMethod("CancelInstantiationsInRegion",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        private static readonly System.Reflection.MethodInfo CancelInstantiationByInstanceIdMethod =
+            typeof(ItemManager).GetMethod("CancelInstantiationByInstanceId",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         private static readonly System.Reflection.MethodInfo AskItemsMethod =
             typeof(ItemManager).GetMethod("askItems",
@@ -226,6 +230,8 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void PresentRegionToHost(byte x, byte y)
         {
+            if (!ItemSettlementGate.TryAuthorizeIncrement(x, y))
+                throw new InvalidOperationException("Host item instantiation is waiting for settlement.");
             ItemRegion[,] regions = SafeGetRegions();
             if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1))
                 throw new InvalidOperationException($"ItemManager.regions out of bounds or null for region ({x}, {y}).");
@@ -389,6 +395,7 @@ namespace SteamP2PFriends.Adapters.Item
             ItemData removed = region.items[index];
             region.items.RemoveAt(index);
             if (ContainsInstance(region.items, instanceId)) return false;
+            CancelInstantiationByInstanceIdMethod?.Invoke(null, new object[] { instanceId });
             object sender = SendDestroyItemField?.GetValue(null);
             if (!BroadcastDestroy(sender, x, y, instanceId))
             {
@@ -436,6 +443,37 @@ namespace SteamP2PFriends.Adapters.Item
             ItemRegion[,] regions = SafeGetRegions();
             if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1)) return 0f;
             return regions[x, y] == null ? 0f : regions[x, y].lastRespawn;
+        }
+
+        public bool TryCreateOneNatural(byte x, byte y, float now)
+        {
+            try
+            {
+                var spawns = LevelItems.spawns;
+                if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1) || spawns[x, y] == null || spawns[x, y].Count == 0)
+                    return false;
+                ItemRegion[,] regions = SafeGetRegions();
+                if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1) || regions[x, y]?.items == null)
+                    return false;
+                ItemSpawnpoint spawn = spawns[x, y][UnityEngine.Random.Range(0, spawns[x, y].Count)];
+                if (!SafezoneManager.checkPointValid(spawn.point)) return false;
+                for (int i = 0; i < regions[x, y].items.Count; i++)
+                    if ((regions[x, y].items[i].point - spawn.point).sqrMagnitude < 4f) return false;
+                ushort id = LevelItems.getItem(spawn);
+                ItemAsset asset = Assets.find(EAssetType.ITEM, id) as ItemAsset;
+                if (asset == null) return false;
+                SDG.Unturned.Item item = new SDG.Unturned.Item(id, EItemOrigin.WORLD);
+                UnityEngine.Vector3 point = spawn.point;
+                bool shouldAllow = true;
+                ItemManager.onServerSpawningItemDrop?.Invoke(item, ref point, ref shouldAllow);
+                if (!shouldAllow) return false;
+                var countField = typeof(ItemManager).GetField("instanceCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                uint next = countField == null ? 0U : (uint)countField.GetValue(null) + 1U;
+                countField?.SetValue(null, next);
+                regions[x, y].items.Add(new ItemData(item, next, point, false));
+                return true;
+            }
+            catch (Exception) { return false; }
         }
 
         public bool TryApplyNativeRespawn(byte x, byte y, float now)

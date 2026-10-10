@@ -472,6 +472,7 @@ namespace SteamP2PFriends
             try
             {
                 Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.RegisterManual(_harmony);
+                Adapters.Item.Patches.ItemSettlementConsumptionPatch.RegisterManual(_harmony);
             }
             catch (System.Exception ex)
             {

@@ -22,6 +22,8 @@ namespace SteamP2PFriends.Adapters.Item
         private readonly Func<float> _now;
         private readonly Func<byte> _worldSize;
         private readonly Func<RegionKey, bool> _activated;
+        private readonly Func<RegionKey, bool> _busy;
+        private readonly Func<RegionKey, bool> _isolated;
         private int _naturalCursor;
         private int _droppedCursor;
         private int _respawnCursor;
@@ -37,7 +39,9 @@ namespace SteamP2PFriends.Adapters.Item
             Func<RegionKey, int> demand,
             Func<float> now,
             Func<byte> worldSize,
-            Func<RegionKey, bool> activated)
+            Func<RegionKey, bool> activated,
+            Func<RegionKey, bool> busy = null,
+            Func<RegionKey, bool> isolated = null)
         {
             _bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
             _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -45,15 +49,18 @@ namespace SteamP2PFriends.Adapters.Item
             _now = now ?? throw new ArgumentNullException(nameof(now));
             _worldSize = worldSize ?? throw new ArgumentNullException(nameof(worldSize));
             _activated = activated ?? throw new ArgumentNullException(nameof(activated));
+            _busy = busy ?? (_ => false);
+            _isolated = isolated ?? (_ => false);
         }
 
-        public void Step()
+        public void Step(bool naturalAndRespawn = true, bool droppedExpiry = true)
         {
             ItemCycleThresholds thresholds = ItemCycleThresholds.Resolve();
             if (thresholds == null || !thresholds.NativeCyclePermitted) return;
             byte size = _worldSize();
             if (size == 0) return;
-            StepDropped(thresholds, size);
+            if (droppedExpiry) StepDropped(thresholds, size);
+            if (!naturalAndRespawn) return;
             StepNatural(thresholds, size);
             StepRespawn(thresholds, size);
         }
@@ -72,7 +79,7 @@ namespace SteamP2PFriends.Adapters.Item
                 byte x = (byte)(index / size);
                 byte y = (byte)(index % size);
                 var region = new RegionKey(x, y);
-                if (_demand(region) <= 0 || !_activated(region)) continue;
+                if (_demand(region) <= 0 || !_activated(region) || _busy(region)) continue;
                 IReadOnlyList<ItemData> items = _bridge.GetRegionItems(x, y);
                 if (items == null || items.Count == 0) continue;
                 withItems++;
@@ -114,7 +121,7 @@ namespace SteamP2PFriends.Adapters.Item
                 byte x = (byte)(index / size);
                 byte y = (byte)(index % size);
                 IReadOnlyList<ItemData> items = _bridge.GetRegionItems(x, y);
-                if (items == null || items.Count == 0) continue;
+                if (_isolated(new RegionKey(x, y)) || items == null || items.Count == 0) continue;
                 withItems++;
                 DroppedSteps++;
                 AdoptAndRemoveFirstExpiredDrop(x, y, items, now, thresholds.DespawnDroppedTime);
@@ -154,7 +161,7 @@ namespace SteamP2PFriends.Adapters.Item
                 byte x = (byte)(index / size);
                 byte y = (byte)(index % size);
                 var region = new RegionKey(x, y);
-                if (_demand(region) <= 0 || !_activated(region)) continue;
+                if (_demand(region) <= 0 || !_activated(region) || _busy(region)) continue;
                 if (now - _bridge.ReadLastRespawn(x, y) <= thresholds.RespawnTime) continue;
                 int points = _bridge.CountSpawnPoints(x, y);
                 if (points <= 0) continue;

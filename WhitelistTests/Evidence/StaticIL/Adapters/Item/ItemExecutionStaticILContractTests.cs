@@ -190,5 +190,30 @@ namespace SteamP2PFriends.WhitelistTests
                 && native.DeclaringType == typeof(SDG.Unturned.ItemManager)
                 && usesCache > 0;
         }
+
+        internal static bool Test_SettlementConsumptionBindsPickupIncrementAndHost()
+        {
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            Type patch = assembly.GetType("SteamP2PFriends.Adapters.Item.Patches.ItemSettlementConsumptionPatch");
+            MethodInfo pickup = patch?.GetMethod("AllowPickup", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            MethodInfo increment = patch?.GetMethod("AllowIncrement", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            MethodInfo ask = patch?.GetMethod("AllowAskItems", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            int pickupCalls = pickup == null ? 0 : IlContractProbe.CountMethodCalls(
+                pickup, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizePickup");
+            int incrementCalls = increment == null ? 0 : IlContractProbe.CountMethodCalls(
+                increment, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
+            int askCalls = ask == null ? 0 : IlContractProbe.CountMethodCalls(
+                ask, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
+            MethodInfo present = assembly.GetType("SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge")
+                ?.GetMethod("PresentRegionToHost");
+            int hostCalls = present == null ? 0 : IlContractProbe.CountMethodCalls(
+                present, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
+            MethodInfo register = patch?.GetMethod("RegisterManual", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            bool bindsPickup = register != null
+                && IlContractProbe.ContainsStringLiteral(register, "ReceiveTakeItemRequest")
+                && IlContractProbe.ContainsStringLiteral(register, "askItems")
+                && IlContractProbe.ContainsStringLiteral(register, "Invoke");
+            return patch != null && pickupCalls > 0 && incrementCalls > 0 && askCalls > 0 && hostCalls > 0 && bindsPickup;
+        }
     }
 }
