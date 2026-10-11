@@ -7,6 +7,8 @@ namespace SteamP2PFriends.Adapters.Item
         public static Func<byte, byte, bool> AllowsConsumption { get; set; }
         public static Func<byte, byte, bool> BlocksStepFive { get; set; }
         public static Action<byte, byte> EnsureStepFiveSettlement { get; set; }
+        public static Func<byte, byte, bool> SuppressDeliveredStepFive { get; set; }
+        public static Func<byte, byte, bool> WasDelivered { get; set; }
         public static int BlockedPickups { get; private set; }
         public static int BlockedIncrements { get; private set; }
         [ThreadStatic] private static byte _regionX;
@@ -30,6 +32,9 @@ namespace SteamP2PFriends.Adapters.Item
             EnsureStepFiveSettlement?.Invoke(x, y);
             return BlocksStepFive == null || !BlocksStepFive(x, y);
         }
+
+        public static bool ShouldSuppressDeliveredStepFive(byte x, byte y) =>
+            SuppressDeliveredStepFive != null && SuppressDeliveredStepFive(x, y);
 
         public static bool TryAuthorizePickup(byte x, byte y)
         {

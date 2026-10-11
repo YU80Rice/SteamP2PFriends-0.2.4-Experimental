@@ -435,7 +435,10 @@ namespace SteamP2PFriends.Adapters.Item
                 if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1)) return 0;
                 return spawns[x, y] == null ? 0 : spawns[x, y].Count;
             }
-            catch (Exception) { return 0; }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Unable to read native item spawn points.", ex);
+            }
         }
 
         public float ReadLastRespawn(byte x, byte y)
@@ -473,7 +476,11 @@ namespace SteamP2PFriends.Adapters.Item
                 regions[x, y].items.Add(new ItemData(item, next, point, false));
                 return true;
             }
-            catch (Exception) { return false; }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Single natural item creation failed for ({x}, {y}).", ex);
+            }
         }
 
         public bool TryApplyNativeRespawn(byte x, byte y, float now)

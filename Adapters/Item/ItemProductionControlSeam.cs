@@ -78,16 +78,20 @@ namespace SteamP2PFriends.Adapters.Item
                 int radius = ItemManager.ITEM_REGIONS;
                 for (int rx = x - radius; rx <= x + radius; rx++)
                     for (int ry = y - radius; ry <= y + radius; ry++)
-                        if (rx >= 0 && ry >= 0)
-                        {
-                            var region = new RegionKey((byte)rx, (byte)ry);
-                            _settlement.EnsureForDemand(region);
-                            if (_settlement.BlocksConsumption(region)) return true;
+                            if (rx >= 0 && ry >= 0)
+                            {
+                                var region = new RegionKey((byte)rx, (byte)ry);
+                                _settlement.EnsureForDemand(region);
+                                if (_settlement.NeedsSettlement(region) || _settlement.BlocksConsumption(region)) return true;
                         }
                 return false;
             };
             ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
                 _settlement.EnsureForDemand(new RegionKey(x, y));
+            ItemSettlementGate.SuppressDeliveredStepFive = (x, y) =>
+                _settlement.WasDelivered(new RegionKey(x, y));
+            ItemSettlementGate.WasDelivered = (x, y) =>
+                _settlement.WasDelivered(new RegionKey(x, y));
         }
 
         public DemandPolicy DemandPolicy => _policy;
@@ -143,7 +147,9 @@ namespace SteamP2PFriends.Adapters.Item
             byte centerY,
             bool gameplayAuthorized = true)
         {
-            return _engine.Observe(DomainIds.Item, observerId, connectionToken, centerX, centerY, gameplayAuthorized);
+            DomainDemandProjection result = _engine.Observe(DomainIds.Item, observerId, connectionToken, centerX, centerY, gameplayAuthorized);
+            _settlement.CommitPending();
+            return result;
         }
 
         public void DeferObserver(ulong observerId, string reason) =>

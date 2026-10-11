@@ -21,6 +21,6 @@
 
 ## 审查与边界
 
-Standards 最新实例 `ses_ed7857617ffepVumSTLnYSC1ML`：CLEAN。Spec 最新实例 `ses_ed7a1ae90ffef3eI2Y29hWrjw0`：非CLEAN，发现 step5 重复呈现、无需求误建作业及异常创建状态分类。人工三端 Runtime、部署指纹和最终模型效果仍为剩余问题。
+最新 Standards 实例 `ses_ed6f82990ffezvFX6JtiDpmObD`：非CLEAN，指出局部隔离边界与 pending waiter 接缝测试不足。最新 Spec 实例 `ses_ed6f8296cffeE07c7bRClBT9Vn`：非CLEAN，发现 step5 邻区吞并、无需求阻断及异常创建分类。人工三端 Runtime、部署指纹和最终模型效果仍为剩余问题。
 
 交付路径：本目录 `delivery.md`；候选构建产物为 `SteamP2PFriends/bin/Release/SteamP2PFriends.dll` 与 `WhitelistTests/bin/Release/SteamP2PFriends.WhitelistTests.exe`。
