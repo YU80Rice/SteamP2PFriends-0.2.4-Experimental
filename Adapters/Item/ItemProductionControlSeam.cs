@@ -73,19 +73,6 @@ namespace SteamP2PFriends.Adapters.Item
             _settlement.ConnectionCurrent = (observer, token) =>
                 _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current) && current == token;
             ItemSettlementGate.AllowsConsumption = (x, y) => !_settlement.BlocksConsumption(new RegionKey(x, y));
-            ItemSettlementGate.BlocksStepFive = (x, y) =>
-            {
-                int radius = ItemManager.ITEM_REGIONS;
-                for (int rx = x - radius; rx <= x + radius; rx++)
-                    for (int ry = y - radius; ry <= y + radius; ry++)
-                            if (rx >= 0 && ry >= 0)
-                            {
-                                var region = new RegionKey((byte)rx, (byte)ry);
-                                _settlement.EnsureForDemand(region);
-                                if (_settlement.NeedsSettlement(region) || _settlement.BlocksConsumption(region)) return true;
-                        }
-                return false;
-            };
             ItemSettlementGate.BlocksRegion = (x, y) =>
             {
                 var region = new RegionKey(x, y);
@@ -93,6 +80,14 @@ namespace SteamP2PFriends.Adapters.Item
             };
             ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
                 _settlement.EnsureForDemand(new RegionKey(x, y));
+            ItemSettlementGate.RegisterStepFiveObserver = (player, x, y) =>
+            {
+                ulong observer = player?.channel?.owner?.playerID?.steamID.m_SteamID ?? 0UL;
+                ulong token = observer == 0UL ? 0UL
+                    : ItemObserverReplicationAdapter.EnsureConnectionToken(observer, player.channel.owner.transportConnection);
+                if (observer != 0UL && token != 0UL)
+                    _settlement.RegisterPending(new RegionKey(x, y), observer, token, player.channel.IsLocalPlayer);
+            };
             ItemSettlementGate.SuppressDeliveredStepFive = (x, y) =>
                 _settlement.WasDelivered(new RegionKey(x, y));
             ItemSettlementGate.WasDelivered = (x, y) =>
@@ -144,6 +139,8 @@ namespace SteamP2PFriends.Adapters.Item
             _cycle.Step(used == 0, true);
         }
         public ItemDemandCycle DemandCycle => _cycle;
+        public bool IsRegionIsolated(RegionKey region) => _settlement.IsIsolated(region);
+        public string LastSettlementFault => _settlement.LastFault;
 
         public DomainDemandProjection UpdateObserver(
             ulong observerId,
@@ -174,5 +171,10 @@ namespace SteamP2PFriends.Adapters.Item
 
         public bool TryGetConnectionGeneration(ulong observerId, out ulong connectionGeneration) =>
             _engine.TryGetConnectionGeneration(DomainIds.Item, observerId, out connectionGeneration);
+
+        public void RegisterStepFiveObserver(ulong observerId, ulong connectionToken, RegionKey region, bool host)
+        {
+            _settlement.RegisterPending(region, observerId, connectionToken, host);
+        }
     }
 }

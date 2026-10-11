@@ -228,5 +228,18 @@ namespace SteamP2PFriends.WhitelistTests
                 prefix, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "SetRegionContext");
             return calls == 1 && context == 1;
         }
+
+        internal static bool Test_StepFiveAndDestroyConsumeGatesAreBound()
+        {
+            MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo remove = typeof(SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge)
+                .GetMethod("TryRemoveItem", BindingFlags.Instance | BindingFlags.Public);
+            int stepGate = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
+                prefix, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "RegisterAndShouldHold");
+            int destroyGate = remove == null ? 0 : IlContractProbe.CountMethodCalls(
+                remove, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
+            return stepGate == 1 && destroyGate == 1;
+        }
     }
 }

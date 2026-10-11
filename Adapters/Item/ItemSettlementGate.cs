@@ -1,13 +1,14 @@
 using System;
+using SDG.Unturned;
 
 namespace SteamP2PFriends.Adapters.Item
 {
     public static class ItemSettlementGate
     {
         public static Func<byte, byte, bool> AllowsConsumption { get; set; }
-        public static Func<byte, byte, bool> BlocksStepFive { get; set; }
         public static Func<byte, byte, bool> BlocksRegion { get; set; }
-        public static Action<byte, byte> EnsureStepFiveSettlement { get; set; }
+        public static System.Action<byte, byte> EnsureStepFiveSettlement { get; set; }
+        public static System.Action<Player, byte, byte> RegisterStepFiveObserver { get; set; }
         public static Func<byte, byte, bool> SuppressDeliveredStepFive { get; set; }
         public static Func<byte, byte, bool> WasDelivered { get; set; }
         public static int BlockedPickups { get; private set; }
@@ -28,12 +29,6 @@ namespace SteamP2PFriends.Adapters.Item
             return !_hasRegion || TryAuthorizeIncrement(_regionX, _regionY);
         }
 
-        public static bool TryAuthorizeStepFive(byte x, byte y)
-        {
-            EnsureStepFiveSettlement?.Invoke(x, y);
-            return BlocksStepFive == null || !BlocksStepFive(x, y);
-        }
-
         public static void EnsureRegionStepFive(byte x, byte y) =>
             EnsureStepFiveSettlement?.Invoke(x, y);
 
@@ -43,6 +38,15 @@ namespace SteamP2PFriends.Adapters.Item
             return (WasDelivered != null && WasDelivered(x, y))
                 || (BlocksRegion != null && BlocksRegion(x, y));
         }
+
+        public static bool RegisterAndShouldHold(Player player, byte x, byte y)
+        {
+            RegisterStepFive(player, x, y);
+            return ShouldHoldRegion(x, y);
+        }
+
+        public static void RegisterStepFive(Player player, byte x, byte y) =>
+            RegisterStepFiveObserver?.Invoke(player, x, y);
 
         public static bool ShouldSuppressDeliveredStepFive(byte x, byte y) =>
             SuppressDeliveredStepFive != null && SuppressDeliveredStepFive(x, y);
@@ -61,7 +65,7 @@ namespace SteamP2PFriends.Adapters.Item
             return false;
         }
 
-        public static bool TryPickup(byte x, byte y, Action writeInventory, Action deleteGround)
+        public static bool TryPickup(byte x, byte y, System.Action writeInventory, System.Action deleteGround)
         {
             if (!TryAuthorizePickup(x, y)) return false;
             writeInventory();

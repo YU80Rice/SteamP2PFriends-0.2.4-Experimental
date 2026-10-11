@@ -185,6 +185,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT47 StaleIdentityIsolates", ItemPreparationAndFirstDemandTests.Test_IT47_StaleRegionIdentityIsolatesTheJob, ref total, ref passed, ref failed);
             RunTest("IT48 DropDuringSettlement", ItemPreparationAndFirstDemandTests.Test_IT48_DropExpiresDuringSettlementWithoutResurrection, ref total, ref passed, ref failed);
             RunTest("IT49 WrapUpReentryAndNextReturn", ItemPreparationAndFirstDemandTests.Test_IT49_WrapUpReentryDoesNotRedoAndNextReturnRejudges, ref total, ref passed, ref failed);
+            RunTest("IT50 StepFivePendingCommit", ItemPreparationAndFirstDemandTests.Test_IT50_StepFivePendingTransfersToCommittedJob, ref total, ref passed, ref failed);
+            RunTest("IT51 NaturalCreationExceptionIsolated", ItemPreparationAndFirstDemandTests.Test_IT51_NaturalCreationExceptionIsIsolated, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -650,6 +652,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Item Settlement Consumption Gate", ItemExecutionStaticILContractTests.Test_SettlementConsumptionBindsPickupIncrementAndHost,
                 ref total, ref passed, ref failed);
             RunTest("Item Host Step5 Settlement Gate", ItemExecutionStaticILContractTests.Test_HostStepFiveGenerationUsesSettlementGate,
+                ref total, ref passed, ref failed);
+            RunTest("Item Step5 Destroy Gates", ItemExecutionStaticILContractTests.Test_StepFiveAndDestroyConsumeGatesAreBound,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

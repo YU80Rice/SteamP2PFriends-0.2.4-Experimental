@@ -1709,6 +1709,71 @@ namespace SteamP2PFriends.WhitelistTests
             finally { ItemCycleThresholds.Override = null; }
         }
 
+        internal static bool Test_IT50_StepFivePendingTransfersToCommittedJob()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            bridge.GenerateNaturalItem(0, 0, CreateTestItemData(1001U, false, 0f));
+            var meta = new ItemMetadataStore();
+            float now = 10f;
+            int presented = 0;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, CreateTestPolicy(), () => now, null,
+                id => id == 1001UL, region => presented++, (id, token, region) => presented++);
+            var proj = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 1);
+            proj.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, proj, policy, 2.0f);
+            seam.BeginSession(new SessionEpoch(101UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 1, meta, 0f)) return false;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.Tick(0f);
+            seam.RemoveObserver(1001UL);
+            seam.Tick(2f);
+            now = 40f;
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 99f, 0f, true);
+            try
+            {
+                seam.RegisterStepFiveObserver(1001UL, 201UL, new RegionKey(0, 0), true);
+                bool heldBeforeDemand = ItemSettlementGate.ShouldHoldRegion(0, 0);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.Tick(0f);
+                seam.Tick(0f);
+                return heldBeforeDemand && seam.PendingAcquireRetryCount == 0 && presented == 2;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT51_NaturalCreationExceptionIsIsolated()
+        {
+            var bridge = new TestNativeItemWarehouseBridge { ThrowOnRespawn = true, SpawnPointCount = 1 };
+            var prep = new ItemPreparationAuthority(bridge);
+            bridge.GenerateNaturalItem(0, 0, CreateTestItemData(1001U, false, 0f));
+            var meta = new ItemMetadataStore();
+            float now = 10f;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, CreateTestPolicy(), () => now);
+            var proj = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 1);
+            proj.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, proj, policy, 2.0f);
+            seam.BeginSession(new SessionEpoch(101UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 1, meta, 0f)) return false;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.Tick(0f);
+            seam.RemoveObserver(1001UL);
+            seam.Tick(2f);
+            now = 40f;
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.Tick(0f);
+                seam.Tick(0f);
+                return !string.IsNullOrEmpty(seam.LastSettlementFault)
+                    && seam.PendingAcquireRetryCount == 0;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
         private sealed class TestNativeItemWarehouseBridge : INativeItemWarehouseBridge
         {
             public bool InputsAvailable = true;
@@ -1894,6 +1959,7 @@ namespace SteamP2PFriends.WhitelistTests
 
             public int SpawnPointCount;
             public bool DeclineRespawn;
+            public bool ThrowOnRespawn;
             public Action<byte, byte> OnRespawn;
             private uint _nextRespawnId = 7001U;
 
@@ -1906,6 +1972,7 @@ namespace SteamP2PFriends.WhitelistTests
 
             public bool TryApplyNativeRespawn(byte x, byte y, float now)
             {
+                if (ThrowOnRespawn) throw new InvalidOperationException("simulated natural creation exception");
                 if (DeclineRespawn) return false;
                 OnRespawn?.Invoke(x, y);
                 var created = CreateTestItemData(_nextRespawnId++, isDropped: false, lastDropped: now);

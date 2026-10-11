@@ -55,12 +55,18 @@ namespace SteamP2PFriends.Adapters.Item
                 _jobs[region] = new Job { Session = _session(), Generation = _generation(region) };
                 _order.Add(region);
             }
+            if (_jobs.TryGetValue(region, out Job job) && _pending.TryGetValue(region, out List<Waiter> pending))
+            {
+                job.Waiters.AddRange(pending);
+                _pending.Remove(region);
+            }
         }
         public bool BlocksWarehouse(RegionKey region) => IsBusy(region) || _isolated.Contains(region);
         public bool IsIsolated(RegionKey region) => _isolated.Contains(region);
         public bool WasDelivered(RegionKey region) => _delivered.Contains(region);
         public bool NeedsSettlement(RegionKey region) => _activated(region) && _departed.Contains(region)
-            && _demand(region) > 0 && !_isolated.Contains(region);
+            && !_isolated.Contains(region)
+            && (_demand(region) > 0 || _pending.ContainsKey(region));
         public int ActiveJobCount => _jobs.Count;
         public Action<ulong, ulong, RegionKey, bool> Deliver { get; set; }
         public Func<ulong, ulong, bool> ConnectionCurrent { get; set; }
@@ -72,6 +78,7 @@ namespace SteamP2PFriends.Adapters.Item
             if (!_jobs.TryGetValue(region, out Job job))
             {
                 if (!_departed.Contains(region)) return false;
+                _delivered.Remove(region);
                 if (!_pending.TryGetValue(region, out List<Waiter> pending))
                     _pending[region] = pending = new List<Waiter>();
                 pending.RemoveAll(waiter => waiter.Observer == observer);
@@ -102,9 +109,30 @@ namespace SteamP2PFriends.Adapters.Item
                     _jobs[region] = new Job { Session = _session(), Generation = _generation(region) };
                     _order.Add(region);
                 }
-                _jobs[region].Waiters.AddRange(_pending[region]);
+                for (int w = 0; w < _pending[region].Count; w++)
+                {
+                    Waiter waiter = _pending[region][w];
+                    _jobs[region].Waiters.RemoveAll(existing => existing.Observer == waiter.Observer);
+                    _jobs[region].Waiters.Add(waiter);
+                }
                 _pending.Remove(region);
             }
+        }
+
+        public void RegisterPending(RegionKey region, ulong observer, ulong token, bool host)
+        {
+            if (!_activated(region) || !_departed.Contains(region) || _isolated.Contains(region)) return;
+            if (_jobs.TryGetValue(region, out Job job))
+            {
+                _pending.Remove(region);
+                job.Waiters.RemoveAll(waiter => waiter.Observer == observer);
+                job.Waiters.Add(new Waiter { Observer = observer, Token = token, Host = host });
+                return;
+            }
+            if (!_pending.TryGetValue(region, out List<Waiter> pending))
+                _pending[region] = pending = new List<Waiter>();
+            pending.RemoveAll(waiter => waiter.Observer == observer);
+            pending.Add(new Waiter { Observer = observer, Token = token, Host = host });
         }
 
         public void ReleaseObserver(ulong observer, ulong token)

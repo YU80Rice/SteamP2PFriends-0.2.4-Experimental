@@ -393,10 +393,11 @@ namespace SteamP2PFriends.Adapters.Item
             }
             if (index < 0) return false;
             ItemData removed = region.items[index];
+            bool wasNetworked = region.isNetworked;
             region.items.RemoveAt(index);
             if (ContainsInstance(region.items, instanceId)) return false;
             CancelInstantiationByInstanceIdMethod?.Invoke(null, new object[] { instanceId });
-            if (!ItemSettlementGate.TryAuthorizeIncrement(x, y))
+            if (!wasNetworked && !ItemSettlementGate.TryAuthorizeIncrement(x, y))
                 return true;
             object sender = SendDestroyItemField?.GetValue(null);
             if (!BroadcastDestroy(sender, x, y, instanceId))
