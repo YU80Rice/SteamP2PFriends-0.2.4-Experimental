@@ -38,7 +38,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
     ///   - askItems Prefix owner 为 com.yu80rice.steamp2pfriends，patch method 为 ItemManagerRegionSyncPatch.AskItems_Prefix，count=1
     ///   任一失败并入 DiagnosticBuildValid fail-closed。
     ///
-    ///   - 不手动写 loaded flag
+    ///   - Prefix 只通过 ItemStepFiveAdmission 的原生投影适配器写 loaded flag
     ///   - 不在 Postfix 重复调用发送方法
     ///   - 不伪造全局 dedicated 状态
     ///   - 不修改 load/generate/client cleanup 分支
@@ -180,10 +180,14 @@ namespace SteamP2PFriends.Adapters.Item.Patches
                 MethodInfo original = AccessTools.Method(typeof(ItemManager), TargetMethodName,
                     new System.Type[] { typeof(Player), typeof(byte), typeof(byte), typeof(byte), typeof(byte), typeof(byte), typeof(bool).MakeByRefType() });
                 MethodInfo prefix = AccessTools.Method(typeof(ItemManagerRegionSyncPatch), PatchRegionPrefixName);
-                if (original == null || prefix == null) return false;
+                MethodInfo finalizer = AccessTools.Method(typeof(ItemManagerRegionSyncPatch), nameof(OnRegionUpdated_Finalizer));
+                if (original == null || prefix == null || finalizer == null) return false;
                 if (!VerifyExactPatch(original, prefix, HarmonyPatchType.Prefix))
                     harmony.Patch(original, prefix: new HarmonyMethod(prefix) { priority = Priority.First });
-                return VerifyExactPatch(original, prefix, HarmonyPatchType.Prefix);
+                if (!VerifyExactPatch(original, finalizer, HarmonyPatchType.Finalizer))
+                    harmony.Patch(original, finalizer: new HarmonyMethod(finalizer) { priority = Priority.Last });
+                return VerifyExactPatch(original, prefix, HarmonyPatchType.Prefix)
+                    && VerifyExactPatch(original, finalizer, HarmonyPatchType.Finalizer);
             }
             catch (System.Exception ex)
             {
@@ -519,26 +523,50 @@ namespace SteamP2PFriends.Adapters.Item.Patches
         }
 
         /// <summary>
-        /// 相关性释放发生在原版 step 0 清除兼容 loaded 位之前。
+        /// 相关性释放发生在原版 step 0 清除兼容 loaded 位之前；step5 通过共享 admission
+        /// 接缝提交需求、登记等待者并逐格投影原生 loaded 状态。
         /// </summary>
         [HarmonyPrefix]
         [HarmonyPatch(typeof(ItemManager), TargetMethodName)]
-        public static bool OnRegionUpdated_Prefix(Player player, byte new_x, byte new_y, byte step, ref bool canIncrementIndex)
+        public static bool OnRegionUpdated_Prefix(
+            Player player, byte new_x, byte new_y, byte step, ref bool canIncrementIndex,
+            ref System.IDisposable __state)
         {
-            ItemSettlementGate.SetRegionContext(new_x, new_y, step);
+            if (step == 5) __state = ItemObserverReplicationAdapter.EnterNativeStepFiveAskItems();
             if (step == 5 && player?.movement?.loadedRegions != null)
             {
-                int radius = ItemManager.ITEM_REGIONS;
-                for (int x = new_x - radius; x <= new_x + radius; x++)
-                    for (int y = new_y - radius; y <= new_y + radius; y++)
-                        if (x >= 0 && y >= 0 && x < player.movement.loadedRegions.GetLength(0)
-                            && y < player.movement.loadedRegions.GetLength(1)
-                            && ItemSettlementGate.RegisterAndShouldHold(player, (byte)x, (byte)y))
-                            player.movement.loadedRegions[x, y].isItemsLoaded = true;
+                SteamPlayer owner = player.channel?.owner;
+                ulong observer = owner?.playerID?.steamID.m_SteamID ?? 0UL;
+                ulong token = observer == 0UL || owner?.transportConnection == null ? 0UL
+                    : ItemObserverReplicationAdapter.EnsureConnectionToken(observer, owner.transportConnection);
+                int worldSize = System.Math.Min(player.movement.loadedRegions.GetLength(0),
+                    player.movement.loadedRegions.GetLength(1));
+                ItemStepFiveAdmission admission = ItemSettlementGate.StepFiveAdmission;
+                if (admission != null)
+                {
+                    var request = new ItemStepFiveRequest(observer, token,
+                        new SteamP2PFriends.Core.Identity.RegionKey(new_x, new_y),
+                        ItemManager.ITEM_REGIONS, worldSize, player.channel?.IsLocalPlayer == true);
+                    admission.Admit(request, new ItemStepFiveLoadedProjection(region =>
+                    {
+                        if (region.X < player.movement.loadedRegions.GetLength(0)
+                            && region.Y < player.movement.loadedRegions.GetLength(1))
+                            player.movement.loadedRegions[region.X, region.Y].isItemsLoaded = true;
+                    }));
+                }
             }
             if (step != 0) return true;
             ItemObserverReplicationAdapter.ObserveRelevance(player, new_x, new_y);
             return true;
+        }
+
+        [HarmonyFinalizer]
+        [HarmonyPatch(typeof(ItemManager), TargetMethodName)]
+        public static System.Exception OnRegionUpdated_Finalizer(
+            System.Exception __exception, System.IDisposable __state)
+        {
+            __state?.Dispose();
+            return __exception;
         }
 
         /// <summary>

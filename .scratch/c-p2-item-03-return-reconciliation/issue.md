@@ -1,8 +1,8 @@
 # C-P2-Item-03 — 返区结算后呈现
 
-- **Label**: `ready-for-agent`
+- **Label**: `ready-for-human`
 - **Type**: Specification
-- **Status**: BLOCKED — Spec 非CLEAN
+- **Status**: READY FOR HUMAN — dual-axis CLEAN；Runtime pending
 - **Version**: `0.2.4.10-Experimental`
 - **Blocked by**: [02 按需求运行与掉落到期](../c-p2-item-02-demand-and-expiry/issue.md)
 

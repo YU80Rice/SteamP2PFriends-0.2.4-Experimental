@@ -211,6 +211,38 @@ namespace SteamP2PFriends.WhitelistTests
             return false;
         }
 
+        internal static bool ContainsIntegerLiteral(MethodBase method, int expected)
+        {
+            if (method == null) return false;
+            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il == null) return false;
+            for (int offset = 0; offset < il.Length; offset++)
+            {
+                switch (il[offset])
+                {
+                    case 0x15: if (expected == -1) return true; break;
+                    case 0x16: if (expected == 0) return true; break;
+                    case 0x17: if (expected == 1) return true; break;
+                    case 0x18: if (expected == 2) return true; break;
+                    case 0x19: if (expected == 3) return true; break;
+                    case 0x1A: if (expected == 4) return true; break;
+                    case 0x1B: if (expected == 5) return true; break;
+                    case 0x1C: if (expected == 6) return true; break;
+                    case 0x1D: if (expected == 7) return true; break;
+                    case 0x1E: if (expected == 8) return true; break;
+                    case 0x1F:
+                        if (offset + 1 < il.Length && (sbyte)il[offset + 1] == expected) return true;
+                        offset++;
+                        break;
+                    case 0x20:
+                        if (offset + 4 < il.Length && BitConverter.ToInt32(il, offset + 1) == expected) return true;
+                        offset += 4;
+                        break;
+                }
+            }
+            return false;
+        }
+
         internal static int GetOperandSize(OperandType operandType, byte[] il, int offset)
         {
             switch (operandType)

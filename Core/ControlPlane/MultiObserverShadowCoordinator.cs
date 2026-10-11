@@ -1058,7 +1058,9 @@ namespace SteamP2PFriends.MultiObserver
             {
                 if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
                     || !seen.Add(sample.ObserverId)) continue;
-                ItemProduction.UpdateObserver(sample.ObserverId, sample.ConnectionToken,
+                ulong itemConnectionToken = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(sample.ObserverId);
+                ItemProduction.UpdateObserver(sample.ObserverId,
+                    itemConnectionToken == 0UL ? sample.ConnectionToken : itemConnectionToken,
                     sample.ItemRegionX, sample.ItemRegionY, sample.GameplayAuthorized);
             }
             foreach (ulong observerId in deferred)
@@ -1107,14 +1109,18 @@ namespace SteamP2PFriends.MultiObserver
         {
             if (ItemProductionMode != ItemProductionMode.Candidate) return;
             var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for BindGuestBaseline.");
-            bridge.BindGuestBaseline(observerId, connectionToken, (byte)regionKey.X, (byte)regionKey.Y);
+            ulong nativeToken = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(observerId);
+            bridge.BindGuestBaseline(observerId, nativeToken == 0UL ? connectionToken : nativeToken,
+                (byte)regionKey.X, (byte)regionKey.Y);
         }
 
         private static void UnbindGuestItemBaseline(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             if (ItemProductionMode != ItemProductionMode.Candidate) return;
             var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for UnbindGuestBaseline.");
-            bridge.UnbindGuestBaseline(observerId, connectionToken, (byte)regionKey.X, (byte)regionKey.Y);
+            ulong nativeToken = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(observerId);
+            bridge.UnbindGuestBaseline(observerId, nativeToken == 0UL ? connectionToken : nativeToken,
+                (byte)regionKey.X, (byte)regionKey.Y);
         }
 
         private static void TryPrepareItemFullMap(string worldIdentity, float now)

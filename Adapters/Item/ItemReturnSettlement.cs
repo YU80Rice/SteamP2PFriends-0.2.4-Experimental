@@ -1,5 +1,6 @@
 using SDG.Unturned;
 using SteamP2PFriends.Core.Identity;
+using SteamP2PFriends.MultiObserver.Lifecycle;
 using System;
 using System.Collections.Generic;
 
@@ -17,9 +18,12 @@ namespace SteamP2PFriends.Adapters.Item
         private readonly Func<RegionKey, bool> _activated;
         private readonly Func<RegionKey, uint> _generation;
         private readonly Func<ulong> _session;
+        private readonly Func<Exception, EDomainFailureKind> _classifyFailure;
         private readonly HashSet<RegionKey> _departed = new HashSet<RegionKey>();
         private readonly HashSet<RegionKey> _isolated = new HashSet<RegionKey>();
+        private readonly HashSet<RegionKey> _identityBlocked = new HashSet<RegionKey>();
         private readonly HashSet<RegionKey> _delivered = new HashSet<RegionKey>();
+        private readonly HashSet<DeliveredWaiter> _deliveredWaiters = new HashSet<DeliveredWaiter>();
         private readonly Dictionary<RegionKey, List<Waiter>> _pending = new Dictionary<RegionKey, List<Waiter>>();
         private readonly Dictionary<RegionKey, Job> _jobs = new Dictionary<RegionKey, Job>();
         private readonly List<RegionKey> _order = new List<RegionKey>();
@@ -33,7 +37,8 @@ namespace SteamP2PFriends.Adapters.Item
             Func<byte> worldSize,
             Func<RegionKey, bool> activated,
             Func<RegionKey, uint> generation,
-            Func<ulong> session)
+            Func<ulong> session,
+            Func<Exception, EDomainFailureKind> classifyFailure = null)
         {
             _bridge = bridge;
             _store = store;
@@ -43,13 +48,14 @@ namespace SteamP2PFriends.Adapters.Item
             _activated = activated;
             _generation = generation;
             _session = session;
+            _classifyFailure = classifyFailure;
         }
 
         public bool IsBusy(RegionKey region) => _jobs.ContainsKey(region);
-        public bool BlocksConsumption(RegionKey region) => IsBusy(region) || _isolated.Contains(region);
+        public bool BlocksConsumption(RegionKey region) => IsBusy(region) || _isolated.Contains(region) || _identityBlocked.Contains(region);
         public void EnsureForDemand(RegionKey region)
         {
-            if (_isolated.Contains(region)) return;
+            if (_isolated.Contains(region) || _identityBlocked.Contains(region)) return;
             if (_activated(region) && _demand(region) > 0 && _departed.Contains(region) && !_jobs.ContainsKey(region))
             {
                 _jobs[region] = new Job { Session = _session(), Generation = _generation(region) };
@@ -61,19 +67,31 @@ namespace SteamP2PFriends.Adapters.Item
                 _pending.Remove(region);
             }
         }
-        public bool BlocksWarehouse(RegionKey region) => IsBusy(region) || _isolated.Contains(region);
+        public bool BlocksWarehouse(RegionKey region) => IsBusy(region) || _isolated.Contains(region) || _identityBlocked.Contains(region);
         public bool IsIsolated(RegionKey region) => _isolated.Contains(region);
+        public bool IsReturnPending(RegionKey region) => _departed.Contains(region);
+        public bool WasDeliveredFor(RegionKey region, ulong observer, ulong token)
+        {
+            token = CanonicalConnectionToken == null ? token : CanonicalConnectionToken(observer, token);
+            return _deliveredWaiters.Contains(new DeliveredWaiter
+            {
+                Region = region, Observer = observer, Token = token
+            });
+        }
         public bool WasDelivered(RegionKey region) => _delivered.Contains(region);
         public bool NeedsSettlement(RegionKey region) => _activated(region) && _departed.Contains(region)
-            && !_isolated.Contains(region)
-            && (_demand(region) > 0 || _pending.ContainsKey(region));
+            && !_isolated.Contains(region) && !_identityBlocked.Contains(region)
+            && _demand(region) > 0
+            && (_jobs.ContainsKey(region) || _pending.ContainsKey(region));
         public int ActiveJobCount => _jobs.Count;
         public Action<ulong, ulong, RegionKey, bool> Deliver { get; set; }
         public Func<ulong, ulong, bool> ConnectionCurrent { get; set; }
+        public Func<ulong, ulong, ulong> CanonicalConnectionToken { get; set; }
         public string LastFault { get; private set; }
 
         public bool Hold(RegionKey region, ulong observer, ulong token, bool host)
         {
+            token = CanonicalConnectionToken == null ? token : CanonicalConnectionToken(observer, token);
             if (_isolated.Contains(region)) return true;
             if (!_jobs.TryGetValue(region, out Job job))
             {
@@ -121,7 +139,9 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void RegisterPending(RegionKey region, ulong observer, ulong token, bool host)
         {
-            if (!_activated(region) || !_departed.Contains(region) || _isolated.Contains(region)) return;
+            token = CanonicalConnectionToken == null ? token : CanonicalConnectionToken(observer, token);
+            if (!_activated(region) || !_departed.Contains(region)
+                || _isolated.Contains(region) || _identityBlocked.Contains(region)) return;
             if (_jobs.TryGetValue(region, out Job job))
             {
                 _pending.Remove(region);
@@ -137,6 +157,7 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void ReleaseObserver(ulong observer, ulong token)
         {
+            token = CanonicalConnectionToken == null ? token : CanonicalConnectionToken(observer, token);
             foreach (List<Waiter> pending in _pending.Values)
                 pending.RemoveAll(waiter => waiter.Observer == observer && waiter.Token == token);
             var empty = new List<RegionKey>();
@@ -154,7 +175,9 @@ namespace SteamP2PFriends.Adapters.Item
             _order.Clear();
             _departed.Clear();
             _isolated.Clear();
+            _identityBlocked.Clear();
             _delivered.Clear();
+            _deliveredWaiters.Clear();
             _pending.Clear();
         }
 
@@ -193,10 +216,11 @@ namespace SteamP2PFriends.Adapters.Item
             }
             if (demand <= 0)
             {
+                _identityBlocked.Remove(region);
                 _departed.Add(region);
                 return;
             }
-            if (!_departed.Contains(region) || _jobs.ContainsKey(region)) return;
+            if (_identityBlocked.Contains(region) || !_departed.Contains(region) || _jobs.ContainsKey(region)) return;
             _jobs[region] = new Job { Session = _session(), Generation = _generation(region) };
             _order.Add(region);
         }
@@ -216,8 +240,10 @@ namespace SteamP2PFriends.Adapters.Item
                 if (!_jobs.TryGetValue(region, out Job job)) continue;
                 if (job.Session != _session() || _generation(region) != job.Generation)
                 {
-                    _isolated.Add(region);
                     Drop(region);
+                    _departed.Remove(region);
+                    _identityBlocked.Add(region);
+                    LastFault = $"region={region} outcome=rejected reason=identity-invalidated";
                     continue;
                 }
                 if (job.Clearing)
@@ -225,12 +251,18 @@ namespace SteamP2PFriends.Adapters.Item
                     if (RemoveOne(region, thresholds)) { used++; continue; }
                     if (HasExpiredNatural(region, thresholds)) continue;
                     job.Clearing = false;
-                    try { job.RestockBudget = Shortage(region, thresholds); }
-                    catch
+                    if (!_bridge.AreNaturalInputsAvailable((byte)region.X, (byte)region.Y,
+                        out string inputFailure))
                     {
                         _isolated.Add(region);
                         Drop(region);
-                        LastFault = $"region={region} outcome=isolated reason=spawn-point-read-exception";
+                        LastFault = $"region={region} outcome=unavailable reason={inputFailure}";
+                        return used;
+                    }
+                    try { job.RestockBudget = Shortage(region, thresholds); }
+                    catch (Exception ex)
+                    {
+                        HandleFailure(region, ex, "spawn-point-read-exception");
                         return used;
                     }
                 }
@@ -239,22 +271,45 @@ namespace SteamP2PFriends.Adapters.Item
                     Finish(region, job, true);
                     continue;
                 }
-                bool created;
-                try { created = _bridge.TryCreateOneNatural((byte)region.X, (byte)region.Y, _now()); }
-                catch
+                ItemNaturalCreationOutcome outcome;
+                try { outcome = _bridge.CreateOneNatural((byte)region.X, (byte)region.Y, _now()); }
+                catch (Exception ex)
+                {
+                    HandleFailure(region, ex, "natural-create-exception");
+                    return used;
+                }
+                if (outcome == ItemNaturalCreationOutcome.MissingInputs
+                    || outcome == ItemNaturalCreationOutcome.MissingAsset)
                 {
                     _isolated.Add(region);
                     Drop(region);
-                    LastFault = $"region={region} outcome=isolated reason=natural-create-exception";
+                    string reason = outcome == ItemNaturalCreationOutcome.MissingAsset
+                        ? "missing-natural-asset" : "missing-natural-inputs";
+                    LastFault = $"region={region} outcome=unavailable reason={reason}";
                     return used;
                 }
                 job.RestockUsed++;
-                if (created)
+                if (outcome == ItemNaturalCreationOutcome.Created)
                     job.RestockSucceeded = true;
                 AdoptNew(region, _now());
                 used++;
             }
             return used;
+        }
+
+        private void HandleFailure(RegionKey region, Exception exception, string reason)
+        {
+            EDomainFailureKind kind = _classifyFailure == null
+                ? EDomainFailureKind.Failed
+                : _classifyFailure(exception);
+            if (kind != EDomainFailureKind.Failed)
+                Drop(region);
+            else
+            {
+                _isolated.Add(region);
+                Drop(region);
+            }
+            LastFault = $"region={region} outcome={kind.ToString().ToLowerInvariant()} reason={reason} type={exception.GetType().Name}";
         }
 
         private bool RemoveOne(RegionKey region, ItemCycleThresholds thresholds)
@@ -347,6 +402,10 @@ namespace SteamP2PFriends.Adapters.Item
                 Waiter waiter = waiters[i];
                 if (ConnectionCurrent != null && !ConnectionCurrent(waiter.Observer, waiter.Token)) continue;
                 Deliver?.Invoke(waiter.Observer, waiter.Token, region, waiter.Host);
+                _deliveredWaiters.Add(new DeliveredWaiter
+                {
+                    Region = region, Observer = waiter.Observer, Token = waiter.Token
+                });
                 delivered = true;
             }
             if (delivered) _delivered.Add(region);
@@ -363,6 +422,18 @@ namespace SteamP2PFriends.Adapters.Item
             public ulong Observer;
             public ulong Token;
             public bool Host;
+        }
+
+        private struct DeliveredWaiter : IEquatable<DeliveredWaiter>
+        {
+            public RegionKey Region;
+            public ulong Observer;
+            public ulong Token;
+
+            public bool Equals(DeliveredWaiter other) => Region == other.Region
+                && Observer == other.Observer && Token == other.Token;
+            public override bool Equals(object obj) => obj is DeliveredWaiter other && Equals(other);
+            public override int GetHashCode() => Region.GetHashCode() ^ Observer.GetHashCode() ^ Token.GetHashCode();
         }
 
         private sealed class Job

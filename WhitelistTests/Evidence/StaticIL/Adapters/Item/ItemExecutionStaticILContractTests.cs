@@ -1,5 +1,6 @@
 using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.MultiObserver.Lifecycle;
+using HarmonyLib;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -183,12 +184,12 @@ namespace SteamP2PFriends.WhitelistTests
             FieldInfo cached = bridge?.GetField("SendDestroyItemField", BindingFlags.NonPublic | BindingFlags.Static);
             FieldInfo native = cached?.GetValue(null) as FieldInfo;
             MethodInfo remove = bridge?.GetMethod("TryRemoveItem");
-            int usesCache = remove == null ? 0 : IlContractProbe.CountFieldLoads(
-                remove, "SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge", "SendDestroyItemField");
+            int dispatchCalls = remove == null ? 0 : IlContractProbe.CountMethodCalls(
+                remove, "SteamP2PFriends.Adapters.Item.ItemDeletionDispatch", "Remove");
             return native != null
                 && native.Name == "SendDestroyItem"
                 && native.DeclaringType == typeof(SDG.Unturned.ItemManager)
-                && usesCache > 0;
+                && dispatchCalls == 1;
         }
 
         internal static bool Test_SettlementConsumptionBindsPickupIncrementAndHost()
@@ -224,22 +225,43 @@ namespace SteamP2PFriends.WhitelistTests
                 method, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeHostGeneration");
             MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch).GetMethod(
                 "OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
-            int context = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
-                prefix, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "SetRegionContext");
-            return calls == 1 && context == 1;
+            int admission = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
+                prefix, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit");
+            return calls == 1 && admission == 1;
         }
 
         internal static bool Test_StepFiveAndDestroyConsumeGatesAreBound()
         {
             MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
                 .GetMethod("OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
-            MethodInfo remove = typeof(SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge)
-                .GetMethod("TryRemoveItem", BindingFlags.Instance | BindingFlags.Public);
             int stepGate = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
-                prefix, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "RegisterAndShouldHold");
-            int destroyGate = remove == null ? 0 : IlContractProbe.CountMethodCalls(
-                remove, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
-            return stepGate == 1 && destroyGate == 1;
+                prefix, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit");
+            int nativeScope = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
+                prefix, "SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter", "EnterNativeStepFiveAskItems");
+            MethodInfo finalizer = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("OnRegionUpdated_Finalizer", BindingFlags.Static | BindingFlags.Public);
+            int destroyGate = IlContractProbe.CountAssemblyMethodCalls(
+                typeof(SteamP2PFriendsPlugin).Assembly,
+                "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
+            return stepGate == 1 && nativeScope == 1 && finalizer != null && destroyGate > 0;
+        }
+
+        internal static bool Test_RegionPrefixRegistrationIncludesOrderedFinalizer()
+        {
+            MethodInfo register = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("RegisterRegionPrefix", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo finalizer = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("OnRegionUpdated_Finalizer", BindingFlags.Static | BindingFlags.Public);
+            int patchCalls = IlContractProbe.CountMethodCalls(register, "HarmonyLib.Harmony", "Patch");
+            int harmonyMethods = IlContractProbe.CountCallsWhere(register, called =>
+                called.DeclaringType?.FullName == "HarmonyLib.HarmonyMethod" && called.Name == ".ctor");
+            int verificationCalls = IlContractProbe.CountMethodCalls(register,
+                "SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch", "VerifyExactPatch");
+            return register != null && finalizer != null && patchCalls == 2 && harmonyMethods == 2
+                && verificationCalls == 4
+                && IlContractProbe.ContainsStringLiteral(register, "OnRegionUpdated_Finalizer")
+                && IlContractProbe.ContainsIntegerLiteral(register, Priority.First)
+                && IlContractProbe.ContainsIntegerLiteral(register, Priority.Last);
         }
     }
 }

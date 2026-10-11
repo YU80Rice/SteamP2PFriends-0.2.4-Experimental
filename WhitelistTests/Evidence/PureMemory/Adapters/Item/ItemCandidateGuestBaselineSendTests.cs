@@ -19,6 +19,7 @@ namespace SteamP2PFriends.WhitelistTests
         {
             ItemProductionMode savedMode = MultiObserverShadowCoordinator.ItemProductionMode;
             bool savedReady = ItemObserverReplicationAdapter.IsReady;
+            Func<byte, byte, bool> savedBlocks = ItemSettlementGate.BlocksRegion;
             FieldInfo fDedicated = typeof(Dedicator).GetField("_isDedicated", BindingFlags.Static | BindingFlags.NonPublic);
             FieldInfo fServer = typeof(Provider).GetField("_isServer", BindingFlags.Static | BindingFlags.NonPublic);
             FieldInfo fHostMode = typeof(HostManager).GetField("_hostMode", BindingFlags.Static | BindingFlags.NonPublic);
@@ -32,6 +33,7 @@ namespace SteamP2PFriends.WhitelistTests
             {
                 if (!TryPatchAskItems()) return false;
                 ItemObserverReplicationAdapter.SetRegistrationReady(true);
+                ItemSettlementGate.BlocksRegion = null;
                 ApplyRole(fDedicated, fServer, fHostMode, fP2P, false, true, "P2P", true);
                 MultiObserverShadowCoordinator.ItemProductionMode = ItemProductionMode.Candidate;
                 int before = _nativeBodyRuns;
@@ -50,6 +52,7 @@ namespace SteamP2PFriends.WhitelistTests
                 UnpatchAskItems();
                 MultiObserverShadowCoordinator.ItemProductionMode = savedMode;
                 ItemObserverReplicationAdapter.SetRegistrationReady(savedReady);
+                ItemSettlementGate.BlocksRegion = savedBlocks;
                 fP2P.SetValue(null, savedP2P);
                 fHostMode.SetValue(null, savedHostMode);
                 fServer.SetValue(null, savedServer);

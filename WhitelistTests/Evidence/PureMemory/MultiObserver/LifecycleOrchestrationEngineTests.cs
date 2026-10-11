@@ -1552,5 +1552,33 @@ namespace SteamP2PFriends.WhitelistTests
                 + " resourceAcquires=" + resource.Acquires.Count + " collisionAcquires=" + collision.Acquires.Count
                 + " resourceReleases=" + resource.Releases.Count + " collisionReleases=" + collision.Releases.Count);
         }
+
+        internal static bool Test_LOE17_NativeStepFiveUpdatesDemandWithoutReplication()
+        {
+            LifecycleOrchestrationEngine engine = CreateSingleEngine(out FakeDomainPort port);
+            engine.BeginSession(new SessionEpoch(17UL));
+            RegionKey region = new RegionKey(10, 10);
+            engine.ObserveForNativeStepFive(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true,
+                regionKey => true);
+            return engine.IsLeased(PrimaryDomain, region)
+                && engine.GetDemand(PrimaryDomain, region) == 1
+                && port.Acquires.Count == 1
+                && port.ReplicationEntered.Count == 0
+                && !engine.TryGetConnectionGeneration(PrimaryDomain, 100UL, out _);
+        }
+
+        internal static bool Test_LOE18_NativeStepFiveDoesNotInvalidateEngineIdentity()
+        {
+            LifecycleOrchestrationEngine engine = CreateSingleEngine(out FakeDomainPort port);
+            engine.BeginSession(new SessionEpoch(18UL));
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, 10, 10, true);
+            engine.ObserveForNativeStepFive(PrimaryDomain, 100UL, 2002UL, 11, 10, true,
+                region => true);
+            return port.ReplicationExited.Count == 0
+                && port.ReplicationEntered.Count == 1
+                && engine.TryGetConnectionGeneration(PrimaryDomain, 100UL, out ulong token)
+                && token == 1001UL
+                && engine.GetDemand(PrimaryDomain, new RegionKey(11, 10)) == 1;
+        }
     }
 }

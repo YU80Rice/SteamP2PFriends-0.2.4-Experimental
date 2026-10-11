@@ -307,16 +307,25 @@ namespace SteamP2PFriends.Adapters.Item
         [ThreadStatic]
         private static int _candidateOwnedAskItemsDepth;
         [ThreadStatic]
+        private static int _nativeStepFiveAskItemsDepth;
+        [ThreadStatic]
         private static bool _askItemsOriginalObserved;
         [ThreadStatic]
         private static bool _askItemsOriginalRan;
 
         internal static bool IsCandidateOwnedAskItemsSend => _candidateOwnedAskItemsDepth > 0;
+        internal static bool IsNativeStepFiveAskItems => _nativeStepFiveAskItemsDepth > 0;
 
         internal static IDisposable EnterCandidateOwnedAskItems()
         {
             _candidateOwnedAskItemsDepth++;
             return new CandidateOwnedAskItemsScope();
+        }
+
+        internal static IDisposable EnterNativeStepFiveAskItems()
+        {
+            _nativeStepFiveAskItemsDepth++;
+            return new NativeStepFiveAskItemsScope();
         }
 
         private sealed class CandidateOwnedAskItemsScope : IDisposable
@@ -408,8 +417,10 @@ namespace SteamP2PFriends.Adapters.Item
             if (!_registrationReady) return false;
             if (MultiObserver.MultiObserverShadowCoordinator.ItemProductionMode == ItemProductionMode.Candidate)
             {
-                if (!IsCandidateOwnedAskItemsSend) return false;
-                return true;
+                if (IsCandidateOwnedAskItemsSend) return true;
+                if (!IsNativeStepFiveAskItems) return false;
+                return ItemSettlementGate.BlocksRegion == null
+                    || !ItemSettlementGate.BlocksRegion(x, y);
             }
             ThreadUtil.assertIsGameThread();
 
@@ -581,6 +592,32 @@ namespace SteamP2PFriends.Adapters.Item
                 Token = _nextConnectionToken
             };
             return _nextConnectionToken;
+        }
+
+        private sealed class NativeStepFiveAskItemsScope : IDisposable
+        {
+            public void Dispose()
+            {
+                if (_nativeStepFiveAskItemsDepth > 0) _nativeStepFiveAskItemsDepth--;
+            }
+        }
+
+        internal static bool IsCurrentConnectionToken(ulong observerId, ulong token)
+        {
+            return token != 0UL
+                && Connections.TryGetValue(observerId, out ConnectionBinding binding)
+                && binding.Token == token;
+        }
+
+        internal static ulong EnsureConnectionTokenForObserver(ulong observerId)
+        {
+            if (Provider.clients == null) return 0UL;
+            foreach (SteamPlayer player in Provider.clients)
+            {
+                if (player?.playerID?.steamID.m_SteamID != observerId) continue;
+                return EnsureConnectionToken(observerId, player.transportConnection);
+            }
+            return 0UL;
         }
 
         private static void RollbackLoadedProjectionIfCurrent(BaselineCallState state)

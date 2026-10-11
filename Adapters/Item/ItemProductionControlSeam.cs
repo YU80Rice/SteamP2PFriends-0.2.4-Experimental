@@ -57,7 +57,8 @@ namespace SteamP2PFriends.Adapters.Item
                 () => _preparationAuthority.WorldSize,
                 region => _executionPort.IsRegionActivated(region),
                 region => _executionPort.ReadRegionGeneration(region).Value,
-                () => _engine.SessionEpoch.Value);
+                () => _engine.SessionEpoch.Value,
+                _executionPort.ClassifyRegionFailure);
             _cycle = new ItemDemandCycle(
                 _preparationAuthority.Bridge,
                 _metadataStore,
@@ -71,7 +72,13 @@ namespace SteamP2PFriends.Adapters.Item
             _settlement.Deliver = (observer, token, region, host) =>
                 _executionPort.DeliverSettlementBaseline(observer, token, region, host);
             _settlement.ConnectionCurrent = (observer, token) =>
-                _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current) && current == token;
+                (_engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current) && current == token)
+                || ItemObserverReplicationAdapter.IsCurrentConnectionToken(observer, token);
+            _settlement.CanonicalConnectionToken = (observer, token) =>
+            {
+                ulong current = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(observer);
+                return current == 0UL ? token : current;
+            };
             ItemSettlementGate.AllowsConsumption = (x, y) => !_settlement.BlocksConsumption(new RegionKey(x, y));
             ItemSettlementGate.BlocksRegion = (x, y) =>
             {
@@ -80,16 +87,15 @@ namespace SteamP2PFriends.Adapters.Item
             };
             ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
                 _settlement.EnsureForDemand(new RegionKey(x, y));
-            ItemSettlementGate.RegisterStepFiveObserver = (player, x, y) =>
-            {
-                ulong observer = player?.channel?.owner?.playerID?.steamID.m_SteamID ?? 0UL;
-                ulong token = observer == 0UL ? 0UL
-                    : ItemObserverReplicationAdapter.EnsureConnectionToken(observer, player.channel.owner.transportConnection);
-                if (observer != 0UL && token != 0UL)
-                    _settlement.RegisterPending(new RegionKey(x, y), observer, token, player.channel.IsLocalPlayer);
-            };
-            ItemSettlementGate.SuppressDeliveredStepFive = (x, y) =>
-                _settlement.WasDelivered(new RegionKey(x, y));
+            ItemSettlementGate.StepFiveAdmission = new ItemStepFiveAdmission(
+                request => RegisterNativeStepFiveDemand(request.ObserverId, request.ConnectionToken,
+                    (byte)request.Center.X, (byte)request.Center.Y),
+                (request, region) => RegisterNativeStepFiveObserver(request.ObserverId,
+                    request.ConnectionToken, region, request.Host),
+                (request, region) => _settlement.NeedsSettlement(region) || _settlement.BlocksConsumption(region),
+                (request, region) => _settlement.WasDeliveredFor(region,
+                    request.ObserverId, request.ConnectionToken),
+                request => _settlement.Refresh());
             ItemSettlementGate.WasDelivered = (x, y) =>
                 _settlement.WasDelivered(new RegionKey(x, y));
         }
@@ -175,6 +181,22 @@ namespace SteamP2PFriends.Adapters.Item
         public void RegisterStepFiveObserver(ulong observerId, ulong connectionToken, RegionKey region, bool host)
         {
             _settlement.RegisterPending(region, observerId, connectionToken, host);
+        }
+
+        public void RegisterNativeStepFiveObserver(ulong observerId, ulong adapterToken, RegionKey region, bool host)
+        {
+            if (observerId == 0UL || adapterToken == 0UL || !_settlement.IsReturnPending(region)) return;
+            _settlement.RegisterPending(region, observerId, adapterToken, host);
+            _settlement.CommitPending();
+        }
+
+        private void RegisterNativeStepFiveDemand(ulong observerId, ulong adapterToken, byte centerX, byte centerY)
+        {
+            if (observerId == 0UL || adapterToken == 0UL || !_engine.IsSessionActive) return;
+            _engine.ObserveForNativeStepFive(DomainIds.Item, observerId, adapterToken,
+                centerX, centerY, gameplayAuthorized: true,
+                suppressReplication: region => true);
+            _settlement.Refresh();
         }
     }
 }

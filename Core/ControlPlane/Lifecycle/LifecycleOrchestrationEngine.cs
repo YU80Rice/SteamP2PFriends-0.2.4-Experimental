@@ -31,6 +31,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         private bool _writesSuspended;
         private string _writeSuspensionReason = string.Empty;
         private BoundedHeartbeat _suspensionHeartbeat;
+        [ThreadStatic] private static Func<RegionKey, bool> _stepFiveReplicationSuppression;
+        [ThreadStatic] private static bool _skipStepFiveTokenCommit;
 
         public LifecycleOrchestrationEngine(
             DemandProjectionEngine projection,
@@ -333,7 +335,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     observerId, connectionToken, new RegionKey(centerX, centerY), gameplayAuthorized));
                 ulong exitedConnectionToken = connectionChanged ? previousConnectionToken : connectionToken;
                 ProcessExited(state, observerId, exitedConnectionToken, projection.ExitedRegions, compensations);
-                ProcessEntered(state, observerId, connectionToken, projection.EnteredRegions, compensations);
+                ProcessEntered(state, observerId, connectionToken, projection.EnteredRegions,
+                    compensations, _stepFiveReplicationSuppression);
                 ProcessAcquireRetries(state, observerId, connectionToken, compensations);
                 if (connectionChanged)
                 {
@@ -352,7 +355,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     }
                     state.Port.OnObserverDisconnected(observerId, previousConnectionToken);
                 }
-                state.ConnectionTokens[observerId] = connectionToken;
+                if (!_skipStepFiveTokenCommit)
+                    state.ConnectionTokens[observerId] = connectionToken;
                 // 本拍拿到了可用样本：该观察者退出 Deferred Observer Demand 并留闭环记录。
                 ClearDeferred(state, observerId, "observer-sample-available");
                 return projection;
@@ -366,6 +370,33 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     ELifecyclePath.Fallback, state.SessionEpoch.Value,
                     "transactionRolledBack=" + compensated + " exception=" + ex.GetType().Name);
                 throw;
+            }
+        }
+
+    public DomainDemandProjection ObserveForNativeStepFive(
+            DomainId domain,
+            ulong observerId,
+            ulong connectionToken,
+            byte centerX,
+            byte centerY,
+            bool gameplayAuthorized,
+            Func<RegionKey, bool> suppressReplication)
+        {
+            ulong lifecycleToken = connectionToken;
+            if (TryGetConnectionGeneration(domain, observerId, out ulong currentToken))
+                lifecycleToken = currentToken;
+            Func<RegionKey, bool> previous = _stepFiveReplicationSuppression;
+            bool previousTokenCommit = _skipStepFiveTokenCommit;
+            _stepFiveReplicationSuppression = suppressReplication;
+            _skipStepFiveTokenCommit = true;
+            try
+            {
+                return Observe(domain, observerId, lifecycleToken, centerX, centerY, gameplayAuthorized);
+            }
+            finally
+            {
+                _stepFiveReplicationSuppression = previous;
+                _skipStepFiveTokenCommit = previousTokenCommit;
             }
         }
 
@@ -713,22 +744,25 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     continue;
                 }
 
-                try
+                if (_stepFiveReplicationSuppression == null)
                 {
-                    object replicationState = state.Port.CaptureObserverReplicationState(observerId, connectionToken);
-                    compensations.Add(() => state.Port.RestoreObserverReplicationState(
-                        observerId, connectionToken, replicationState));
-                    compensations.Add(() => state.Port.OnObserverReplicationEntered(
-                        observerId, connectionToken, region));
-                    state.Port.OnObserverReplicationExited(observerId, connectionToken, region);
-                }
-                catch (Exception ex)
-                {
-                    Report(state, LifecycleEvents.ReplicationRemove, ELifecycleOutcome.Failed,
-                        ELifecyclePath.Fallback, state.SessionEpoch.Value,
-                        "observer=" + observerId + " exception=" + DescribeFailure(ex),
-                        region, connectionToken, observerId, state.GetStoredGeneration(region).Value);
-                    throw;
+                    try
+                    {
+                        object replicationState = state.Port.CaptureObserverReplicationState(observerId, connectionToken);
+                        compensations.Add(() => state.Port.RestoreObserverReplicationState(
+                            observerId, connectionToken, replicationState));
+                        compensations.Add(() => state.Port.OnObserverReplicationEntered(
+                            observerId, connectionToken, region));
+                        state.Port.OnObserverReplicationExited(observerId, connectionToken, region);
+                    }
+                    catch (Exception ex)
+                    {
+                        Report(state, LifecycleEvents.ReplicationRemove, ELifecycleOutcome.Failed,
+                            ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                            "observer=" + observerId + " exception=" + DescribeFailure(ex),
+                            region, connectionToken, observerId, state.GetStoredGeneration(region).Value);
+                        throw;
+                    }
                 }
 
                 int next = state.DecrementDemand(region);
@@ -774,16 +808,18 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             return exception.GetType().Name + " message=" + exception.Message;
         }
 
-        private void ProcessEntered(
+    private void ProcessEntered(
             DomainLifecycleState state,
             ulong observerId,
             ulong connectionToken,
             RegionKey[] regions,
-            List<Action> compensations)
+            List<Action> compensations,
+            Func<RegionKey, bool> suppressReplication)
         {
             foreach (RegionKey region in regions)
             {
-                ProcessSingleRegionEntry(state, observerId, connectionToken, region, compensations);
+                ProcessSingleRegionEntry(state, observerId, connectionToken, region, compensations,
+                    suppressReplication != null && suppressReplication(region));
             }
 
             state.ObserverCount = state.Observers.Count;
@@ -795,12 +831,13 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         /// 从而不触发整批回滚，也不进入协调器的故障退避。replication 段失败仍保持事务语义
         /// （整批回滚）。异常文本仅经 <see cref="DescribeFailure"/> 承载。
         /// </summary>
-        private void ProcessSingleRegionEntry(
+    private void ProcessSingleRegionEntry(
             DomainLifecycleState state,
             ulong observerId,
             ulong connectionToken,
             RegionKey region,
-            List<Action> compensations)
+            List<Action> compensations,
+            bool suppressReplication)
         {
             int previous = state.GetDemand(region);
             bool hasLease = state.Leases.ContainsKey(region);
@@ -873,6 +910,27 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     }
                     return;
                 }
+            }
+
+            if (suppressReplication)
+            {
+                state.Demand[region] = previous + 1;
+                if (previous == 0 && hasPendingRelease)
+                {
+                    state.PendingReleases.Remove(region);
+                    state.ReentryCount++;
+                    Report(state, LifecycleEvents.RegionReentry, ELifecycleOutcome.Success,
+                        ELifecyclePath.Spi, state.SessionEpoch.Value,
+                        "authority=" + state.Port.DisplayName + " hysteresisCancelled=true nativeStepFive=true",
+                        region, connectionToken, observerId, state.Port.ReadRegionGeneration(region).Value);
+                }
+                AcquireRetryKey nativeKey = TransactionKey(region, observerId, connectionToken);
+                if (state.AcquireRetries.TryGetValue(nativeKey, out AcquireRetry nativeRetry))
+                {
+                    state.AcquireRetries.Remove(nativeKey);
+                    compensations.Add(() => state.AcquireRetries[nativeKey] = nativeRetry);
+                }
+                return;
             }
 
             try
@@ -988,7 +1046,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             if (dueRegions == null) return;
             foreach (RegionKey region in dueRegions)
             {
-                ProcessSingleRegionEntry(state, observerId, connectionToken, region, compensations);
+                ProcessSingleRegionEntry(state, observerId, connectionToken, region, compensations, false);
             }
         }
 

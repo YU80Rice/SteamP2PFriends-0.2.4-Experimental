@@ -6,6 +6,15 @@ using System.Collections.Generic;
 
 namespace SteamP2PFriends.Adapters.Item
 {
+    public enum ItemNaturalCreationOutcome : byte
+    {
+        Created = 0,
+        Declined = 1,
+        NoChange = 2,
+        MissingInputs = 3,
+        MissingAsset = 4
+    }
+
     public interface INativeItemWarehouseBridge
     {
         bool AreInputsAvailable(byte worldSize, out string failureReason);
@@ -19,9 +28,11 @@ namespace SteamP2PFriends.Adapters.Item
         bool ActivateRegionTiming(byte x, byte y, float activationTime, Func<uint, bool> isNaturalItem = null);
         bool TryRemoveItem(byte x, byte y, uint instanceId);
         int CountSpawnPoints(byte x, byte y);
+        bool AreNaturalInputsAvailable(byte x, byte y, out string failureReason);
         float ReadLastRespawn(byte x, byte y);
         bool TryApplyNativeRespawn(byte x, byte y, float now);
         bool TryCreateOneNatural(byte x, byte y, float now);
+        ItemNaturalCreationOutcome CreateOneNatural(byte x, byte y, float now);
         bool CommitRespawnTime(byte x, byte y, float now);
         void BindOriginTracker(IItemOriginTracker tracker);
     }
@@ -392,20 +403,23 @@ namespace SteamP2PFriends.Adapters.Item
                 }
             }
             if (index < 0) return false;
-            ItemData removed = region.items[index];
             bool wasNetworked = region.isNetworked;
-            region.items.RemoveAt(index);
-            if (ContainsInstance(region.items, instanceId)) return false;
-            CancelInstantiationByInstanceIdMethod?.Invoke(null, new object[] { instanceId });
-            if (!wasNetworked && !ItemSettlementGate.TryAuthorizeIncrement(x, y))
-                return true;
-            object sender = SendDestroyItemField?.GetValue(null);
-            if (!BroadcastDestroy(sender, x, y, instanceId))
-            {
-                region.items.Insert(index, removed);
-                return false;
-            }
-            return !ContainsInstance(region.items, instanceId);
+            var dispatch = new ItemDeletionDispatch();
+            return dispatch.Remove(
+                new ItemDeletionRequest(x, y, instanceId, wasNetworked),
+                () => ItemSettlementGate.TryAuthorizeIncrement(x, y),
+                () => CancelInstantiationByInstanceIdMethod?.Invoke(null, new object[] { instanceId }),
+                () =>
+                {
+                    region.items.RemoveAt(index);
+                    return !ContainsInstance(region.items, instanceId);
+                },
+                () =>
+                {
+                    object sender = SendDestroyItemField?.GetValue(null);
+                    BroadcastDestroy(sender, x, y, instanceId);
+                    return true;
+                });
         }
 
         private static bool ContainsInstance(System.Collections.Generic.List<ItemData> items, uint instanceId)
@@ -444,6 +458,39 @@ namespace SteamP2PFriends.Adapters.Item
             }
         }
 
+        public bool AreNaturalInputsAvailable(byte x, byte y, out string failureReason)
+        {
+            failureReason = string.Empty;
+            try
+            {
+                var spawns = LevelItems.spawns;
+                if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1)
+                    || spawns[x, y] == null)
+                {
+                    failureReason = "spawn-input-unavailable";
+                    return false;
+                }
+                if (spawns[x, y].Count <= 0)
+                {
+                    failureReason = "spawn-input-empty";
+                    return false;
+                }
+                ItemRegion[,] regions = SafeGetRegions();
+                if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1)
+                    || regions[x, y]?.items == null)
+                {
+                    failureReason = "region-input-unavailable";
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                failureReason = "input-read-exception:" + ex.GetType().Name;
+                return false;
+            }
+        }
+
         public float ReadLastRespawn(byte x, byte y)
         {
             ItemRegion[,] regions = SafeGetRegions();
@@ -451,33 +498,36 @@ namespace SteamP2PFriends.Adapters.Item
             return regions[x, y] == null ? 0f : regions[x, y].lastRespawn;
         }
 
-        public bool TryCreateOneNatural(byte x, byte y, float now)
+        public bool TryCreateOneNatural(byte x, byte y, float now) =>
+            CreateOneNatural(x, y, now) == ItemNaturalCreationOutcome.Created;
+
+        public ItemNaturalCreationOutcome CreateOneNatural(byte x, byte y, float now)
         {
             try
             {
                 var spawns = LevelItems.spawns;
                 if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1) || spawns[x, y] == null || spawns[x, y].Count == 0)
-                    return false;
+                    return ItemNaturalCreationOutcome.MissingInputs;
                 ItemRegion[,] regions = SafeGetRegions();
                 if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1) || regions[x, y]?.items == null)
-                    return false;
+                    return ItemNaturalCreationOutcome.MissingInputs;
                 ItemSpawnpoint spawn = spawns[x, y][UnityEngine.Random.Range(0, spawns[x, y].Count)];
-                if (!SafezoneManager.checkPointValid(spawn.point)) return false;
+                if (!SafezoneManager.checkPointValid(spawn.point)) return ItemNaturalCreationOutcome.Declined;
                 for (int i = 0; i < regions[x, y].items.Count; i++)
-                    if ((regions[x, y].items[i].point - spawn.point).sqrMagnitude < 4f) return false;
+                    if ((regions[x, y].items[i].point - spawn.point).sqrMagnitude < 4f) return ItemNaturalCreationOutcome.NoChange;
                 ushort id = LevelItems.getItem(spawn);
                 ItemAsset asset = Assets.find(EAssetType.ITEM, id) as ItemAsset;
-                if (asset == null) return false;
+                if (asset == null) return ItemNaturalCreationOutcome.MissingAsset;
                 SDG.Unturned.Item item = new SDG.Unturned.Item(id, EItemOrigin.WORLD);
                 UnityEngine.Vector3 point = spawn.point;
                 bool shouldAllow = true;
                 ItemManager.onServerSpawningItemDrop?.Invoke(item, ref point, ref shouldAllow);
-                if (!shouldAllow) return false;
+                if (!shouldAllow) return ItemNaturalCreationOutcome.Declined;
                 var countField = typeof(ItemManager).GetField("instanceCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
                 uint next = countField == null ? 0U : (uint)countField.GetValue(null) + 1U;
                 countField?.SetValue(null, next);
                 regions[x, y].items.Add(new ItemData(item, next, point, false));
-                return true;
+                return ItemNaturalCreationOutcome.Created;
             }
             catch (Exception ex)
             {

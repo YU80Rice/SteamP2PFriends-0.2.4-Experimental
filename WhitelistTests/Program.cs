@@ -96,6 +96,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("LIR03 DefaultLineReentryContract", LifecycleIdentityRoutingTests.Test_LIR03_DefaultLineCarriesReentryContract, ref total, ref passed, ref failed);
             RunTest("LIR04 DefaultSinkOnceKeyDedup", LifecycleIdentityRoutingTests.Test_LIR04_DefaultSinkDeduplicatesOnceKeys, ref total, ref passed, ref failed);
             RunTest("LOE16 ReentryAuthorityAndDomain", LifecycleOrchestrationEngineTests.Test_LOE16_ReentryCarriesAuthorityAndDomain, ref total, ref passed, ref failed);
+            RunTest("LOE17 NativeStepFiveDemandOnly", LifecycleOrchestrationEngineTests.Test_LOE17_NativeStepFiveUpdatesDemandWithoutReplication, ref total, ref passed, ref failed);
+            RunTest("LOE18 NativeStepFiveKeepsEngineIdentity", LifecycleOrchestrationEngineTests.Test_LOE18_NativeStepFiveDoesNotInvalidateEngineIdentity, ref total, ref passed, ref failed);
             // 票 04：共享控制面正式切换准入不变量（暂缓不冻结/不释放、身份有界恢复或熔断、
             // retry 事务粒度、故障隔离单元与有界心跳）。
             RunTest("ARI01 DeferredSampleDoesNotFreeze", LifecycleOrchestrationEngineTests.Test_ARI01_UnusableSampleDefersOnlyThatObserver, ref total, ref passed, ref failed);
@@ -187,6 +189,15 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT49 WrapUpReentryAndNextReturn", ItemPreparationAndFirstDemandTests.Test_IT49_WrapUpReentryDoesNotRedoAndNextReturnRejudges, ref total, ref passed, ref failed);
             RunTest("IT50 StepFivePendingCommit", ItemPreparationAndFirstDemandTests.Test_IT50_StepFivePendingTransfersToCommittedJob, ref total, ref passed, ref failed);
             RunTest("IT51 NaturalCreationExceptionIsolated", ItemPreparationAndFirstDemandTests.Test_IT51_NaturalCreationExceptionIsIsolated, ref total, ref passed, ref failed);
+            RunTest("IT52 CompletedRegionDoesNotHoldNextBaseline", ItemPreparationAndFirstDemandTests.Test_IT52_CompletedRegionDoesNotHoldNextBaseline, ref total, ref passed, ref failed);
+            RunTest("IT53 StepFiveAdmissionUsesDeliveredSuppression", ItemPreparationAndFirstDemandTests.Test_IT53_StepFiveAdmissionUsesDeliveredSuppression, ref total, ref passed, ref failed);
+            RunTest("IT54 StepFiveAdmissionKeepsNeighborIndependent", ItemPreparationAndFirstDemandTests.Test_IT54_StepFiveAdmissionKeepsNeighborIndependent, ref total, ref passed, ref failed);
+            RunTest("IT55 StepFiveAdmissionPreparesSettlementBeforeDemand", ItemPreparationAndFirstDemandTests.Test_IT55_StepFiveAdmissionPreparesSettlementBeforeDemand, ref total, ref passed, ref failed);
+            RunTest("IT56 MissingInputsDoNotFinishSettlement", ItemPreparationAndFirstDemandTests.Test_IT56_MissingInputsDoNotFinishSettlement, ref total, ref passed, ref failed);
+            RunTest("IT59 EmptyNaturalInputsDoNotFinishSettlement", ItemPreparationAndFirstDemandTests.Test_IT59_EmptyNaturalInputsDoNotFinishSettlement, ref total, ref passed, ref failed);
+            RunTest("IT57 NetworkedDeletionStillBroadcastsWhenGateClosed", ItemPreparationAndFirstDemandTests.Test_IT57_NetworkedDeletionStillBroadcastsWhenGateClosed, ref total, ref passed, ref failed);
+            RunTest("IT58 UnpresentedDeletionKeepsNativeDestroyAction", ItemPreparationAndFirstDemandTests.Test_IT58_UnpresentedDeletionKeepsNativeDestroyAction, ref total, ref passed, ref failed);
+            RunTest("IT60 MissingAssetDoesNotFinishSettlement", ItemPreparationAndFirstDemandTests.Test_IT60_MissingAssetDoesNotFinishSettlement, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -654,6 +665,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Item Host Step5 Settlement Gate", ItemExecutionStaticILContractTests.Test_HostStepFiveGenerationUsesSettlementGate,
                 ref total, ref passed, ref failed);
             RunTest("Item Step5 Destroy Gates", ItemExecutionStaticILContractTests.Test_StepFiveAndDestroyConsumeGatesAreBound,
+                ref total, ref passed, ref failed);
+            RunTest("Item Region Prefix Finalizer Registration", ItemExecutionStaticILContractTests.Test_RegionPrefixRegistrationIncludesOrderedFinalizer,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;
