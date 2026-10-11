@@ -23,4 +23,6 @@
 
 最新 Standards 实例 `ses_ed6b64bb2ffeo1GLDzW28EXQIz`：非CLEAN，指出逐格 step5 与异常隔离接缝未形成 Red。最新 Spec 实例 `ses_ed6b64a23ffeNg50zE19FBUFfy`：非CLEAN，发现 step5 提前/重复呈现、需求提交时序及异常/删除增量分类。当前原生 Unity pendingInstantiations 薄边界尚未形成可执行 Red/Green 证据，票据保持 BLOCKED。
 
+续建后最新 Standards `ses_ed679ff09ffeV6nUeNNdE8zUrp`：非CLEAN；最新 Spec `ses_ed679fee7ffeT5FLXH7Am3lVPS`：非CLEAN。新增发现仍集中在逐格 step5 Red 接缝、完成后重复呈现、删除增量完成门及创建结果分类。
+
 交付路径：本目录 `delivery.md`；候选构建产物为 `SteamP2PFriends/bin/Release/SteamP2PFriends.dll` 与 `WhitelistTests/bin/Release/SteamP2PFriends.WhitelistTests.exe`。

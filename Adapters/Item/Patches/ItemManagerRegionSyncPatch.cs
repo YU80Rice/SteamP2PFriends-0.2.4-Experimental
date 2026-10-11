@@ -533,7 +533,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
                     for (int y = new_y - radius; y <= new_y + radius; y++)
                         if (x >= 0 && y >= 0 && x < player.movement.loadedRegions.GetLength(0)
                             && y < player.movement.loadedRegions.GetLength(1)
-                            && ItemSettlementGate.ShouldHoldRegion((byte)x, (byte)y))
+                            && ItemSettlementGate.RegisterAndShouldHold(player, (byte)x, (byte)y))
                             player.movement.loadedRegions[x, y].isItemsLoaded = true;
             }
             if (step != 0) return true;
