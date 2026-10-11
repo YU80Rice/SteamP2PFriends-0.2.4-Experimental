@@ -341,13 +341,15 @@ namespace SteamP2PFriends.Adapters.Item
             Drop(region);
             if (!send) return;
             _departed.Remove(region);
-            _delivered.Add(region);
+            bool delivered = false;
             for (int i = 0; i < waiters.Count; i++)
             {
                 Waiter waiter = waiters[i];
                 if (ConnectionCurrent != null && !ConnectionCurrent(waiter.Observer, waiter.Token)) continue;
                 Deliver?.Invoke(waiter.Observer, waiter.Token, region, waiter.Host);
+                delivered = true;
             }
+            if (delivered) _delivered.Add(region);
         }
 
         private void Drop(RegionKey region)
