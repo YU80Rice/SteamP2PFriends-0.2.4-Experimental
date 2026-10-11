@@ -526,35 +526,15 @@ namespace SteamP2PFriends.Adapters.Item.Patches
         public static bool OnRegionUpdated_Prefix(Player player, byte new_x, byte new_y, byte step, ref bool canIncrementIndex)
         {
             ItemSettlementGate.SetRegionContext(new_x, new_y, step);
-            if (step == 5 && player?.movement?.loadedRegions != null && ItemSettlementGate.WasDelivered != null)
+            if (step == 5 && player?.movement?.loadedRegions != null)
             {
                 int radius = ItemManager.ITEM_REGIONS;
                 for (int x = new_x - radius; x <= new_x + radius; x++)
                     for (int y = new_y - radius; y <= new_y + radius; y++)
                         if (x >= 0 && y >= 0 && x < player.movement.loadedRegions.GetLength(0)
                             && y < player.movement.loadedRegions.GetLength(1)
-                            && ItemSettlementGate.WasDelivered((byte)x, (byte)y))
+                            && ItemSettlementGate.ShouldHoldRegion((byte)x, (byte)y))
                             player.movement.loadedRegions[x, y].isItemsLoaded = true;
-            }
-            if (step == 5 && ItemSettlementGate.ShouldSuppressDeliveredStepFive(new_x, new_y))
-            {
-                if (player?.movement?.loadedRegions != null)
-                {
-                    int radius = ItemManager.ITEM_REGIONS;
-                    for (int x = new_x - radius; x <= new_x + radius; x++)
-                        for (int y = new_y - radius; y <= new_y + radius; y++)
-                            if (x >= 0 && y >= 0 && x < player.movement.loadedRegions.GetLength(0)
-                                && y < player.movement.loadedRegions.GetLength(1)
-                                && (ItemSettlementGate.WasDelivered == null
-                                    || ItemSettlementGate.WasDelivered((byte)x, (byte)y)))
-                                player.movement.loadedRegions[x, y].isItemsLoaded = true;
-                }
-                return false;
-            }
-            if (step == 5 && !ItemSettlementGate.TryAuthorizeStepFive(new_x, new_y))
-            {
-                canIncrementIndex = false;
-                return false;
             }
             if (step != 0) return true;
             ItemObserverReplicationAdapter.ObserveRelevance(player, new_x, new_y);

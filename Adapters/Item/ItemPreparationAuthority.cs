@@ -396,6 +396,8 @@ namespace SteamP2PFriends.Adapters.Item
             region.items.RemoveAt(index);
             if (ContainsInstance(region.items, instanceId)) return false;
             CancelInstantiationByInstanceIdMethod?.Invoke(null, new object[] { instanceId });
+            if (!ItemSettlementGate.TryAuthorizeIncrement(x, y))
+                return true;
             object sender = SendDestroyItemField?.GetValue(null);
             if (!BroadcastDestroy(sender, x, y, instanceId))
             {

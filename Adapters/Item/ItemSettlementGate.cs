@@ -6,6 +6,7 @@ namespace SteamP2PFriends.Adapters.Item
     {
         public static Func<byte, byte, bool> AllowsConsumption { get; set; }
         public static Func<byte, byte, bool> BlocksStepFive { get; set; }
+        public static Func<byte, byte, bool> BlocksRegion { get; set; }
         public static Action<byte, byte> EnsureStepFiveSettlement { get; set; }
         public static Func<byte, byte, bool> SuppressDeliveredStepFive { get; set; }
         public static Func<byte, byte, bool> WasDelivered { get; set; }
@@ -31,6 +32,16 @@ namespace SteamP2PFriends.Adapters.Item
         {
             EnsureStepFiveSettlement?.Invoke(x, y);
             return BlocksStepFive == null || !BlocksStepFive(x, y);
+        }
+
+        public static void EnsureRegionStepFive(byte x, byte y) =>
+            EnsureStepFiveSettlement?.Invoke(x, y);
+
+        public static bool ShouldHoldRegion(byte x, byte y)
+        {
+            EnsureRegionStepFive(x, y);
+            return (WasDelivered != null && WasDelivered(x, y))
+                || (BlocksRegion != null && BlocksRegion(x, y));
         }
 
         public static bool ShouldSuppressDeliveredStepFive(byte x, byte y) =>

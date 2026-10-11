@@ -86,6 +86,11 @@ namespace SteamP2PFriends.Adapters.Item
                         }
                 return false;
             };
+            ItemSettlementGate.BlocksRegion = (x, y) =>
+            {
+                var region = new RegionKey(x, y);
+                return _settlement.NeedsSettlement(region) || _settlement.BlocksConsumption(region);
+            };
             ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
                 _settlement.EnsureForDemand(new RegionKey(x, y));
             ItemSettlementGate.SuppressDeliveredStepFive = (x, y) =>
