@@ -1,6 +1,6 @@
 C-P2-Item-03 交付回报。
 
-状态：BLOCKED — 双轴仍非CLEAN；不宣称闭环CLEAN，也不报 Runtime PASS。续建改动待提交，基线提交：a688981、1b281ab。工作目录：D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental。
+状态：BLOCKED — 双轴仍非CLEAN；不宣称闭环CLEAN，也不报 Runtime PASS。最新提交：456921d；工作目录：D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental。
 
 变更文件：Adapters/Item/ItemDemandCycle.cs、ItemExecutionPort.cs、ItemPreparationAuthority.cs、ItemProductionControlSeam.cs、ItemReturnSettlement.cs、ItemSettlementGate.cs、Patches/ItemSettlementConsumptionPatch.cs；Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs；SteamP2PFriends.csproj；WhitelistTests 的 Item PureMemory/StaticIL/Program；本票 issue、delivery、audit。
 
