@@ -2,7 +2,7 @@
 
 - **Label**: `ready-for-agent`
 - **Type**: Specification
-- **Status**: implemented-pending-runtime
+- **Status**: BLOCKED — Spec 非CLEAN
 - **Version**: `0.2.4.10-Experimental`
 - **Blocked by**: [02 按需求运行与掉落到期](../c-p2-item-02-demand-and-expiry/issue.md)
 

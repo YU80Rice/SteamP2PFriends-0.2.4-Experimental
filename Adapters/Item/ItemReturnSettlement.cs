@@ -45,6 +45,14 @@ namespace SteamP2PFriends.Adapters.Item
 
         public bool IsBusy(RegionKey region) => _jobs.ContainsKey(region);
         public bool BlocksConsumption(RegionKey region) => IsBusy(region) || _isolated.Contains(region);
+        public void EnsureForDemand(RegionKey region)
+        {
+            if (_activated(region) && _departed.Contains(region) && !_jobs.ContainsKey(region))
+            {
+                _jobs[region] = new Job { Session = _session(), Generation = _generation(region) };
+                _order.Add(region);
+            }
+        }
         public bool BlocksWarehouse(RegionKey region) => IsBusy(region) || _isolated.Contains(region);
         public bool IsIsolated(RegionKey region) => _isolated.Contains(region);
         public int ActiveJobCount => _jobs.Count;

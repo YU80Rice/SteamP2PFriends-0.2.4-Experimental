@@ -48,6 +48,7 @@ namespace SteamP2PFriends.Adapters.Item
             try
             {
                 ThreadUtil.assertIsGameThread();
+                if (!ItemSettlementGate.TryAuthorizeHostGeneration()) return false;
 
                 SteamChannel channel = player?.channel;
                 bool isLocal = channel != null && channel.IsLocalPlayer;

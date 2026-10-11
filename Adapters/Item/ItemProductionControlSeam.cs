@@ -1,3 +1,4 @@
+using SDG.Unturned;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.MultiObserver.Demand;
 using SteamP2PFriends.MultiObserver.Lifecycle;
@@ -72,6 +73,21 @@ namespace SteamP2PFriends.Adapters.Item
             _settlement.ConnectionCurrent = (observer, token) =>
                 _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current) && current == token;
             ItemSettlementGate.AllowsConsumption = (x, y) => !_settlement.BlocksConsumption(new RegionKey(x, y));
+            ItemSettlementGate.BlocksStepFive = (x, y) =>
+            {
+                int radius = ItemManager.ITEM_REGIONS;
+                for (int rx = x - radius; rx <= x + radius; rx++)
+                    for (int ry = y - radius; ry <= y + radius; ry++)
+                        if (rx >= 0 && ry >= 0)
+                        {
+                            var region = new RegionKey((byte)rx, (byte)ry);
+                            _settlement.EnsureForDemand(region);
+                            if (_settlement.BlocksConsumption(region)) return true;
+                        }
+                return false;
+            };
+            ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
+                _settlement.EnsureForDemand(new RegionKey(x, y));
         }
 
         public DemandPolicy DemandPolicy => _policy;

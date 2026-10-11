@@ -649,6 +649,8 @@ namespace SteamP2PFriends.WhitelistTests
                 ref total, ref passed, ref failed);
             RunTest("Item Settlement Consumption Gate", ItemExecutionStaticILContractTests.Test_SettlementConsumptionBindsPickupIncrementAndHost,
                 ref total, ref passed, ref failed);
+            RunTest("Item Host Step5 Settlement Gate", ItemExecutionStaticILContractTests.Test_HostStepFiveGenerationUsesSettlementGate,
+                ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;
             Console.WriteLine("\n=== Evidence Class: BuildArtifact ===");

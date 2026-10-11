@@ -215,5 +215,18 @@ namespace SteamP2PFriends.WhitelistTests
                 && IlContractProbe.ContainsStringLiteral(register, "Invoke");
             return patch != null && pickupCalls > 0 && incrementCalls > 0 && askCalls > 0 && hostCalls > 0 && bindsPickup;
         }
+
+        internal static bool Test_HostStepFiveGenerationUsesSettlementGate()
+        {
+            MethodInfo method = typeof(ItemGenerationAuthorityAdapter).GetMethod(
+                "ShouldGenerateForObserver", BindingFlags.Static | BindingFlags.Public);
+            int calls = method == null ? 0 : IlContractProbe.CountMethodCalls(
+                method, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeHostGeneration");
+            MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch).GetMethod(
+                "OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
+            int context = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
+                prefix, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "SetRegionContext");
+            return calls == 1 && context == 1;
+        }
     }
 }

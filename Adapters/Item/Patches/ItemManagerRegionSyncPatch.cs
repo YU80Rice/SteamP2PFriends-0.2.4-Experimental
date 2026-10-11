@@ -523,10 +523,17 @@ namespace SteamP2PFriends.Adapters.Item.Patches
         /// </summary>
         [HarmonyPrefix]
         [HarmonyPatch(typeof(ItemManager), TargetMethodName)]
-        public static void OnRegionUpdated_Prefix(Player player, byte new_x, byte new_y, byte step)
+        public static bool OnRegionUpdated_Prefix(Player player, byte new_x, byte new_y, byte step, ref bool canIncrementIndex)
         {
-            if (step != 0) return;
+            ItemSettlementGate.SetRegionContext(new_x, new_y, step);
+            if (step == 5 && !ItemSettlementGate.TryAuthorizeStepFive(new_x, new_y))
+            {
+                canIncrementIndex = false;
+                return false;
+            }
+            if (step != 0) return true;
             ItemObserverReplicationAdapter.ObserveRelevance(player, new_x, new_y);
+            return true;
         }
 
         /// <summary>
