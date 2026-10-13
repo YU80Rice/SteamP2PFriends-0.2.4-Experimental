@@ -6,6 +6,15 @@ using SteamP2PFriends.MultiObserver.SPI;
 
 namespace SteamP2PFriends.MultiObserver.Lifecycle
 {
+    public enum EAcquireRecoveryRequestResult : byte
+    {
+        Started = 0,
+        NotEligible = 1,
+        StaleConnection = 2,
+        RateLimited = 3,
+        SessionUnavailable = 4
+    }
+
     /// <summary>
     /// 共享 Lifecycle Orchestration Engine：把 typed Domain Demand 变成 0 -&gt; 1 Acquire 与
     /// N -&gt; 0 滞回 Release。
@@ -33,6 +42,9 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         private BoundedHeartbeat _suspensionHeartbeat;
         [ThreadStatic] private static Func<RegionKey, bool> _stepFiveReplicationSuppression;
         [ThreadStatic] private static bool _skipStepFiveTokenCommit;
+
+        /// <summary>自动恢复耗尽时通知领域适配器；通知只针对一个观察者、区域和连接代次。</summary>
+        public Action<DomainId, RegionKey, ulong, ulong> AcquireRecoveryExhausted { get; set; }
 
         public LifecycleOrchestrationEngine(
             DemandProjectionEngine projection,
@@ -289,8 +301,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         /// <summary>
         /// 提交一次观察者事实并按其领域投影差异驱动生命周期。需求聚合发生在引擎内：
         /// 逐区域引用计数 0 -&gt; 1 触发 Acquire，N -&gt; 0 触发滞回 Release 调度。
-        /// 整个观察者更新是一个事务：任一环节抛出即回滚本领域的编排状态、投影贡献与
-        /// 已执行的原生副作用，再原样抛回调用方。
+        /// 整个观察者更新默认是一个事务：未声明局部复制失败能力的异常会回滚本领域的编排状态、
+        /// 投影贡献与已执行的原生副作用；声明该能力的领域只局部登记观察者复制发送失败。
         /// </summary>
         public DomainDemandProjection Observe(
             DomainId domain,
@@ -828,10 +840,10 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         /// <summary>
         /// 单区域进入处理：0 -&gt; 1 时获取区域权威并登记复制贡献，随后递增需求引用计数。
         /// 区域级 acquire 失败在此隔离——只跳过本区域、保留可重试登记，不向调用方抛出，
-        /// 从而不触发整批回滚，也不进入协调器的故障退避。replication 段失败仍保持事务语义
-        /// （整批回滚）。异常文本仅经 <see cref="DescribeFailure"/> 承载。
+        /// 从而不触发整批回滚，也不进入协调器的故障退避。声明局部复制能力的领域同样只登记
+        /// 当前观察者与区域；其它领域保留默认事务语义。异常文本仅经 <see cref="DescribeFailure"/> 承载。
         /// </summary>
-    private void ProcessSingleRegionEntry(
+        private void ProcessSingleRegionEntry(
             DomainLifecycleState state,
             ulong observerId,
             ulong connectionToken,
@@ -839,6 +851,27 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             List<Action> compensations,
             bool suppressReplication)
         {
+            AcquireRetryKey registeredKey = TransactionKey(region, observerId, connectionToken);
+            int regionCompensationBase = compensations.Count;
+            bool acquiredThisRegion = false;
+            RegionGeneration acquiredGeneration = default(RegionGeneration);
+            if (state.AcquireRetries.TryGetValue(registeredKey, out AcquireRetry registeredRetry))
+            {
+                if (registeredRetry.Exhausted || state.Clock < registeredRetry.NextRetryAt) return;
+                RetrySchedule failed = state.Policy.FailedRetry;
+                if (failed.MaxElapsedSeconds > 0f
+                    && state.Clock - registeredRetry.StartedAt >= failed.MaxElapsedSeconds)
+                {
+                    state.AcquireRetries[registeredKey] = new AcquireRetry(
+                        float.PositiveInfinity, registeredRetry.Attempts, registeredRetry.StartedAt,
+                        true, true);
+                    if (!registeredRetry.ExhaustionNotified)
+                        NotifyAcquireRecoveryExhausted(
+                            state, region, observerId, connectionToken, registeredRetry.Attempts);
+                    return;
+                }
+            }
+
             int previous = state.GetDemand(region);
             bool hasLease = state.Leases.ContainsKey(region);
             bool hasPendingRelease = state.PendingReleases.ContainsKey(region);
@@ -847,7 +880,6 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 string failureReason = "acquire-failed";
                 Exception acquireFailure = null;
                 bool acquired = false;
-                int compensationBase = compensations.Count;
                 try
                 {
                     failureReason = "generation-reader-failed-before-acquire";
@@ -862,12 +894,13 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     failureReason = "acquire-failed";
                     state.Port.OnAcquire(acquireTicket);
                     failureReason = "generation-reader-failed-after-acquire";
-                    RegionGeneration acquiredGeneration = state.Port.ReadRegionGeneration(region);
+                    acquiredGeneration = state.Port.ReadRegionGeneration(region);
                     failureReason = "generation-regressed-after-acquire";
                     if (acquiredGeneration.Value >= beforeAcquire.Value)
                     {
                         state.Leases[region] = acquiredGeneration;
                         acquired = true;
+                        acquiredThisRegion = true;
                         Report(state, LifecycleEvents.RegionAcquire, ELifecycleOutcome.Success,
                             ELifecyclePath.Spi, state.SessionEpoch.Value,
                             "reason=region-demand-entered authority=" + state.Port.DisplayName
@@ -884,7 +917,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 if (!acquired)
                 {
                     // 撤销本区域已登记的补偿（如快照恢复）：本区域失败不进整批回滚。
-                    compensations.RemoveRange(compensationBase, compensations.Count - compensationBase);
+                    compensations.RemoveRange(regionCompensationBase, compensations.Count - regionCompensationBase);
                     EDomainFailureKind kind = acquireFailure == null
                         ? EDomainFailureKind.Failed
                         : state.Port.ClassifyRegionFailure(acquireFailure);
@@ -948,7 +981,29 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                     ELifecyclePath.Fallback, state.SessionEpoch.Value,
                     "observer=" + observerId + " exception=" + DescribeFailure(ex),
                     region, connectionToken, observerId, state.GetStoredGeneration(region).Value);
-                throw;
+                if (!(state.Port is ILocalObserverReplicationFailurePort localPort)) throw;
+                List<Action> localCompensations = compensations.GetRange(
+                    regionCompensationBase, compensations.Count - regionCompensationBase);
+                compensations.RemoveRange(regionCompensationBase, compensations.Count - regionCompensationBase);
+                if (!RunCompensations(state, localCompensations, ex)) throw;
+                EObserverReplicationFailureDisposition disposition =
+                    localPort.HandleObserverReplicationFailure(
+                        observerId, connectionToken, region, ex);
+                if (acquiredThisRegion)
+                {
+                    state.PendingReleases[region] = new PendingRelease
+                    {
+                        SessionEpoch = state.SessionEpoch,
+                        RegionKey = region,
+                        RegionGeneration = acquiredGeneration,
+                        Deadline = state.Clock + state.Policy.HysteresisSeconds
+                    };
+                }
+                if (disposition != EObserverReplicationFailureDisposition.Retry) return;
+                EDomainFailureKind kind = state.Port.ClassifyRegionFailure(ex);
+                ScheduleAcquireRetry(state, region, observerId, connectionToken,
+                    kind == EDomainFailureKind.Deferred);
+                return;
             }
 
             state.Demand[region] = previous + 1;
@@ -1005,7 +1060,7 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         /// 登记失败事务的重试：按类别取政策声明的起步间隔并温和倍增到各自上限。
         /// 成功即清除，不设次数上限——该事务在其观察者离开或连接代次失效前始终保留重试资格。
         /// </summary>
-        private static void ScheduleAcquireRetry(
+        private void ScheduleAcquireRetry(
             DomainLifecycleState state,
             RegionKey region,
             ulong observerId,
@@ -1015,8 +1070,51 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
             AcquireRetryKey key = TransactionKey(region, observerId, connectionToken);
             int attempts = NextAttemptNumber(state, key);
             RetrySchedule schedule = deferred ? state.Policy.DeferredRetry : state.Policy.FailedRetry;
+            AcquireRetry previous;
+            bool hadPrevious = state.AcquireRetries.TryGetValue(key, out previous);
+            float startedAt = hadPrevious ? previous.StartedAt : state.Clock;
+            bool exhausted = !deferred && schedule.MaxRetries > 0
+                && (attempts > schedule.MaxRetries
+                    || (schedule.MaxElapsedSeconds > 0f
+                        && state.Clock - startedAt >= schedule.MaxElapsedSeconds));
+            if (exhausted)
+            {
+                bool notify = !hadPrevious || !previous.ExhaustionNotified;
+                state.AcquireRetries[key] = new AcquireRetry(
+                    float.PositiveInfinity, attempts, startedAt, true, true);
+                if (notify) NotifyAcquireRecoveryExhausted(
+                    state, region, observerId, connectionToken, attempts);
+                return;
+            }
             state.AcquireRetries[key] = new AcquireRetry(
-                state.Clock + schedule.IntervalFor(attempts), attempts);
+                state.Clock + schedule.IntervalFor(attempts), attempts, startedAt,
+                false, hadPrevious && previous.ExhaustionNotified);
+        }
+
+        private void NotifyAcquireRecoveryExhausted(
+            DomainLifecycleState state, RegionKey region, ulong observerId,
+            ulong connectionToken, int attempts)
+        {
+            Report(state, LifecycleEvents.RegionAcquire, ELifecycleOutcome.Failed,
+                ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                "reason=bounded-recovery-exhausted attempts=" + attempts
+                + " manualRecovery=true", region, connectionToken, observerId,
+                state.GetStoredGeneration(region).Value, attempts, role: "Host");
+            try
+            {
+                if (state.Port is IAcquireRecoveryExhaustionPort localPort)
+                    localPort.OnAcquireRecoveryExhausted(region, observerId, connectionToken);
+                else
+                    AcquireRecoveryExhausted?.Invoke(state.Port.DomainId, region, observerId, connectionToken);
+            }
+            catch (Exception ex)
+            {
+                Report(state, LifecycleEvents.RegionAcquire, ELifecycleOutcome.Failed,
+                    ELifecyclePath.Fallback, state.SessionEpoch.Value,
+                    "reason=recovery-notification-failed exception=" + ex.GetType().Name,
+                    region, connectionToken, observerId, state.GetStoredGeneration(region).Value,
+                    attempts, role: "Host");
+            }
         }
 
         /// <summary>
@@ -1466,6 +1564,38 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
 
         public int PendingAcquireRetryCount(DomainId domain) => EnsureDomain(domain).AcquireRetries.Count;
 
+        public EAcquireRecoveryRequestResult RequestManualAcquireRetry(
+            DomainId domain, ulong observerId, ulong connectionToken, RegionKey regionKey)
+        {
+            DomainLifecycleState state = EnsureDomain(domain);
+            if (!_sessionActive) return EAcquireRecoveryRequestResult.SessionUnavailable;
+            if (!state.ConnectionTokens.TryGetValue(observerId, out ulong currentToken)
+                || currentToken != connectionToken)
+                return EAcquireRecoveryRequestResult.StaleConnection;
+            if (!state.Observers.Contains(observerId)
+                || !_projection.GetActiveRegions(state.DemandPolicy, observerId).Contains(regionKey))
+                return EAcquireRecoveryRequestResult.NotEligible;
+
+            AcquireRetryKey key = TransactionKey(regionKey, observerId, connectionToken);
+            if (!state.AcquireRetries.TryGetValue(key, out AcquireRetry failed))
+                return EAcquireRecoveryRequestResult.NotEligible;
+            if (!failed.Exhausted) return EAcquireRecoveryRequestResult.NotEligible;
+
+            state.AcquireRetries[key] = new AcquireRetry(
+                state.Clock, 0, state.Clock, false, false);
+            ProcessSingleRegionEntry(state, observerId, connectionToken, regionKey,
+                new List<Action>(), false);
+            return EAcquireRecoveryRequestResult.Started;
+        }
+
+        public bool IsAcquireRecoveryExhausted(
+            DomainId domain, ulong observerId, ulong connectionToken, RegionKey regionKey)
+        {
+            AcquireRetryKey key = TransactionKey(regionKey, observerId, connectionToken);
+            return EnsureDomain(domain).AcquireRetries.TryGetValue(key, out AcquireRetry retry)
+                && retry.Exhausted;
+        }
+
         /// <summary>
         /// 该区域当前有效的重试资格数（事务粒度）：同一区域两个观察者各自失败时各占一份，
         /// 不存在「后写者覆盖先写者」的区域单槽互吞。
@@ -1544,14 +1674,22 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         /// </summary>
         private readonly struct AcquireRetry
         {
-            internal AcquireRetry(float nextRetryAt, int attempts)
+            internal AcquireRetry(
+                float nextRetryAt, int attempts, float startedAt,
+                bool exhausted, bool exhaustionNotified)
             {
                 NextRetryAt = nextRetryAt;
                 Attempts = attempts;
+                StartedAt = startedAt;
+                Exhausted = exhausted;
+                ExhaustionNotified = exhaustionNotified;
             }
 
             internal float NextRetryAt { get; }
             internal int Attempts { get; }
+            internal float StartedAt { get; }
+            internal bool Exhausted { get; }
+            internal bool ExhaustionNotified { get; }
         }
 
         /// <summary>

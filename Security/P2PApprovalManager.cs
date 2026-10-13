@@ -163,6 +163,15 @@ namespace SteamP2PFriends.Security
             return steamId != CSteamID.Nil && Pending.ContainsKey(steamId.m_SteamID);
         }
 
+        internal static bool IsApproved(CSteamID steamId)
+        {
+            if (!_runtime.IsActiveP2PHost || steamId == CSteamID.Nil || !steamId.IsValid()) return false;
+            if (steamId == _runtime.LocalUser) return true;
+            if (Pending.ContainsKey(steamId.m_SteamID)) return false;
+            try { return _whitelist.Contains(steamId); }
+            catch { return false; }
+        }
+
         internal static bool TryGetPending(CSteamID steamId, out P2PPendingApproval pending)
         {
             if (steamId == CSteamID.Nil)

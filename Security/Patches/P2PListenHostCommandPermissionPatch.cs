@@ -1,4 +1,5 @@
 using HarmonyLib;
+using SteamP2PFriends.Adapters.Item.Patches;
 using SDG.Unturned;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.Shared;
@@ -81,13 +82,23 @@ namespace SteamP2PFriends.Security.Patches
         }
 
         internal static bool ShouldBlock(bool isP2PHostMode, bool isServer, bool isLocalHost,
-            bool isPending, bool hasCheats, bool isAdmin, string command)
+            bool isPending, bool hasCheats, bool isAdmin, string command,
+            bool recoveryHandlerRegistered = true)
         {
-            if (!isP2PHostMode || !isServer || isLocalHost || String.IsNullOrEmpty(command)) return false;
+            if (!isP2PHostMode || !isServer || String.IsNullOrEmpty(command)) return false;
+            if (IsItemRecoveryCommand(command)) return !recoveryHandlerRegistered;
+            if (isLocalHost) return false;
             char first = command[0];
             if (first != '/' && first != '@') return false;
             if (isPending) return true;
             return !hasCheats || !isAdmin;
+        }
+
+        private static bool IsItemRecoveryCommand(string command)
+        {
+            int end = command.IndexOf(' ');
+            string token = end > 0 ? command.Substring(0, end) : command;
+            return string.Equals(token, "/spfitemretry", StringComparison.OrdinalIgnoreCase);
         }
 
         internal static bool Prefix(SteamPlayer player, string cmd, ref bool __result)
@@ -98,7 +109,8 @@ namespace SteamP2PFriends.Security.Patches
             bool isLocalHost = player.playerID.steamID == Provider.user;
             bool isPending = P2PApprovalManager.IsPending(player.playerID.steamID);
             if (!ShouldBlock(HostManager.IsP2PHostMode, Provider.isServer, isLocalHost,
-                    isPending, Provider.hasCheats, player.isAdmin, cmd))
+                    isPending, Provider.hasCheats, player.isAdmin, cmd,
+                    ItemRecoveryCommandPatch.RegistrationValid))
                 return true;
 
             __result = false;

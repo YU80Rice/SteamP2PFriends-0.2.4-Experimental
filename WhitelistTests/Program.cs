@@ -84,7 +84,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("LOE07 RetryFollowsDomainPolicy", LifecycleOrchestrationEngineTests.Test_LOE07_RetryFollowsDomainPolicyAndClearsOnSuccess, ref total, ref passed, ref failed);
             RunTest("LOE08 SingleRegionIsolation", LifecycleOrchestrationEngineTests.Test_LOE08_SingleRegionFailureIsIsolated, ref total, ref passed, ref failed);
             RunTest("LOE09 CrossDomainIsolation", LifecycleOrchestrationEngineTests.Test_LOE09_DomainFailureDoesNotCrossDomains, ref total, ref passed, ref failed);
-            RunTest("LOE10 TransactionRollback", LifecycleOrchestrationEngineTests.Test_LOE10_TransactionRollbackRestoresStateAndProjection, ref total, ref passed, ref failed);
+            RunTest("LOE10 ObserverReplicationIsolation", LifecycleOrchestrationEngineTests.Test_LOE10_ObserverReplicationFailureIsIsolated, ref total, ref passed, ref failed);
             RunTest("LOE11 ReleaseIdempotence", LifecycleOrchestrationEngineTests.Test_LOE11_CommitReleaseIsIdempotent, ref total, ref passed, ref failed);
             RunTest("LOE12 DiagnosticsCorrelation", LifecycleOrchestrationEngineTests.Test_LOE12_DiagnosticsCarryCorrelationFields, ref total, ref passed, ref failed);
             RunTest("LOE13 RegistrationClosure", LifecycleOrchestrationEngineTests.Test_LOE13_RegistrationClosureFreezesDomainSet, ref total, ref passed, ref failed);
@@ -110,6 +110,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("ARI08 IdentityCircuitBreak", LifecycleOrchestrationEngineTests.Test_ARI08_IdentityCircuitBreakRequiresNewSession, ref total, ref passed, ref failed);
             RunTest("ARI09 FaultUnitDomainRegionTransition", LifecycleOrchestrationEngineTests.Test_ARI09_FaultUnitIsDomainRegionTransition, ref total, ref passed, ref failed);
             RunTest("ARI10 FaultHeartbeatBounded", LifecycleOrchestrationEngineTests.Test_ARI10_FaultHeartbeatIsBoundedAndClosesOnRecovery, ref total, ref passed, ref failed);
+            RunTest("ARI11 BoundedFailedRetry", LifecycleOrchestrationEngineTests.Test_ARI11_BoundedFailedRetryDoesNotResetOnDuplicateCallback, ref total, ref passed, ref failed);
+            RunTest("ARI12 ManualRecoveryIdentity", LifecycleOrchestrationEngineTests.Test_ARI12_ManualRecoveryChecksIdentityAndCooldown, ref total, ref passed, ref failed);
             RunTest("SAM01 PerRecordAdmission", ObserverSampleAdmissionTests.Test_SAM01_SingleUnusableRecordOnlyDefersItsObserver, ref total, ref passed, ref failed);
             RunTest("SAM02 BatchRejection", ObserverSampleAdmissionTests.Test_SAM02_BatchFailureDefersEveryone, ref total, ref passed, ref failed);
             RunTest("SAM03 UnknownIdentityAndDuplicates", ObserverSampleAdmissionTests.Test_SAM03_UnknownIdentityAndDuplicatesKeepOtherRecords, ref total, ref passed, ref failed);
@@ -198,6 +200,33 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT57 NetworkedDeletionStillBroadcastsWhenGateClosed", ItemPreparationAndFirstDemandTests.Test_IT57_NetworkedDeletionStillBroadcastsWhenGateClosed, ref total, ref passed, ref failed);
             RunTest("IT58 UnpresentedDeletionKeepsNativeDestroyAction", ItemPreparationAndFirstDemandTests.Test_IT58_UnpresentedDeletionKeepsNativeDestroyAction, ref total, ref passed, ref failed);
             RunTest("IT60 MissingAssetDoesNotFinishSettlement", ItemPreparationAndFirstDemandTests.Test_IT60_MissingAssetDoesNotFinishSettlement, ref total, ref passed, ref failed);
+            RunTest("IT61 ItemFailureRecoveryPolicy", ItemPreparationAndFirstDemandTests.Test_IT61_ItemFailureRecoveryPolicyIsBounded, ref total, ref passed, ref failed);
+            RunTest("IT62 ExceptionRecoveryLocalRetry", ItemPreparationAndFirstDemandTests.Test_IT62_ExceptionRecoveryRetriesOnlyTheFailedRegion, ref total, ref passed, ref failed);
+            RunTest("IT63 RecoveryCommandFailClosed", ItemRecoveryCommandTests.Test_IT63_RecoveryCommandParsesAndFailsClosed, ref total, ref passed, ref failed);
+            RunTest("IT64 RecoveryCommandRemoteGate", ItemRecoveryCommandTests.Test_IT64_ApprovedRecoveryCommandPassesRemoteGate, ref total, ref passed, ref failed);
+            RunTest("IT65 RecoveryCommandSessionIsolation", ItemRecoveryCommandTests.Test_IT65_HostSessionCommandSubscriptionIsEpochBound, ref total, ref passed, ref failed);
+            RunTest("IT66 RecoveryManualRateLimit", ItemRecoveryCommandTests.Test_IT66_ManualRateLimitCannotFallThrough, ref total, ref passed, ref failed);
+            RunTest("IT67 IsolatedRegionReentry", ItemPreparationAndFirstDemandTests.Test_IT67_IsolatedRegionReentryStartsFreshRecovery, ref total, ref passed, ref failed);
+            RunTest("IT68 RecoveryTokenNormalization", ItemRecoveryCommandTests.Test_IT68_ManualRecoveryNormalizesCurrentConnectionToken, ref total, ref passed, ref failed);
+            RunTest("IT69 HalfPacketObserverGate", ItemRecoveryCommandTests.Test_IT69_HalfPacketGateIsObserverAndRegionScoped, ref total, ref passed, ref failed);
+            RunTest("IT70 RecoveryCommandFailClosed", ItemRecoveryCommandTests.Test_IT70_InvalidRecoveryCommandFailsClosed, ref total, ref passed, ref failed);
+            RunTest("IT71 RecoveryCommandExceptionClosed", ItemRecoveryCommandTests.Test_IT71_RecoveryCallbackExceptionFailsClosed, ref total, ref passed, ref failed);
+            RunTest("IT72 RecoveryCommandRegistrationGate", ItemRecoveryCommandTests.Test_IT72_UnregisteredRecoveryCommandIsBlocked, ref total, ref passed, ref failed);
+            RunTest("IT73 IdentityInvalidationRecovery", ItemRecoveryCommandTests.Test_IT73_IdentityInvalidationDropsRecoveryChain, ref total, ref passed, ref failed);
+            RunTest("IT74 RecoveryExactDisconnectToken", ItemRecoveryCommandTests.Test_IT74_DisconnectReleaseUsesExactToken, ref total, ref passed, ref failed);
+            RunTest("IT75 CoreGenerationIdentity", ItemRecoveryCommandTests.Test_IT75_CoreGenerationIsSoleCandidateIdentity, ref total, ref passed, ref failed);
+            RunTest("IT76 RegionReleaseIsolation", ItemRecoveryCommandTests.Test_IT76_RegionReleaseKeepsOtherRecoveryWaiter, ref total, ref passed, ref failed);
+            RunTest("IT77 UnknownRegionItems", ItemRecoveryCommandTests.Test_IT77_UnknownRegionItemsStayUnconfirmed, ref total, ref passed, ref failed);
+            RunTest("IT78 GuestReplicationIsolation", ItemPreparationAndFirstDemandTests.Test_IT78_GuestReplicationFailureStaysObserverLocal, ref total, ref passed, ref failed);
+            RunTest("IT79 UncertainGuestSendQuarantine", ItemPreparationAndFirstDemandTests.Test_IT79_UncertainGuestSendIsQuarantinedNotRetried, ref total, ref passed, ref failed);
+            RunTest("IT80 UnknownItemsNoRestart", ItemPreparationAndFirstDemandTests.Test_IT80_UnknownItemsDoNotRestartClearingOrRestock, ref total, ref passed, ref failed);
+            RunTest("IT81 UnobservedAskItemsNotSafe", ItemPreparationAndFirstDemandTests.Test_IT81_UnobservedAskItemsIsNotSafeRetry, ref total, ref passed, ref failed);
+            RunTest("IT82 AppliedCreateNotRedrawn", ItemPreparationAndFirstDemandTests.Test_IT82_AppliedCreateIsNotRedrawnAfterThrow, ref total, ref passed, ref failed);
+            RunTest("IT83 ExhaustedSettlementNotice", ItemPreparationAndFirstDemandTests.Test_IT83_ExhaustedSettlementNotifiesCurrentWaiterOnce, ref total, ref passed, ref failed);
+            RunTest("IT84 ManualRejectsOutsideProjection", ItemPreparationAndFirstDemandTests.Test_IT84_ManualRecoveryRejectsCallerOutsideProjection, ref total, ref passed, ref failed);
+            RunTest("IT85 CoveringCallerManualRecovery", ItemPreparationAndFirstDemandTests.Test_IT85_CoveringCallerManualRecoveryDoesNotUseAnotherCooldown, ref total, ref passed, ref failed);
+            RunTest("IT86 UnconfirmedNativeNotice", ItemPreparationAndFirstDemandTests.Test_IT86_UnconfirmedNativeResultNotifiesWithoutReplay, ref total, ref passed, ref failed);
+            RunTest("IT87 SeamCooldownPerCaller", ItemPreparationAndFirstDemandTests.Test_IT87_SeamCooldownIsPerCoveringCaller, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)

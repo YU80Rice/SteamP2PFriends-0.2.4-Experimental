@@ -4,6 +4,7 @@ using SteamP2PFriends.MultiObserver.Demand;
 using SteamP2PFriends.MultiObserver.Lifecycle;
 using SteamP2PFriends.MultiObserver.SPI;
 using System;
+using System.Collections.Generic;
 
 namespace SteamP2PFriends.Adapters.Item
 {
@@ -49,6 +50,7 @@ namespace SteamP2PFriends.Adapters.Item
 
             _engine = sharedEngine ?? new LifecycleOrchestrationEngine(projection, DefaultLifecycleDiagnostics.Instance);
             _engine.Register(_policy, _executionPort);
+            var itemRetry = new FailedRetryController(_executionPort.LifecyclePolicy.FailedRetry);
             _settlement = new ItemReturnSettlement(
                 _preparationAuthority.Bridge,
                 _metadataStore,
@@ -58,7 +60,17 @@ namespace SteamP2PFriends.Adapters.Item
                 region => _executionPort.IsRegionActivated(region),
                 region => _executionPort.ReadRegionGeneration(region).Value,
                 () => _engine.SessionEpoch.Value,
-                _executionPort.ClassifyRegionFailure);
+                _executionPort.ClassifyRegionFailure,
+                itemRetry);
+            var nativeBridge = _preparationAuthority.Bridge as DefaultNativeItemWarehouseBridge;
+            if (nativeBridge != null)
+                nativeBridge.CoreConnectionCurrent = (observer, token) =>
+                    _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
+                    && IsCoreConnectionGenerationCurrent(current, token);
+            _settlement.RecoveryExhausted = (observer, token, region, possibleHalfPacket) =>
+                RecoveryExhausted?.Invoke(observer, token, region, possibleHalfPacket);
+            _settlement.RecoveryUnconfirmed = (observer, token, region) =>
+                RecoveryUnconfirmed?.Invoke(observer, token, region);
             _cycle = new ItemDemandCycle(
                 _preparationAuthority.Bridge,
                 _metadataStore,
@@ -71,20 +83,21 @@ namespace SteamP2PFriends.Adapters.Item
             _executionPort.BindReturnSettlement(_settlement);
             _settlement.Deliver = (observer, token, region, host) =>
                 _executionPort.DeliverSettlementBaseline(observer, token, region, host);
+            _settlement.CallerCoversRegion = (observer, token, region) =>
+                _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
+                && current == token
+                && _projection.GetActiveRegions(_policy, observer).Contains(region);
             _settlement.ConnectionCurrent = (observer, token) =>
-                (_engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current) && current == token)
-                || ItemObserverReplicationAdapter.IsCurrentConnectionToken(observer, token);
-            _settlement.CanonicalConnectionToken = (observer, token) =>
-            {
-                ulong current = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(observer);
-                return current == 0UL ? token : current;
-            };
+                _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
+                && IsCoreConnectionGenerationCurrent(current, token);
             ItemSettlementGate.AllowsConsumption = (x, y) => !_settlement.BlocksConsumption(new RegionKey(x, y));
             ItemSettlementGate.BlocksRegion = (x, y) =>
             {
                 var region = new RegionKey(x, y);
                 return _settlement.NeedsSettlement(region) || _settlement.BlocksConsumption(region);
             };
+            ItemSettlementGate.BlocksRegionForObserver = (observer, token, x, y) =>
+                _settlement.BlocksConsumption(observer, token, new RegionKey(x, y));
             ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
                 _settlement.EnsureForDemand(new RegionKey(x, y));
             ItemSettlementGate.StepFiveAdmission = new ItemStepFiveAdmission(
@@ -120,11 +133,13 @@ namespace SteamP2PFriends.Adapters.Item
         {
             _engine.BeginSession(sessionEpoch);
             _settlement.ResetIdentity();
+            _manualCooldown.Clear();
         }
         public void EndSession()
         {
             _engine.EndSession();
             _settlement.ResetIdentity();
+            _manualCooldown.Clear();
         }
         public void AdvanceTime(float deltaTime) => _engine.AdvanceTime(deltaTime);
         public void Flush(float deltaTime)
@@ -147,6 +162,8 @@ namespace SteamP2PFriends.Adapters.Item
         public ItemDemandCycle DemandCycle => _cycle;
         public bool IsRegionIsolated(RegionKey region) => _settlement.IsIsolated(region);
         public string LastSettlementFault => _settlement.LastFault;
+        public Action<ulong, ulong, RegionKey, bool> RecoveryExhausted { get; set; }
+        public Action<ulong, ulong, RegionKey> RecoveryUnconfirmed { get; set; }
 
         public DomainDemandProjection UpdateObserver(
             ulong observerId,
@@ -156,8 +173,20 @@ namespace SteamP2PFriends.Adapters.Item
             bool gameplayAuthorized = true)
         {
             DomainDemandProjection result = _engine.Observe(DomainIds.Item, observerId, connectionToken, centerX, centerY, gameplayAuthorized);
+            ReleaseExitedRegions(result);
             _settlement.CommitPending();
             return result;
+        }
+
+        private void ReleaseExitedRegions(DomainDemandProjection result)
+        {
+            for (int i = 0; i < result.ExitedRegions.Length; i++)
+            {
+                _settlement.ReleaseWaiter(
+                    result.ExitedRegions[i], result.ObserverId, result.ConnectionToken);
+                _settlement.ReleaseHalfPacketForExitedRegion(
+                    result.ObserverId, result.ConnectionToken, result.ExitedRegions[i]);
+            }
         }
 
         public void DeferObserver(ulong observerId, string reason) =>
@@ -165,6 +194,8 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void RemoveObserver(ulong observerId)
         {
+            if (_engine.TryGetConnectionGeneration(DomainIds.Item, observerId, out ulong token))
+                _settlement.ReleaseObserver(observerId, token);
             _engine.RemoveObserver(DomainIds.Item, observerId);
             _settlement.Refresh();
         }
@@ -178,24 +209,58 @@ namespace SteamP2PFriends.Adapters.Item
         public bool TryGetConnectionGeneration(ulong observerId, out ulong connectionGeneration) =>
             _engine.TryGetConnectionGeneration(DomainIds.Item, observerId, out connectionGeneration);
 
+        private readonly Dictionary<string, float> _manualCooldown = new Dictionary<string, float>();
+
+        public bool TryManualRecovery(ulong observerId, ulong connectionToken, RegionKey region)
+        {
+            if (!TryGetConnectionGeneration(observerId, out ulong current)
+                || current == 0UL || current != connectionToken) return false;
+            if (!_projection.GetActiveRegions(_policy, observerId).Contains(region)) return false;
+            string cooldownKey = SessionEpoch.Value + ":" + observerId + ":" + current + ":"
+                + region.X + ":" + region.Y;
+            if (_manualCooldown.TryGetValue(cooldownKey, out float last)
+                && _executionPort.CurrentTime - last < 10f) return false;
+            EAcquireRecoveryRequestResult result = _engine.RequestManualAcquireRetry(
+                DomainIds.Item, observerId, connectionToken, region);
+            if (result == EAcquireRecoveryRequestResult.Started)
+            {
+                _manualCooldown[cooldownKey] = _executionPort.CurrentTime;
+                return true;
+            }
+            if (result != EAcquireRecoveryRequestResult.NotEligible) return false;
+            bool started = _settlement.RequestManualRecovery(observerId, connectionToken, region)
+                == EItemRecoveryRequestResult.Started;
+            if (started) _manualCooldown[cooldownKey] = _executionPort.CurrentTime;
+            return started;
+        }
+
+        internal static bool ShouldTrySettlementManualRecovery(EAcquireRecoveryRequestResult result) =>
+            result == EAcquireRecoveryRequestResult.NotEligible;
+
+        internal static bool IsCoreConnectionGenerationCurrent(
+            ulong expectedGeneration, ulong providedGeneration) =>
+            expectedGeneration != 0UL && expectedGeneration == providedGeneration;
+
         public void RegisterStepFiveObserver(ulong observerId, ulong connectionToken, RegionKey region, bool host)
         {
             _settlement.RegisterPending(region, observerId, connectionToken, host);
         }
 
-        public void RegisterNativeStepFiveObserver(ulong observerId, ulong adapterToken, RegionKey region, bool host)
+        public void RegisterNativeStepFiveObserver(ulong observerId, ulong connectionToken, RegionKey region, bool host)
         {
-            if (observerId == 0UL || adapterToken == 0UL || !_settlement.IsReturnPending(region)) return;
-            _settlement.RegisterPending(region, observerId, adapterToken, host);
+            if (observerId == 0UL || connectionToken == 0UL || !_settlement.IsReturnPending(region)) return;
+            _settlement.RegisterPending(region, observerId, connectionToken, host);
             _settlement.CommitPending();
         }
 
-        private void RegisterNativeStepFiveDemand(ulong observerId, ulong adapterToken, byte centerX, byte centerY)
+        private void RegisterNativeStepFiveDemand(ulong observerId, ulong connectionToken, byte centerX, byte centerY)
         {
-            if (observerId == 0UL || adapterToken == 0UL || !_engine.IsSessionActive) return;
-            _engine.ObserveForNativeStepFive(DomainIds.Item, observerId, adapterToken,
+            if (observerId == 0UL || connectionToken == 0UL || !_engine.IsSessionActive) return;
+            DomainDemandProjection result = _engine.ObserveForNativeStepFive(
+                DomainIds.Item, observerId, connectionToken,
                 centerX, centerY, gameplayAuthorized: true,
                 suppressReplication: region => true);
+            ReleaseExitedRegions(result);
             _settlement.Refresh();
         }
     }

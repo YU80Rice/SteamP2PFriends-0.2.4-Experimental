@@ -810,6 +810,74 @@ namespace SteamP2PFriends.WhitelistTests
                 + " demand=" + engine.GetDemand(PrimaryDomain, region));
         }
 
+        internal static bool Test_ARI11_BoundedFailedRetryDoesNotResetOnDuplicateCallback()
+        {
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var engine = new LifecycleOrchestrationEngine(projection);
+            DemandPolicy policy = new DemandPolicy(PrimaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-primary", presence => presence.GameplayAuthorized);
+            projection.Register(policy);
+            LifecyclePolicy lifecycle = new LifecyclePolicy(
+                2.0f, new RetrySchedule(1.0f, 16.0f, 4),
+                new RetrySchedule(0.5f, 2.0f, 4, 3, 10.0f),
+                new HeartbeatPolicy(5.0f, 2), "bounded-test");
+            var port = new FakeDomainPort(PrimaryDomain, 2.0f, lifecycle);
+            engine.Register(policy, port);
+            engine.BeginSession(new SessionEpoch(31UL));
+
+            RegionKey region = new RegionKey(10, 10);
+            port.FailAcquireFor = region;
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.AdvanceTime(0.49f);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.AdvanceTime(0.01f);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.AdvanceTime(1.0f);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.AdvanceTime(2.0f);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.AdvanceTime(10.0f);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+
+            return port.Acquires.Count == 4
+                && engine.PendingAcquireRetryCount(PrimaryDomain) == 1
+                && !engine.IsLeased(PrimaryDomain, region);
+        }
+
+        internal static bool Test_ARI12_ManualRecoveryChecksIdentityAndCooldown()
+        {
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var engine = new LifecycleOrchestrationEngine(projection);
+            DemandPolicy policy = new DemandPolicy(PrimaryDomain, 0, 64,
+                EDemandRegionShape.ChebyshevSquare2D, "test-primary", presence => presence.GameplayAuthorized);
+            projection.Register(policy);
+            LifecyclePolicy lifecycle = new LifecyclePolicy(
+                2.0f, new RetrySchedule(1.0f, 16.0f, 4),
+                new RetrySchedule(0.5f, 2.0f, 4, 1, 10.0f),
+                new HeartbeatPolicy(5.0f, 2), "manual-test");
+            var port = new FakeDomainPort(PrimaryDomain, 2.0f, lifecycle);
+            engine.Register(policy, port);
+            engine.BeginSession(new SessionEpoch(31UL));
+            RegionKey region = new RegionKey(10, 10);
+            port.FailAcquireFor = region;
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+            engine.AdvanceTime(0.5f);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
+
+            port.FailAcquireFor = default(RegionKey);
+            EAcquireRecoveryRequestResult started = engine.RequestManualAcquireRetry(
+                PrimaryDomain, 100UL, 1001UL, region);
+            EAcquireRecoveryRequestResult inProgress = engine.RequestManualAcquireRetry(
+                PrimaryDomain, 100UL, 1001UL, region);
+            engine.Observe(PrimaryDomain, 100UL, 1002UL, region.X, region.Y, true);
+            EAcquireRecoveryRequestResult stale = engine.RequestManualAcquireRetry(
+                PrimaryDomain, 100UL, 1001UL, region);
+
+            return started == EAcquireRecoveryRequestResult.Started
+                && inProgress == EAcquireRecoveryRequestResult.NotEligible
+                && stale == EAcquireRecoveryRequestResult.StaleConnection;
+        }
+
         private static int CountFaultRecords(RecordingDiagnostics sink)
         {
             int count = 0;
@@ -905,7 +973,7 @@ namespace SteamP2PFriends.WhitelistTests
         /// 测试域执行端口：只执行原生语义并把失败翻译成引擎可执行的结果分类。
         /// 它不聚合需求、不持有租约或滞回——那些都是共享引擎的状态。
         /// </summary>
-        private sealed class FakeDomainPort : IDomainExecutionPort
+        private sealed class FakeDomainPort : IDomainExecutionPort, ILocalObserverReplicationFailurePort
         {
             internal readonly List<LeaseTicket> Acquires = new List<LeaseTicket>();
             internal readonly List<LeaseTicket> Releases = new List<LeaseTicket>();
@@ -926,10 +994,10 @@ namespace SteamP2PFriends.WhitelistTests
             /// <summary>本域收到过几次会话开始：熔断领域不得参与新会话，靠它取证。</summary>
             internal int SessionBeginCalls;
 
-            internal FakeDomainPort(DomainId domainId, float hysteresisSeconds)
+            internal FakeDomainPort(DomainId domainId, float hysteresisSeconds, LifecyclePolicy policy = null)
             {
                 DomainId = domainId;
-                LifecyclePolicy = new LifecyclePolicy(
+                LifecyclePolicy = policy ?? new LifecyclePolicy(
                     hysteresisSeconds,
                     new RetrySchedule(2.0f, 32f, 5),
                     new RetrySchedule(10.0f, 60f, int.MaxValue),
@@ -992,6 +1060,10 @@ namespace SteamP2PFriends.WhitelistTests
 
             public EDomainFailureKind ClassifyReleaseFailure(Exception exception) =>
                 EDomainFailureKind.Failed;
+
+            public EObserverReplicationFailureDisposition HandleObserverReplicationFailure(
+                ulong observerId, ulong connectionToken, RegionKey regionKey, Exception exception) =>
+                EObserverReplicationFailureDisposition.Retry;
 
             public object CaptureRegionState(RegionKey regionKey) => new object();
             public void RestoreRegionState(RegionKey regionKey, object state) => RestoreRegionStateCalls++;
@@ -1343,55 +1415,38 @@ namespace SteamP2PFriends.WhitelistTests
         }
 
         /// <summary>
-        /// 补偿调度：复制阶段失败（事务语义）回滚整个观察者更新——需求聚合、租约、投影贡献
-        /// 与已执行的原生副作用全部还原，异常原样抛回调用方。
+        /// 复制发送失败只登记当前观察者与区域的恢复：其它区域、其它观察者和其它领域继续提交，
+        /// 不因单条 Guest baseline/replication 发送失败而触发整批 Observe 回滚。
         /// </summary>
-        internal static bool Test_LOE10_TransactionRollbackRestoresStateAndProjection()
+        internal static bool Test_LOE10_ObserverReplicationFailureIsIsolated()
         {
             FakeDomainPort port;
             DemandProjectionEngine projection;
             FakeDomainPort secondary;
-            LifecycleOrchestrationEngine engine = CreateEngine(out port, out secondary, out projection);
+            LifecycleOrchestrationEngine engine = CreateEngine(
+                out port, out secondary, out projection, radius: 1, registerSecondary: true);
             engine.BeginSession(new SessionEpoch(11UL));
-            RegionKey region = new RegionKey(10, 10);
-
-            engine.Observe(PrimaryDomain, 100UL, 1001UL, region.X, region.Y, true);
-            bool committed = engine.GetDemand(PrimaryDomain, region) == 1
-                && engine.IsLeased(PrimaryDomain, region);
-
+            RegionKey firstCenter = new RegionKey(10, 10);
+            engine.Observe(PrimaryDomain, 100UL, 1001UL, firstCenter.X, firstCenter.Y, true);
+            engine.Observe(SecondaryDomain, 100UL, 1001UL, firstCenter.X, firstCenter.Y, true);
+            int secondaryLeases = engine.ActiveLeaseCount(SecondaryDomain);
             port.ThrowOnReplicationEnter = true;
-            bool threw = false;
-            try
-            {
-                engine.Observe(PrimaryDomain, 100UL, 1001UL, 11, 11, true);
-            }
-            catch (Exception)
-            {
-                threw = true;
-            }
-
-            bool rolledBack = threw
-                && engine.GetDemand(PrimaryDomain, region) == 1
-                && engine.GetDemand(PrimaryDomain, new RegionKey(11, 11)) == 0
-                && engine.ActiveLeaseCount(PrimaryDomain) == 1
-                && engine.IsLeased(PrimaryDomain, region)
-                && !engine.IsLeased(PrimaryDomain, new RegionKey(11, 11))
+            bool noWholeBatchThrow = !Throws(() =>
+                engine.Observe(PrimaryDomain, 200UL, 2002UL, 20, 20, true));
+            bool localRetry = engine.PendingAcquireRetryCount(PrimaryDomain) == 1
+                && engine.ObserverCount(PrimaryDomain) == 2
+                && engine.ActiveLeaseCount(PrimaryDomain) == 18
+                && engine.GetDemand(PrimaryDomain, firstCenter) == 1
                 && !engine.IsRepairRequired(PrimaryDomain);
-            bool projectionRestored = projection.TryGetDemand(
-                    engine.GetDemandPolicy(PrimaryDomain), region, out DomainDemand demand)
-                && demand.ObserverCount == 1
-                && engine.ProjectedDemandRegionCount(PrimaryDomain) == 1;
-            bool compensationRan = port.RestoreReplicationCalls >= 1;
+            bool otherDomainUnaffected = engine.ActiveLeaseCount(SecondaryDomain) == secondaryLeases
+                && !engine.IsRepairRequired(SecondaryDomain);
 
-            return Expect(committed, rolledBack, projectionRestored, compensationRan,
-                "demand=" + engine.GetDemand(PrimaryDomain, region)
-                + " demandNew=" + engine.GetDemand(PrimaryDomain, new RegionKey(11, 11))
-                + " leases=" + engine.ActiveLeaseCount(PrimaryDomain)
-                + " leaseNew=" + engine.IsLeased(PrimaryDomain, new RegionKey(11, 11))
-                + " repair=" + engine.IsRepairRequired(PrimaryDomain)
-                + " restoreCalls=" + port.RestoreReplicationCalls
-                + " projected=" + engine.ProjectedDemandRegionCount(PrimaryDomain)
-                + " threw=" + threw);
+            return Expect(noWholeBatchThrow, localRetry, otherDomainUnaffected,
+                "primaryLeases=" + engine.ActiveLeaseCount(PrimaryDomain)
+                + " pending=" + engine.PendingAcquireRetryCount(PrimaryDomain)
+                + " primaryObservers=" + engine.ObserverCount(PrimaryDomain)
+                + " secondaryLeases=" + engine.ActiveLeaseCount(SecondaryDomain)
+                + " restoreCalls=" + port.RestoreReplicationCalls);
         }
 
         /// <summary>

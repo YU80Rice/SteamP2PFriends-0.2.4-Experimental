@@ -113,6 +113,22 @@ namespace SteamP2PFriends.MultiObserver
         internal static ulong SessionEpoch => Ledger.SessionEpoch;
         internal static int ObserverCount => Ledger.ObserverCount;
 
+        internal static ItemRecoveryCommandSessionContext GetItemRecoveryCommandSessionContext()
+        {
+            string currentSessionId = HostManager.CurrentSessionId;
+            bool listenHostActive = HostManager.IsP2PHostMode
+                && HostManager.ShouldProcessClientHostListen();
+            ulong itemEpoch = ItemProduction == null || !ItemProduction.IsSessionActive
+                ? 0UL : ItemProduction.SessionEpoch.Value;
+            bool identityReady = IdentityGate.IsReady
+                && string.Equals(IdentityGate.AcknowledgedIdentity, currentSessionId,
+                    StringComparison.Ordinal);
+            return new ItemRecoveryCommandSessionContext(
+                currentSessionId, Ledger.SessionEpoch, itemEpoch, listenHostActive,
+                Ledger.IsSessionActive, identityReady,
+                ItemProductionMode == ItemProductionMode.Candidate);
+        }
+
         internal static bool IsResourceProductionActive => ResourceProduction != null && ResourceProduction.IsSessionActive;
         internal static ulong ResourceSessionEpoch => ResourceProduction == null ? 0UL : ResourceProduction.SessionEpoch.Value;
 
@@ -122,6 +138,20 @@ namespace SteamP2PFriends.MultiObserver
             return ResourceProduction != null && ResourceProduction.TryGetConnectionGeneration(observerId, out generation)
                 ? generation
                 : 0UL;
+        }
+
+        internal static ulong GetItemConnectionGeneration(ulong observerId)
+        {
+            ulong generation;
+            return ItemProduction != null && ItemProduction.TryGetConnectionGeneration(observerId, out generation)
+                ? generation : 0UL;
+        }
+
+        internal static bool TryManualItemRecovery(
+            ulong observerId, ulong connectionToken, RegionKey region)
+        {
+            return ItemProduction != null && ItemProductionMode == ItemProductionMode.Candidate
+                && ItemProduction.TryManualRecovery(observerId, connectionToken, region);
         }
 
         internal static int GetZombieDemandCount(byte bound) => Ledger.GetZombieDemand(BoundKey.FromNative(bound));
@@ -211,6 +241,11 @@ namespace SteamP2PFriends.MultiObserver
                 itemDemandPolicy,
                 ItemLifecyclePolicy.HysteresisSeconds,
                 ControlPlaneLifecycle);
+            ItemProduction.RecoveryExhausted = ItemRecoveryCommandPatch.NotifyRecoveryExhausted;
+            ItemProduction.RecoveryUnconfirmed = ItemRecoveryCommandPatch.NotifyRecoveryUnconfirmed;
+            ItemExecution.AcquireRecoveryExhausted =
+                (observer, token, region) => ItemRecoveryCommandPatch.NotifyRecoveryExhausted(
+                    observer, token, region);
         }
 
         internal static void Initialize()
@@ -445,6 +480,7 @@ namespace SteamP2PFriends.MultiObserver
                 _hostSessionId = sessionId;
             }
             IdentityGate.Bind(sessionId);
+            ItemRecoveryCommandPatch.RegisterManual(sessionId);
         }
 
         internal static void NotifyHostSessionEnded(string sessionId, string reason)
@@ -458,6 +494,7 @@ namespace SteamP2PFriends.MultiObserver
                 return;
             }
 
+            ItemRecoveryCommandPatch.UnregisterManual();
             EndSessionIfNeeded("host-session-ended:" + (reason ?? "unknown"));
             ResetManagedState(resetLogQuotas: true);
             _hostSessionId = null;
@@ -897,6 +934,7 @@ namespace SteamP2PFriends.MultiObserver
 
         private static void EndSessionIfNeeded(string reason)
         {
+            ItemRecoveryCommandPatch.UnregisterManual();
             bool ledgerEnded = Ledger.EndSession();
             // Control Plane 侧的会话状态无条件收尾：即便 Ledger 已非活动（状态短暂失配或
             // 重复/失序的会话结束通知），唯一空间事实与领域投影也必须清干净，不得跨会话残留。
@@ -1058,9 +1096,8 @@ namespace SteamP2PFriends.MultiObserver
             {
                 if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
                     || !seen.Add(sample.ObserverId)) continue;
-                ulong itemConnectionToken = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(sample.ObserverId);
                 ItemProduction.UpdateObserver(sample.ObserverId,
-                    itemConnectionToken == 0UL ? sample.ConnectionToken : itemConnectionToken,
+                    sample.ConnectionToken,
                     sample.ItemRegionX, sample.ItemRegionY, sample.GameplayAuthorized);
             }
             foreach (ulong observerId in deferred)
@@ -1109,18 +1146,14 @@ namespace SteamP2PFriends.MultiObserver
         {
             if (ItemProductionMode != ItemProductionMode.Candidate) return;
             var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for BindGuestBaseline.");
-            ulong nativeToken = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(observerId);
-            bridge.BindGuestBaseline(observerId, nativeToken == 0UL ? connectionToken : nativeToken,
-                (byte)regionKey.X, (byte)regionKey.Y);
+            bridge.BindGuestBaseline(observerId, connectionToken, (byte)regionKey.X, (byte)regionKey.Y);
         }
 
         private static void UnbindGuestItemBaseline(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
             if (ItemProductionMode != ItemProductionMode.Candidate) return;
             var bridge = ItemPreparation?.Bridge ?? throw new InvalidOperationException("Item preparation bridge unavailable for UnbindGuestBaseline.");
-            ulong nativeToken = ItemObserverReplicationAdapter.EnsureConnectionTokenForObserver(observerId);
-            bridge.UnbindGuestBaseline(observerId, nativeToken == 0UL ? connectionToken : nativeToken,
-                (byte)regionKey.X, (byte)regionKey.Y);
+            bridge.UnbindGuestBaseline(observerId, connectionToken, (byte)regionKey.X, (byte)regionKey.Y);
         }
 
         private static void TryPrepareItemFullMap(string worldIdentity, float now)

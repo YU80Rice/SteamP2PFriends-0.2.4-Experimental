@@ -349,10 +349,24 @@ namespace SteamP2PFriends.Adapters.Item
             {
                 _askItemsOriginalObserved = false;
                 _askItemsOriginalRan = false;
-                invokeNativeAskItems();
-                if (!_askItemsOriginalObserved || !_askItemsOriginalRan)
-                    throw new InvalidOperationException("Guest baseline askItems did not execute.");
-                markLoaded?.Invoke();
+                try { invokeNativeAskItems(); }
+                catch (Exception ex)
+                {
+                    throw new ItemObserverReplicationFailureException(
+                        "Guest baseline askItems execution failed; delivery state is uncertain.", false, ex);
+                }
+                if (!_askItemsOriginalObserved)
+                    throw new ItemObserverReplicationFailureException(
+                        "Guest baseline askItems execution was not observed.", false);
+                if (!_askItemsOriginalRan)
+                    throw new ItemObserverReplicationFailureException(
+                        "Guest baseline askItems did not execute.", true);
+                try { markLoaded?.Invoke(); }
+                catch (Exception ex)
+                {
+                    throw new ItemObserverReplicationFailureException(
+                        "Guest baseline loaded-state commit failed; delivery state is uncertain.", false, ex);
+                }
             }
         }
 
@@ -419,6 +433,16 @@ namespace SteamP2PFriends.Adapters.Item
             {
                 if (IsCandidateOwnedAskItemsSend) return true;
                 if (!IsNativeStepFiveAskItems) return false;
+                if (!TryResolveObserver(connection, out SteamPlayer observerPlayer,
+                    out ulong resolvedObserverId)) return false;
+                ulong resolvedConnectionToken = MultiObserver.MultiObserverShadowCoordinator
+                    .GetItemConnectionGeneration(resolvedObserverId);
+                if (resolvedConnectionToken == 0UL) return false;
+                if (ItemSettlementGate.BlocksRegionForObserver != null
+                    && ItemSettlementGate.BlocksRegionForObserver(
+                        resolvedObserverId, resolvedConnectionToken, x, y))
+                    return false;
+                if (IsCandidateOwnedAskItemsSend) return true;
                 return ItemSettlementGate.BlocksRegion == null
                     || !ItemSettlementGate.BlocksRegion(x, y);
             }
@@ -573,6 +597,22 @@ namespace SteamP2PFriends.Adapters.Item
                 observerId = candidate.playerID?.steamID.m_SteamID ?? 0UL;
                 connectionToken = EnsureConnectionToken(observerId, connection);
                 return observerId != 0UL && connectionToken != 0UL;
+            }
+            return false;
+        }
+
+        private static bool TryResolveObserver(
+            ITransportConnection connection, out SteamPlayer steamPlayer, out ulong observerId)
+        {
+            steamPlayer = null;
+            observerId = 0UL;
+            if (connection == null || Provider.clients == null) return false;
+            foreach (SteamPlayer candidate in Provider.clients)
+            {
+                if (candidate == null || !ReferenceEquals(candidate.transportConnection, connection)) continue;
+                steamPlayer = candidate;
+                observerId = candidate.playerID?.steamID.m_SteamID ?? 0UL;
+                return observerId != 0UL;
             }
             return false;
         }

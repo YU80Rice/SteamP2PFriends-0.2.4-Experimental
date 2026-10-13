@@ -48,6 +48,8 @@ namespace SteamP2PFriends.Adapters.Item
 
     public sealed class DefaultNativeItemWarehouseBridge : INativeItemWarehouseBridge
     {
+        internal Func<ulong, ulong, bool> CoreConnectionCurrent { get; set; }
+
         private static readonly System.Reflection.MethodInfo GenerateItemsMethod =
             typeof(ItemManager).GetMethod("generateItems",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -318,9 +320,8 @@ namespace SteamP2PFriends.Adapters.Item
             SteamPlayer client = FindClient(observerId);
             if (client == null) throw new InvalidOperationException($"Guest observer {observerId} not found in Provider.clients.");
             if (client.transportConnection == null) throw new InvalidOperationException($"Guest observer {observerId} transport null.");
-            ulong currentToken = ItemObserverReplicationAdapter.EnsureConnectionToken(observerId, client.transportConnection);
-            if (currentToken != connectionToken)
-                throw new InvalidOperationException($"Guest observer {observerId} connectionToken mismatch: expected {connectionToken}, actual {currentToken}.");
+            if (CoreConnectionCurrent != null && !CoreConnectionCurrent(observerId, connectionToken))
+                throw new InvalidOperationException($"Guest observer {observerId} connection generation is stale.");
 
             object mgr = ManagerField?.GetValue(null);
             if (mgr == null || AskItemsMethod == null) throw new InvalidOperationException("ItemManager askItems unavailable.");

@@ -19,6 +19,25 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         Rejected = 2
     }
 
+    public enum EObserverReplicationFailureDisposition : byte
+    {
+        Retry = 0,
+        Quarantine = 1
+    }
+
+    /// <summary>领域声明观察者复制失败是安全重试还是可能半包，并在隔离分支执行本地处置。</summary>
+    public interface ILocalObserverReplicationFailurePort
+    {
+        EObserverReplicationFailureDisposition HandleObserverReplicationFailure(
+            ulong observerId, ulong connectionToken, RegionKey regionKey, System.Exception exception);
+    }
+
+    /// <summary>可选的领域出口：恢复预算耗尽时由领域自己接收通知，不在协调器按 DomainId 分支。</summary>
+    public interface IAcquireRecoveryExhaustionPort
+    {
+        void OnAcquireRecoveryExhausted(RegionKey region, ulong observerId, ulong connectionToken);
+    }
+
     /// <summary>
     /// Domain Execution Port：领域在共享编排引擎上的唯一接口。
     ///

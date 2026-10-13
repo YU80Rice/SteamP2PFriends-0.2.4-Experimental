@@ -2,6 +2,7 @@ using HarmonyLib;
 using SDG.NetTransport;
 using SDG.Unturned;
 using SteamP2PFriends.Adapters.Item;
+using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.Shared;
 using System.Collections.Generic;
 using System.Reflection;
@@ -537,8 +538,8 @@ namespace SteamP2PFriends.Adapters.Item.Patches
             {
                 SteamPlayer owner = player.channel?.owner;
                 ulong observer = owner?.playerID?.steamID.m_SteamID ?? 0UL;
-                ulong token = observer == 0UL || owner?.transportConnection == null ? 0UL
-                    : ItemObserverReplicationAdapter.EnsureConnectionToken(observer, owner.transportConnection);
+                ulong token = observer == 0UL ? 0UL
+                    : MultiObserverShadowCoordinator.GetItemConnectionGeneration(observer);
                 int worldSize = System.Math.Min(player.movement.loadedRegions.GetLength(0),
                     player.movement.loadedRegions.GetLength(1));
                 ItemStepFiveAdmission admission = ItemSettlementGate.StepFiveAdmission;

@@ -9,6 +9,13 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
     public readonly struct RetrySchedule
     {
         public RetrySchedule(float baseIntervalSeconds, float capSeconds, int quietAttempts)
+            : this(baseIntervalSeconds, capSeconds, quietAttempts, 0, 0f)
+        {
+        }
+
+        public RetrySchedule(
+            float baseIntervalSeconds, float capSeconds, int quietAttempts,
+            int maxRetries, float maxElapsedSeconds)
         {
             if (baseIntervalSeconds <= 0f)
                 throw new ArgumentOutOfRangeException(nameof(baseIntervalSeconds), "重试起步间隔必须为正");
@@ -16,15 +23,27 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                 throw new ArgumentOutOfRangeException(nameof(capSeconds), "重试上限不得低于起步间隔");
             if (quietAttempts < 1)
                 throw new ArgumentOutOfRangeException(nameof(quietAttempts), "静默阈值至少为一次尝试");
+            if (maxRetries < 0)
+                throw new ArgumentOutOfRangeException(nameof(maxRetries), "重试次数上限不得为负");
+            if (maxElapsedSeconds < 0f)
+                throw new ArgumentOutOfRangeException(nameof(maxElapsedSeconds), "重试期限上限不得为负");
 
             BaseIntervalSeconds = baseIntervalSeconds;
             CapSeconds = capSeconds;
             QuietAttempts = quietAttempts;
+            MaxRetries = maxRetries;
+            MaxElapsedSeconds = maxElapsedSeconds;
         }
 
         public float BaseIntervalSeconds { get; }
         public float CapSeconds { get; }
         public int QuietAttempts { get; }
+
+        /// <summary>失败后的自动重试上限；0 表示沿用无次数上限的既有领域语义。</summary>
+        public int MaxRetries { get; }
+
+        /// <summary>从首次失败开始的自动恢复期限；0 表示不设期限。</summary>
+        public float MaxElapsedSeconds { get; }
 
         /// <summary>
         /// 第 attempts 次失败后的等待间隔：起步间隔按 2 的幂倍增，受各自上限约束。

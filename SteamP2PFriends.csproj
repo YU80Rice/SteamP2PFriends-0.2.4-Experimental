@@ -134,6 +134,8 @@
     <Compile Include="Adapters\Item\ItemCycleThresholds.cs" />
     <Compile Include="Adapters\Item\ItemDemandCycle.cs" />
     <Compile Include="Adapters\Item\ItemReturnSettlement.cs" />
+    <Compile Include="Adapters\Item\ItemFailureRecovery.cs" />
+    <Compile Include="Adapters\Item\ItemObserverRecoveryGate.cs" />
     <Compile Include="Adapters\Item\ItemStepFiveAdmission.cs" />
     <Compile Include="Adapters\Item\ItemDeletionDispatch.cs" />
     <Compile Include="Adapters\Item\ItemSettlementGate.cs" />
@@ -148,6 +150,7 @@
     <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemCreationTrackingPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemSettlementConsumptionPatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemRecoveryCommandPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceDemandPolicy.cs" />
     <Compile Include="Adapters\Resource\ResourceLifecyclePolicy.cs" />
@@ -236,6 +239,7 @@
     <Compile Include="Core\ControlPlane\Lifecycle\DomainRoutingLifecycleDiagnostics.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\IDomainExecutionPort.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecyclePolicy.cs" />
+    <Compile Include="Core\ControlPlane\Lifecycle\FailedRetryController.cs" />
     <Compile Include="Core\ControlPlane\Lifecycle\LifecycleOrchestrationEngine.cs" />
     <Compile Include="Core\ControlPlane\SPI\ILifecycleDomainAdapter.cs" />
     <Compile Include="Core\ControlPlane\SPI\IStateReplicationAdapter.cs" />

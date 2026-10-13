@@ -21,12 +21,20 @@ namespace SteamP2PFriends.Adapters.Item
         public ItemAcquireFailedException(string message) : base(message) { }
     }
 
+    public sealed class ItemObserverReplicationFailureException : InvalidOperationException
+    {
+        public ItemObserverReplicationFailureException(string message, bool safeToRetry, Exception inner = null)
+            : base(message, inner) { SafeToRetry = safeToRetry; }
+        public bool SafeToRetry { get; }
+    }
+
     public sealed class ItemReleaseRejectedException : Exception
     {
         public ItemReleaseRejectedException(string message) : base(message) { }
     }
 
-    public sealed class ItemExecutionPort : IDomainExecutionPort
+    public sealed class ItemExecutionPort : IDomainExecutionPort,
+        ILocalObserverReplicationFailurePort, IAcquireRecoveryExhaustionPort
     {
         private readonly ItemPreparationAuthority _preparationAuthority;
         private readonly ItemMetadataStore _metadataStore;
@@ -265,6 +273,8 @@ namespace SteamP2PFriends.Adapters.Item
         public void BindReturnSettlement(ItemReturnSettlement settlement) =>
             _returnSettlement = settlement;
 
+        public Action<ulong, ulong, RegionKey> AcquireRecoveryExhausted { get; set; }
+
         public void DeliverSettlementBaseline(ulong observerId, ulong connectionToken, RegionKey regionKey, bool host)
         {
             if (host)
@@ -318,7 +328,7 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void OnObserverReplicationExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
-            _returnSettlement?.ReleaseWaiter(regionKey, observerId);
+            _returnSettlement?.ReleaseWaiter(regionKey, observerId, connectionToken);
             if (_isHostObserver != null && _isHostObserver(observerId))
             {
                 _hostPresentationCleaner?.Invoke(regionKey);
@@ -348,6 +358,19 @@ namespace SteamP2PFriends.Adapters.Item
             exception is ItemReleaseRejectedException
                 ? EDomainFailureKind.Rejected
                 : EDomainFailureKind.Failed;
+
+        public EObserverReplicationFailureDisposition HandleObserverReplicationFailure(
+            ulong observerId, ulong connectionToken, RegionKey regionKey, Exception exception)
+        {
+            if (exception is ItemObserverReplicationFailureException failure && failure.SafeToRetry)
+                return EObserverReplicationFailureDisposition.Retry;
+            _returnSettlement?.QuarantineHalfPacket(observerId, connectionToken, regionKey);
+            return EObserverReplicationFailureDisposition.Quarantine;
+        }
+
+        public void OnAcquireRecoveryExhausted(
+            RegionKey region, ulong observerId, ulong connectionToken) =>
+            AcquireRecoveryExhausted?.Invoke(observerId, connectionToken, region);
 
         public object CaptureRegionState(RegionKey regionKey) => null;
         public void RestoreRegionState(RegionKey regionKey, object state) { }

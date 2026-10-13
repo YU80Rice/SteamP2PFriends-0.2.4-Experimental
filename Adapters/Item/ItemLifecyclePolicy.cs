@@ -9,8 +9,10 @@ namespace SteamP2PFriends.Adapters.Item
         public const float DeferredRetryIntervalSeconds = 1.0f;
         public const float DeferredRetryCapSeconds = 16.0f;
         public const int DeferredRetryQuietAttempts = 4;
-        public const float FailedRetryIntervalSeconds = 5.0f;
-        public const float FailedRetryCapSeconds = 30.0f;
+        public const float FailedRetryIntervalSeconds = 0.5f;
+        public const float FailedRetryCapSeconds = 2.0f;
+        public const int FailedRetryMaxRetries = 3;
+        public const float FailedRetryMaxElapsedSeconds = 10.0f;
         public const float HeartbeatIntervalSeconds = 5.0f;
         public const int HeartbeatRepeats = 6;
 
@@ -21,7 +23,7 @@ namespace SteamP2PFriends.Adapters.Item
                 new RetrySchedule(DeferredRetryIntervalSeconds, DeferredRetryCapSeconds,
                     DeferredRetryQuietAttempts),
                 new RetrySchedule(FailedRetryIntervalSeconds, FailedRetryCapSeconds,
-                    int.MaxValue),
+                    int.MaxValue, FailedRetryMaxRetries, FailedRetryMaxElapsedSeconds),
                 new HeartbeatPolicy(HeartbeatIntervalSeconds, HeartbeatRepeats),
                 Source);
         }
