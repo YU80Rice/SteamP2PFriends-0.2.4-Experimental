@@ -117,18 +117,10 @@ namespace SteamP2PFriends.Adapters.Item.Patches
                 return;
             }
 
-            // 门控 4：Candidate 模式激活时抑制旧 Writer 全地图生成，确保准备/生成互斥
-            if (MultiObserver.MultiObserverShadowCoordinator.ItemProductionMode == ItemProductionMode.Candidate)
-            {
-                RoleLogger.Info("[Host]",
-                    "[P0-B-6] Candidate 模式已激活，旧 Writer (RegenerateAllItems) 受控抑制");
-                return;
-            }
-
             RoleLogger.Info("[Host]",
-                $"[P0-B-6] === onLevelLoaded Postfix 检测到 level={level}，尝试触发全地图 generateItems（v0.2.3.37 P0-B-6）===");
-
-            RegenerateAllItems();
+                "[P0-B-6] Item Authority Writer 已退役 P2P 全图周期，旧 Writer 不驱动");
+            RegenerationSummary = "retired=item-authority-writer";
+            return;
         }
 
         /// <summary>

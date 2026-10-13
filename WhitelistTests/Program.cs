@@ -227,6 +227,13 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT85 CoveringCallerManualRecovery", ItemPreparationAndFirstDemandTests.Test_IT85_CoveringCallerManualRecoveryDoesNotUseAnotherCooldown, ref total, ref passed, ref failed);
             RunTest("IT86 UnconfirmedNativeNotice", ItemPreparationAndFirstDemandTests.Test_IT86_UnconfirmedNativeResultNotifiesWithoutReplay, ref total, ref passed, ref failed);
             RunTest("IT87 SeamCooldownPerCaller", ItemPreparationAndFirstDemandTests.Test_IT87_SeamCooldownIsPerCoveringCaller, ref total, ref passed, ref failed);
+            RunTest("IT88 SessionWriterCutover", ItemWriterCutoverTests.Test_IT88_SessionBoundarySelectsSingleItemAuthorityWriter, ref total, ref passed, ref failed);
+            RunTest("IT89 FullMapCycleRetired", ItemWriterCutoverTests.Test_IT89_ListenHostFullMapCycleDoesNotDrive, ref total, ref passed, ref failed);
+            RunTest("IT90 LegacyEligibilityRetired", ItemWriterCutoverTests.Test_IT90_OwnedSessionRejectsLegacyEligibilityAndFallback, ref total, ref passed, ref failed);
+            RunTest("IT91 SessionSwitchIsolation", ItemWriterCutoverTests.Test_IT91_SessionSwitchDropsOldConnectionAndDoesNotRepeatPrepare, ref total, ref passed, ref failed);
+            RunTest("IT92 LegacyCycleStaysRetired", ItemWriterCutoverTests.Test_IT92_ListenHostLegacyCycleStaysRetiredAfterSessionEnd, ref total, ref passed, ref failed);
+            RunTest("IT93 WorldChangeIsolation", ItemWriterCutoverTests.Test_IT93_WorldChangeIsolatesOldItemSessionWithoutFallback, ref total, ref passed, ref failed);
+            RunTest("IT94 EligibilityStaysRetired", ItemWriterCutoverTests.Test_IT94_ListenHostEligibilityStaysRetiredWhenWriterUnowned, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)

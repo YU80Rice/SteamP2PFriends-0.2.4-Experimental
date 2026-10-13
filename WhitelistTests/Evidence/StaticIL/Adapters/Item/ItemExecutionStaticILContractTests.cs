@@ -26,7 +26,8 @@ namespace SteamP2PFriends.WhitelistTests
                 && Test_ProductionCoordinatorWiresItemDemandAndLifecycle()
                 && Test_NativeActionInvocationsAndPreparationGate()
                 && Test_CoordinatorCallsNativeBridgeAndPreparationChain()
-                && Test_DirectConstructionAndRegistrationEvolutionContract();
+                && Test_DirectConstructionAndRegistrationEvolutionContract()
+                && Test_SessionBoundaryRetiresLegacyItemWriter();
         }
 
         internal static bool Test_PortShapeAndIdentity()
@@ -262,6 +263,29 @@ namespace SteamP2PFriends.WhitelistTests
                 && IlContractProbe.ContainsStringLiteral(register, "OnRegionUpdated_Finalizer")
                 && IlContractProbe.ContainsIntegerLiteral(register, Priority.First)
                 && IlContractProbe.ContainsIntegerLiteral(register, Priority.Last);
+        }
+
+        internal static bool Test_SessionBoundaryRetiresLegacyItemWriter()
+        {
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            Type coordinator = assembly.GetType("SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator");
+            MethodInfo tick = coordinator?.GetMethod("Tick", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo configure = coordinator?.GetMethod("ConfigureItemControlPlane", BindingFlags.Static | BindingFlags.NonPublic);
+            int beginCalls = tick == null ? 0 : IlContractProbe.CountMethodCalls(
+                tick, "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator", "BeginItemAuthoritySession");
+            int bindCalls = configure == null ? 0 : IlContractProbe.CountMethodCalls(
+                configure, "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator", "BindItemAuthorityProduction");
+            MethodInfo generate = typeof(ItemGenerationAuthorityAdapter).GetMethod("ShouldGenerateForObserver");
+            MethodInfo replicate = typeof(ItemObserverReplicationAdapter).GetMethod("ShouldReplicateForObserver");
+            int generateGates = generate == null ? 0 : IlContractProbe.CountMethodCalls(
+                generate, "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator", "get_ItemAuthorityWriterOwnsSession");
+            int replicateGates = replicate == null ? 0 : IlContractProbe.CountMethodCalls(
+                replicate, "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator", "get_ItemAuthorityWriterOwnsSession");
+            MethodInfo regenerate = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerP0B6RegenerateOnLevelLoadedPatch)
+                .GetMethod("TryRegenerateOnLevelLoaded");
+            int oldFullMap = regenerate == null ? 1 : IlContractProbe.CountMethodCalls(
+                regenerate, "SteamP2PFriends.Adapters.Item.Patches.ItemManagerP0B6RegenerateOnLevelLoadedPatch", "RegenerateAllItems");
+            return beginCalls == 1 && bindCalls == 1 && generateGates == 1 && replicateGates == 1 && oldFullMap == 0;
         }
     }
 }

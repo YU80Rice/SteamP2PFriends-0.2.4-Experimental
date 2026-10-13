@@ -380,8 +380,11 @@ namespace SteamP2PFriends.Adapters.Item
 
         public static bool ShouldReplicateForObserver(Player player)
         {
-            ThreadUtil.assertIsGameThread();
             if (Dedicator.IsDedicatedServer) return true;
+            if (MultiObserver.MultiObserverShadowCoordinator.ItemAuthorityWriterOwnsSession
+                || (SteamP2PFriends.Host.HostManager.IsP2PHostMode && Provider.isServer))
+                return false;
+            ThreadUtil.assertIsGameThread();
             if (!_registrationReady) return false;
             if (!ListenRegionSyncEligibility.IsDedicatedOrP2PRemoteRecipient(player)) return false;
 

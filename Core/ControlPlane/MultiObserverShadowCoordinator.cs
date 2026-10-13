@@ -108,7 +108,98 @@ namespace SteamP2PFriends.MultiObserver
         private static int _summaryLogCount;
         private static string _hostSessionId;
 
-        internal static ItemProductionMode ItemProductionMode { get; set; } = ItemProductionMode.LegacyWriter;
+        private static ItemProductionMode _itemProductionMode = ItemProductionMode.LegacyWriter;
+        private static bool _itemWriterOwned;
+        private static ulong _itemWriterEpoch;
+        private static string _itemWriterWorld;
+
+        internal static ItemProductionMode ItemProductionMode
+        {
+            get => _itemProductionMode;
+            set
+            {
+                if (_itemWriterOwned && value != ItemProductionMode.Candidate) return;
+                _itemProductionMode = value;
+            }
+        }
+
+        internal static bool ItemAuthorityWriterOwnsSession => _itemWriterOwned;
+
+        internal static bool TrySelectItemAuthorityWriter(ulong sessionEpoch, string worldIdentity)
+        {
+            if (sessionEpoch == 0UL || string.IsNullOrEmpty(worldIdentity)) return false;
+            if (_itemWriterOwned)
+            {
+                if (_itemWriterEpoch != sessionEpoch
+                    || !string.Equals(_itemWriterWorld, worldIdentity, StringComparison.Ordinal))
+                    return false;
+            }
+            else
+            {
+                _itemWriterOwned = true;
+                _itemWriterEpoch = sessionEpoch;
+                _itemWriterWorld = worldIdentity;
+            }
+            _itemProductionMode = ItemProductionMode.Candidate;
+            ItemLegacyCycleGate.SuppressFullMapWriter = true;
+            return true;
+        }
+
+        internal static void ReleaseItemAuthorityWriter()
+        {
+            _itemWriterOwned = false;
+            _itemWriterEpoch = 0UL;
+            _itemWriterWorld = null;
+            _itemProductionMode = ItemProductionMode.LegacyWriter;
+            ItemLegacyCycleGate.SuppressFullMapWriter = false;
+        }
+
+        internal static void BindItemAuthorityProduction(
+            ItemProductionControlSeam seam, ItemPreparationAuthority preparation)
+        {
+            ItemProduction = seam;
+            ItemPreparation = preparation;
+        }
+
+        internal static bool BeginItemAuthoritySession(ulong sessionEpoch, string worldIdentity, float now = 0f)
+        {
+            if (sessionEpoch == 0UL || string.IsNullOrEmpty(worldIdentity)) return false;
+            if (_itemWriterOwned
+                && (_itemWriterEpoch != sessionEpoch
+                    || !string.Equals(_itemWriterWorld, worldIdentity, StringComparison.Ordinal)))
+            {
+                ItemProduction?.EndSession();
+                ReleaseItemAuthorityWriter();
+            }
+            if (!TrySelectItemAuthorityWriter(sessionEpoch, worldIdentity)) return false;
+            if (ItemProduction != null && ItemProduction.IsSessionActive
+                && ItemProduction.SessionEpoch.Value == sessionEpoch)
+                return true;
+            var epoch = Core.Identity.SessionEpoch.FromNative(sessionEpoch);
+            ItemPreparation?.BindCoreSession(epoch, worldIdentity);
+            ItemProduction?.BeginSession(epoch);
+            if (ItemPreparation != null && !ItemPreparation.IsReady
+                && ItemPreparation.Status != ItemPreparationStatus.Failed)
+            {
+                byte worldSize = checked((byte)Regions.WORLD_SIZE);
+                ItemPreparation.PrepareFullMap(epoch, worldIdentity, worldSize, ItemProduction?.MetadataStore, now);
+            }
+            return true;
+        }
+
+        internal static void EndItemAuthoritySession()
+        {
+            ItemProduction?.EndSession();
+            ReleaseItemAuthorityWriter();
+        }
+
+        internal static void ObserveItemAuthority(
+            ulong observerId, ulong connectionToken, byte x, byte y, bool gameplayAuthorized = true)
+        {
+            if (!_itemWriterOwned || ItemProduction == null || observerId == 0UL || connectionToken == 0UL)
+                return;
+            ItemProduction.UpdateObserver(observerId, connectionToken, x, y, gameplayAuthorized);
+        }
 
         internal static ulong SessionEpoch => Ledger.SessionEpoch;
         internal static int ObserverCount => Ledger.ObserverCount;
@@ -233,14 +324,14 @@ namespace SteamP2PFriends.MultiObserver
                 regionKey => UnpresentItemRegionFromHost(regionKey),
                 (observerId, token, regionKey) => UnbindGuestItemBaseline(observerId, token, regionKey),
                 isCandidateActive: () => ItemProductionMode == ItemProductionMode.Candidate);
-            ItemProduction = new ItemProductionControlSeam(
+            BindItemAuthorityProduction(new ItemProductionControlSeam(
                 ItemPreparation,
                 itemMetaStore,
                 ItemExecution,
                 demandProjection,
                 itemDemandPolicy,
                 ItemLifecyclePolicy.HysteresisSeconds,
-                ControlPlaneLifecycle);
+                ControlPlaneLifecycle), ItemPreparation);
             ItemProduction.RecoveryExhausted = ItemRecoveryCommandPatch.NotifyRecoveryExhausted;
             ItemProduction.RecoveryUnconfirmed = ItemRecoveryCommandPatch.NotifyRecoveryUnconfirmed;
             ItemExecution.AcquireRecoveryExhausted =
@@ -343,17 +434,11 @@ namespace SteamP2PFriends.MultiObserver
                 {
                     ResourceProduction.BeginSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch));
                 }
-                ItemPreparation?.BindCoreSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch), worldIdentity);
-                ItemProduction?.BeginSession(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch));
+                BeginItemAuthoritySession(Ledger.SessionEpoch, worldIdentity, now);
                 _eventLogCount = 0;
                 _summaryLogCount = 0;
                 _nextSummaryAt = now;
                     SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
-                ItemLegacyCycleGate.SuppressFullMapWriter = ItemProductionMode == ItemProductionMode.Candidate;
-                if (ItemProductionMode == ItemProductionMode.Candidate)
-                {
-                    TryPrepareItemFullMap(worldIdentity, now);
-                }
             }
 
             if (ItemProductionMode == ItemProductionMode.Candidate && ItemPreparation != null && !ItemPreparation.IsReady)
@@ -941,8 +1026,7 @@ namespace SteamP2PFriends.MultiObserver
             try
             {
                 ResourceProduction?.EndSession();
-                ItemProduction?.EndSession();
-                ItemLegacyCycleGate.SuppressFullMapWriter = false;
+                EndItemAuthoritySession();
             }
             catch (Exception ex)
             {
@@ -1096,8 +1180,7 @@ namespace SteamP2PFriends.MultiObserver
             {
                 if (sample.ObserverId == 0UL || sample.ConnectionToken == 0UL
                     || !seen.Add(sample.ObserverId)) continue;
-                ItemProduction.UpdateObserver(sample.ObserverId,
-                    sample.ConnectionToken,
+                ObserveItemAuthority(sample.ObserverId, sample.ConnectionToken,
                     sample.ItemRegionX, sample.ItemRegionY, sample.GameplayAuthorized);
             }
             foreach (ulong observerId in deferred)

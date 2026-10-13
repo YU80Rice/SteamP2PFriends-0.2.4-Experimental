@@ -45,6 +45,9 @@ namespace SteamP2PFriends.Adapters.Item
         /// </summary>
         public static bool ShouldGenerateForObserver(Player player)
         {
+            if (MultiObserver.MultiObserverShadowCoordinator.ItemAuthorityWriterOwnsSession
+                || (SteamP2PFriends.Host.HostManager.IsP2PHostMode && Provider.isServer))
+                return false;
             try
             {
                 ThreadUtil.assertIsGameThread();

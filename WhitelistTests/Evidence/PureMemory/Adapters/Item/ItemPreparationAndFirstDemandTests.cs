@@ -2450,7 +2450,7 @@ namespace SteamP2PFriends.WhitelistTests
             finally { ItemCycleThresholds.Override = null; }
         }
 
-        private sealed class TestNativeItemWarehouseBridge : INativeItemWarehouseBridge
+        internal sealed class TestNativeItemWarehouseBridge : INativeItemWarehouseBridge
         {
             public bool InputsAvailable = true;
             public readonly Dictionary<(byte, byte), List<ItemData>> Regions =

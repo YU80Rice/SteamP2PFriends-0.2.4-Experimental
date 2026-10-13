@@ -178,6 +178,9 @@ namespace SteamP2PFriends.Adapters.Item.Patches
 
         internal static bool SkipLegacyCycleWhenCandidateOwnsSession()
         {
+            if (SteamP2PFriends.Host.HostManager.IsP2PHostMode && Provider.isServer
+                && !ItemLegacyCycleGate.InOwnerStep)
+                return false;
             return !ItemLegacyCycleGate.ShouldSkipLegacy;
         }
 
