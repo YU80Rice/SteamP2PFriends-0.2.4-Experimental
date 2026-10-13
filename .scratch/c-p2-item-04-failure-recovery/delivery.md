@@ -9,4 +9,6 @@
 
 验证：双项目 Rebuild 成功。WhitelistTests `529/529 PASS`。证据：`.scratch/c-p2-item-04-failure-recovery/test-run-e01-pre-review.txt`。`git diff --check` 仅有既有 LF→CRLF 警告。
 
+审计：`audit/2026-10-13/Implementation-0.2.4.10-Item04.md`。票面：`implemented-pending-runtime`。Runtime 归票 06。
+
 实现边界：共享 `FailedRetryController` 拥有失败预算复位。10 秒命令冷却只在 `ItemProductionControlSeam._manualCooldown`，键为 Session+observer+Core 连接代次+region，且只在 Started 后写入。引擎不再记录同一入口冷却。同一 Job 挂起续做。未确认结果与可能半包不盲重发。耗尽与不可确认结果走定向通知。

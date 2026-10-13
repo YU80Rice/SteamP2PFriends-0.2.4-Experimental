@@ -35,6 +35,14 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | 10 Collision 代次源自举——让租约首次 Acquire 成立 | `2026-10-01/RuntimeFix-0.2.4.9-Ticket10-2159.md`（**implemented-pending-runtime**：读侧自举 `InitialRegionGeneration=1U` 修复首读 0→`IsDefined` 恒拒死锁，CanCommit/Ledger/M6C01–08 冻结面未动；红→绿 413/413（含宿主 JIT ECall 接缝约束具名）、双次 Cutover 指纹 `F6C46B82…/bcd76cfa…` 一致、独立核验 PASS、双轴两轮最终双 CLEAN；Runtime 证据归票 09 诊断复测，票 09 不关单） | — |
 | 09-R1 Collision 生命周期诊断修复（真实领域归属、Reentry 与 receipt 取证） | `2026-10-07/Implementation-0.2.4.9-09-R1-1042.md`（**completed：领域路由诊断出口修复 Collision/引擎级转换被错标 `domain=Resource`；Reentry 行补 `authority=`；receipt 拒绝/成功行补命令+receipt 双侧身份；红→绿 425/425、双次 Cutover 指纹 `2C3AFF22…/c9aab7c6…` 一致、独立核验 PASS、双轴三轮最终双 CLEAN；已部署并以 1H1G 作为播报探针补证，既有 1H2G 功能证据继续有效；用户裁定关闭）** | — |
 
+## Item Migration Slice（0.2.4.10，票 01–06 + 07）
+
+| Ticket | 交付/最终报告 | 补充与修复 |
+|---|---|---|
+| 01 全图准备与首次到访 | `2026-10-08/Implementation-0.2.4.10-Item01.md`（**implemented-pending-runtime**：控制面接线、原生动作与仓库桥对接、真实高层接缝驱动、红→绿 458/458、指纹一致核验 PASS；Runtime 归票 06） | — |
+| 04 局部失败的有限恢复 | `2026-10-13/Implementation-0.2.4.10-Item04.md`（**implemented-pending-runtime**：共享失败预算、接缝 10 秒冷却、同一作业续做；529/529 PASS；E01 第 1 轮双 CLEAN；Runtime 归票 06） | `.scratch/c-p2-item-04-failure-recovery/expert-rescue-window9.txt`（E01 前两轮非 CLEAN 与专家方案） |
+
+
 ## Listen-Host Dedicated Gate 与 Join Routing 批（01–04 实施 + 共享 05 Runtime）
 
 | Ticket | 交付/最终报告 | 补充与修复 |
