@@ -42,6 +42,7 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | 01 全图准备与首次到访 | `2026-10-08/Implementation-0.2.4.10-Item01.md`（**implemented-pending-runtime**：控制面接线、原生动作与仓库桥对接、真实高层接缝驱动、红→绿 458/458、指纹一致核验 PASS；Runtime 归票 06） | — |
 | 04 局部失败的有限恢复 | `2026-10-13/Implementation-0.2.4.10-Item04.md`（**implemented-pending-runtime**：共享失败预算、接缝 10 秒冷却、同一作业续做；529/529 PASS；E01 第 1 轮双 CLEAN；Runtime 归票 06） | `.scratch/c-p2-item-04-failure-recovery/expert-rescue-window9.txt`（E01 前两轮非 CLEAN 与专家方案） |
 | 05 会话切换与旧调用链退役 | `2026-10-13/Implementation-0.2.4.10-Item05.md`（**implemented-pending-runtime**：会话边界唯一 Item Writer，旧 M1/M2 与全图周期退出 Listen-Host；536/536 PASS；第 2 轮双 CLEAN；Runtime 归票 06） | — |
+| 07 原生20米拾取距离 | `2026-10-13/Implementation-0.2.4.10-Item07.md`（**implemented-pending-runtime**：listen-host 权威拾取复用距离平方 >400 拒绝；544/544 PASS；第 1 轮双 CLEAN；Runtime OPEN，不代替 06） | — |
 
 
 ## Listen-Host Dedicated Gate 与 Join Routing 批（01–04 实施 + 共享 05 Runtime）

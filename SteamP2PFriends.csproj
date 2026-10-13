@@ -139,6 +139,7 @@
     <Compile Include="Adapters\Item\ItemStepFiveAdmission.cs" />
     <Compile Include="Adapters\Item\ItemDeletionDispatch.cs" />
     <Compile Include="Adapters\Item\ItemSettlementGate.cs" />
+    <Compile Include="Adapters\Item\ItemAuthoritativePickup.cs" />
     <Compile Include="Adapters\Item\ItemOriginTrackingSeam.cs" />
     <Compile Include="Adapters\Item\ItemGenerationAuthorityAdapter.cs" />
     <Compile Include="Adapters\Item\ItemObserverReplicationAdapter.cs" />
@@ -150,6 +151,7 @@
     <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemCreationTrackingPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemSettlementConsumptionPatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemAuthoritativePickupPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemRecoveryCommandPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />
     <Compile Include="Adapters\Resource\ResourceDemandPolicy.cs" />

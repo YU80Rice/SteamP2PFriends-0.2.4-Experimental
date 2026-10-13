@@ -234,6 +234,13 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT92 LegacyCycleStaysRetired", ItemWriterCutoverTests.Test_IT92_ListenHostLegacyCycleStaysRetiredAfterSessionEnd, ref total, ref passed, ref failed);
             RunTest("IT93 WorldChangeIsolation", ItemWriterCutoverTests.Test_IT93_WorldChangeIsolatesOldItemSessionWithoutFallback, ref total, ref passed, ref failed);
             RunTest("IT94 EligibilityStaysRetired", ItemWriterCutoverTests.Test_IT94_ListenHostEligibilityStaysRetiredWhenWriterUnowned, ref total, ref passed, ref failed);
+            RunTest("IT95 OverDistancePickupRejected", ItemAuthoritativePickupTests.Test_IT95_OverDistanceRejectsBeforeInventoryWrite, ref total, ref passed, ref failed);
+            RunTest("IT96 DistanceSquared400Allowed", ItemAuthoritativePickupTests.Test_IT96_DistanceSquared400RunsNativeOnce, ref total, ref passed, ref failed);
+            RunTest("IT97 NonAuthorityOriginalPath", ItemAuthoritativePickupTests.Test_IT97_NonAuthorityKeepsOriginalPath, ref total, ref passed, ref failed);
+            RunTest("IT98 UnreadyRegionPickupRejected", ItemAuthoritativePickupTests.Test_IT98_UnreadyRegionRejectsBeforeWrite, ref total, ref passed, ref failed);
+            RunTest("IT99 GuestLeaseCannotBypass", ItemAuthoritativePickupTests.Test_IT99_GuestLeaseCannotBypassInstanceLookup, ref total, ref passed, ref failed);
+            RunTest("IT100 NativeRejectionAfterDistance", ItemAuthoritativePickupTests.Test_IT100_LegalDistanceStillHonorsNativeRejectionOnce, ref total, ref passed, ref failed);
+            RunTest("IT101 MissingInstanceIgnoresClientPoint", ItemAuthoritativePickupTests.Test_IT101_MissingInstanceIgnoresClientPoint, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -697,6 +704,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Item Coordinator Native Actions", ItemExecutionStaticILContractTests.Test_CoordinatorCallsNativeBridgeAndPreparationChain,
                 ref total, ref passed, ref failed);
             RunTest("Item Settlement Consumption Gate", ItemExecutionStaticILContractTests.Test_SettlementConsumptionBindsPickupIncrementAndHost,
+                ref total, ref passed, ref failed);
+            RunTest("Item Pickup Distance Binding", ItemPickupDistanceStaticILContractTests.Test_PickupDistanceConsumesReceiveTakeItemRequest,
                 ref total, ref passed, ref failed);
             RunTest("Item Host Step5 Settlement Gate", ItemExecutionStaticILContractTests.Test_HostStepFiveGenerationUsesSettlementGate,
                 ref total, ref passed, ref failed);

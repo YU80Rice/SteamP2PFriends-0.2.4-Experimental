@@ -32,6 +32,7 @@ namespace SteamP2PFriends.Adapters.Item.Patches
                 typeof(byte[]), typeof(Vector3), typeof(uint), typeof(bool)
             });
             harmony.Patch(pickup, new HarmonyMethod(typeof(ItemSettlementConsumptionPatch), nameof(AllowPickup)));
+            ItemAuthoritativePickupPatch.RegisterManual(harmony);
             harmony.Patch(ask, new HarmonyMethod(typeof(ItemSettlementConsumptionPatch), nameof(AllowAskItems)));
             if (increment != null)
                 harmony.Patch(increment, new HarmonyMethod(typeof(ItemSettlementConsumptionPatch), nameof(AllowIncrement)));
