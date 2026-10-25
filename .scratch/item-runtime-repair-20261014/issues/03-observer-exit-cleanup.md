@@ -34,6 +34,6 @@
 
 用户明确批准 R03 先交付当前证据支持的源码修复；原现场 Host NRE 根因、真实原生对象销毁/解绑顺序及 Guest 离开后房间继续运行，转入 R04 同场 Runtime 验收。此决定改变原 AC1 的证据时序/源码交付前置，不表示历史 NRE 已定位或解决，不改变原八条 AC 文本，也不允许将八条 AC 全部勾选。
 
-源码阶段只有在本次候选双轴 CLEAN、限定提交与 ticket/delivery/audit/index/主会话交付闭环后才标记 `implemented-pending-runtime` / `ready-for-human`。当前源码阶段仍未关闭；AC1 的历史现场证据与 AC8 的交付完成仍待闭环。R04 Runtime 负责原生退出清理与多人房间继续运行验证，玩家仅进行游戏内操作并导出 UMM 包，由 Agent 分析日志；未审候选不部署。
+源码阶段已完成本次候选双轴 CLEAN、限定提交及 ticket/delivery/audit/index/主会话交付，状态为 `implemented-pending-runtime` / `ready-for-human`。AC1 的历史现场证据、原生退出清理与多人房间继续运行转由 R04 Runtime 验收；原八条 AC 文本保持不变且未全部完成，未审候选不部署。
 
 **Approval:** 用户于 2026-10-14 批准四票拆分并授权自动逐票调度。

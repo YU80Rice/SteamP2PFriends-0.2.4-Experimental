@@ -29,7 +29,7 @@
 
 用户批准 R03 源码阶段先交付当前可证修复；原现场 NRE 根因、真实原生退出清理及 Guest 离开后房间继续运行并入 R04 同场 Runtime 验收。此决定改变原 AC1 证据时序/源码交付前置，不代表历史故障已复现或解决，也不表示原八条 AC 全满足。原 AC 文本与 R1–R4 报告/不同结论保留。
 
-当前状态：源码阶段收尾未交付，AC1 历史现场证据和 AC8 交付闭环未完成；Runtime PENDING。源码阶段闭环后才设置 `implemented-pending-runtime` / `ready-for-human`。R04 负责同候选实机验证，玩家仅游戏内操作并导出 UMM 诊断包，由 Agent 分析日志。
+当前状态：源码阶段已完成双轴 CLEAN、限定提交及 ticket/delivery/audit/index/主会话交付，标记 `implemented-pending-runtime` / `ready-for-human`；Runtime PENDING。AC1 历史现场证据、原生退出清理和房间继续运行由 R04 同候选实机验证，玩家仅游戏内操作并导出 UMM 诊断包，由 Agent 分析日志。
 
 本次唯一测试改动是在既有 IT145 方法记录 `propagated` 并加入最终断言；生产与其他测试不变，预计直接 Green，按补覆盖记录。复用变更前 619/619 全量结果，并另跑本次 Whitelist 测试构建与定向 IT145，不重跑无关全套。
 
