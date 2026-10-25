@@ -45,6 +45,7 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | 07 原生20米拾取距离 | `2026-10-13/Implementation-0.2.4.10-Item07.md`（**implemented-pending-runtime**：listen-host 权威拾取复用距离平方 >400 拒绝；544/544 PASS；第 1 轮双 CLEAN；Runtime OPEN，不代替 06） | — |
 | R01 Host 刷新物品只有一份有效呈现 | `2026-10-25/Implementation-0.2.4.10-R01.md`（**implemented-pending-runtime**：R2C/R3/V1 收束；602/602 PASS、恢复产物独立核验 PASS、Standards/Spec 最终 CLEAN；幽灵现场状态仍待 Runtime） | `.scratch/item-runtime-repair-20261014/issues/01-host-item-presentation-delivery.md` |
 | R02 Guest 正常进区自动取得物品，真实失败才提示 | `2026-10-25/Implementation-0.2.4.10-R02.md`（**implemented-pending-runtime**：614/614 PASS；累计第4轮 Standards/Spec 双 CLEAN；Guest Runtime 待验收） | `.scratch/item-runtime-repair-20261014/issues/02-guest-item-delivery-delivery.md` |
+| R03 Guest 离开后精确清理旧 Item 资格，房间继续运行 | `2026-10-25/Implementation-0.2.4.10-R03.md`：源码阶段先行交付已获用户批准；R5 双轴与限定提交待完成，复用既有 619/619 全量结果并补 IT145 定向；历史 NRE、原生退出清理与房间继续运行转入 R04 Runtime。 | `.scratch/item-runtime-repair-20261014/issues/03-observer-exit-cleanup-delivery.md` |
 
 
 ## Listen-Host Dedicated Gate 与 Join Routing 批（01–04 实施 + 共享 05 Runtime）

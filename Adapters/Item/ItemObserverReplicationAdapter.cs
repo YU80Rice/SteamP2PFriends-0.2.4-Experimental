@@ -273,6 +273,7 @@ namespace SteamP2PFriends.Adapters.Item
 
         private sealed class ConnectionBinding
         {
+            internal object Owner;
             internal object Connection;
             internal ulong Token;
         }
@@ -542,6 +543,17 @@ namespace SteamP2PFriends.Adapters.Item
             Ledger.RemoveObserver(observerId);
         }
 
+        internal static bool RemoveObserver(ulong observerId, object expectedOwner, object expectedConnection)
+        {
+            if (observerId == 0UL || expectedOwner == null || expectedConnection == null
+                || !Connections.TryGetValue(observerId, out ConnectionBinding binding)
+                || !ReferenceEquals(binding.Owner, expectedOwner)
+                || !ReferenceEquals(binding.Connection, expectedConnection)) return false;
+            Connections.Remove(observerId);
+            Ledger.RemoveObserver(observerId);
+            return true;
+        }
+
         internal static void RemoveObserversExcept(ISet<ulong> activeObserverIds)
         {
             var removed = new List<ulong>();
@@ -578,7 +590,7 @@ namespace SteamP2PFriends.Adapters.Item
         {
             observerId = player?.channel?.owner?.playerID?.steamID.m_SteamID ?? 0UL;
             connection = player?.channel?.owner?.transportConnection;
-            connectionToken = EnsureConnectionToken(observerId, connection);
+            connectionToken = EnsureConnectionToken(observerId, player?.channel?.owner, connection);
             return observerId != 0UL && connection != null && connectionToken != 0UL;
         }
 
@@ -598,7 +610,7 @@ namespace SteamP2PFriends.Adapters.Item
                 if (candidate == null || !ReferenceEquals(candidate.transportConnection, connection)) continue;
                 steamPlayer = candidate;
                 observerId = candidate.playerID?.steamID.m_SteamID ?? 0UL;
-                connectionToken = EnsureConnectionToken(observerId, connection);
+                connectionToken = EnsureConnectionToken(observerId, candidate, connection);
                 return observerId != 0UL && connectionToken != 0UL;
             }
             return false;
@@ -621,9 +633,13 @@ namespace SteamP2PFriends.Adapters.Item
         }
 
         internal static ulong EnsureConnectionToken(ulong observerId, object connection)
+            => EnsureConnectionToken(observerId, null, connection);
+
+        internal static ulong EnsureConnectionToken(ulong observerId, object owner, object connection)
         {
             if (observerId == 0UL || connection == null) return 0UL;
             if (Connections.TryGetValue(observerId, out ConnectionBinding binding)
+                && ReferenceEquals(binding.Owner, owner)
                 && ReferenceEquals(binding.Connection, connection))
                 return binding.Token;
 
@@ -631,6 +647,7 @@ namespace SteamP2PFriends.Adapters.Item
             if (_nextConnectionToken == 0UL) _nextConnectionToken = 1UL;
             Connections[observerId] = new ConnectionBinding
             {
+                Owner = owner,
                 Connection = connection,
                 Token = _nextConnectionToken
             };

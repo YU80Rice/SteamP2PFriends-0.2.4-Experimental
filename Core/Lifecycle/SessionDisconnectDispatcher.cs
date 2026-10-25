@@ -81,7 +81,7 @@ namespace SteamP2PFriends.Core.Lifecycle
                         RoleLogger.Warn("[Host]", "[P2P-Approval] disconnect cleanup failed: " + qEx.GetType().Name);
                     }
 
-                    try { ItemManagerRegionSyncPatch.OnEnemyDisconnected(steamId); }
+                    try { ItemManagerRegionSyncPatch.OnEnemyDisconnected(player); }
                     catch (Exception itemEx)
                     {
                         RoleLogger.Error("[Shared]", $"OnEnemyDisconnectedHandler(M2 ItemObserver) 异常: {itemEx.Message}");

@@ -790,13 +790,16 @@ namespace SteamP2PFriends.Adapters.Item.Patches
             }
         }
 
-        public static void OnEnemyDisconnected(ulong steamId)
+        public static void OnEnemyDisconnected(SteamPlayer player)
         {
+            ulong steamId = player?.playerID?.steamID.m_SteamID ?? 0UL;
             if (steamId == 0UL) return;
-            _eligibilityLogCounts.Remove(steamId);
-            ItemObserverReplicationAdapter.RemoveObserver(steamId);
+            bool removed = MultiObserverShadowCoordinator.OnItemObserverDisconnected(
+                steamId, player, player.transportConnection);
+            if (removed) _eligibilityLogCounts.Remove(steamId);
             RoleLogger.Info("[Shared]",
-                $"[ItemRegionSync] OnEnemyDisconnected 精确清理 observer={DiagnosticMaskUtil.MaskSteamId(steamId)}");
+                $"[ItemRegionSync] OnEnemyDisconnected observer={DiagnosticMaskUtil.MaskSteamId(steamId)} "
+                + $"outcome={(removed ? "exact-cleanup" : "stale-or-unmapped")}");
         }
 
         public static void ResetAll()

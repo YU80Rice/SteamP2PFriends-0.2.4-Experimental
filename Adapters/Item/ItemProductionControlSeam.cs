@@ -230,10 +230,19 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void RemoveObserver(ulong observerId)
         {
-            if (_engine.TryGetConnectionGeneration(DomainIds.Item, observerId, out ulong token))
-                _settlement.ReleaseObserver(observerId, token);
+            if (TryGetConnectionGeneration(observerId, out ulong token))
+                RemoveObserver(observerId, token);
+        }
+
+        public bool RemoveObserver(ulong observerId, ulong expectedConnectionToken)
+        {
+            if (expectedConnectionToken == 0UL
+                || !TryGetConnectionGeneration(observerId, out ulong currentToken)
+                || currentToken != expectedConnectionToken) return false;
+            _settlement.ReleaseObserver(observerId, expectedConnectionToken);
             _engine.RemoveObserver(DomainIds.Item, observerId);
             _settlement.Refresh();
+            return true;
         }
 
         public bool IsLeased(RegionKey regionKey) =>

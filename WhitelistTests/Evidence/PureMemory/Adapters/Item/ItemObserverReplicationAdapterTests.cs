@@ -113,6 +113,72 @@ namespace SteamP2PFriends.WhitelistTests
                     == ItemBaselineBeginResult.Begin;
         }
 
+        internal static bool Test_IT146_LateDisconnectKeepsReconnectedBinding()
+        {
+            const ulong observer = 146UL;
+            ItemObserverReplicationAdapter.ResetForSession();
+            object oldOwner = new object();
+            object currentOwner = new object();
+            object oldTransport = new object();
+            object currentTransport = new object();
+            ItemObserverReplicationAdapter.EnsureConnectionToken(observer, oldOwner, oldTransport);
+            ulong current = ItemObserverReplicationAdapter.EnsureConnectionToken(observer, currentOwner, currentTransport);
+            bool staleRemoved = ItemObserverReplicationAdapter.RemoveObserver(observer, oldOwner, oldTransport);
+            ulong afterLateDisconnect = ItemObserverReplicationAdapter.EnsureConnectionToken(observer, currentOwner, currentTransport);
+            bool currentRemoved = ItemObserverReplicationAdapter.RemoveObserver(observer, currentOwner, currentTransport);
+            ItemObserverReplicationAdapter.ResetForSession();
+            return current != 0UL && !staleRemoved && afterLateDisconnect == current && currentRemoved;
+        }
+
+        internal static bool Test_IT147_DisconnectRequiresExactCoreOwnerAndTransport()
+        {
+            object oldOwner = new object(), currentOwner = new object();
+            object oldTransport = new object(), currentTransport = new object();
+            var identity = new SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity
+            {
+                SteamPlayerReference = currentOwner,
+                TransportReference = currentTransport,
+                Token = 147UL
+            };
+            bool oldOwnerMatched = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                .TryGetDisconnectedConnectionToken(identity, oldOwner, oldTransport, out _);
+            bool mixedTransportMatched = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                .TryGetDisconnectedConnectionToken(identity, currentOwner, oldTransport, out _);
+            bool currentMatched = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                .TryGetDisconnectedConnectionToken(identity, currentOwner, currentTransport, out ulong token);
+            return !oldOwnerMatched && !mixedTransportMatched && currentMatched && token == 147UL;
+        }
+
+        internal static bool Test_IT149_ProductionDisconnectKeepsReconnectedOwner()
+        {
+            const ulong observer = 149UL;
+            object oldOwner = new object(), currentOwner = new object();
+            object oldTransport = new object(), currentTransport = new object();
+            var identitiesField = typeof(SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator)
+                .GetField("Connections", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var identities = (Dictionary<ulong,
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity>)identitiesField.GetValue(null);
+            identities.Clear();
+            identities[observer] = new SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity
+            {
+                SteamPlayerReference = currentOwner, TransportReference = currentTransport, Token = 149UL
+            };
+            ItemObserverReplicationAdapter.ResetForSession();
+            ItemObserverReplicationAdapter.EnsureConnectionToken(observer, currentOwner, currentTransport);
+            bool staleResult = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                .OnItemObserverDisconnected(observer, oldOwner, oldTransport);
+            bool staleKept = identities.ContainsKey(observer)
+                && ItemObserverReplicationAdapter.EnsureConnectionToken(observer, currentOwner, currentTransport) != 0UL;
+            bool currentResult = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                .OnItemObserverDisconnected(observer, currentOwner, currentTransport);
+            bool currentRemoved = !identities.ContainsKey(observer);
+            bool repeatedResult = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                .OnItemObserverDisconnected(observer, currentOwner, currentTransport);
+            identities.Clear();
+            ItemObserverReplicationAdapter.ResetForSession();
+            return !staleResult && staleKept && currentResult && currentRemoved && !repeatedResult;
+        }
+
         private static ItemObserverReplicationLedger Ready(
             ulong observerId,
             ulong connectionToken,

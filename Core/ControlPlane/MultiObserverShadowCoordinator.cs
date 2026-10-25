@@ -241,6 +241,29 @@ namespace SteamP2PFriends.MultiObserver
                 ? generation : 0UL;
         }
 
+        internal static bool OnItemObserverDisconnected(
+            ulong observerId, object ownerReference, object transportReference)
+        {
+            if (observerId == 0UL || ownerReference == null || transportReference == null) return false;
+            bool lifecycleRemoved = false;
+            if (Connections.TryGetValue(observerId, out ConnectionIdentity identity)
+                && TryGetDisconnectedConnectionToken(identity, ownerReference, transportReference, out ulong token))
+            {
+                if (ItemProduction != null && ItemProduction.IsSessionActive
+                    && ItemProduction.TryGetConnectionGeneration(observerId, out ulong currentToken))
+                {
+                    if (currentToken != token || !ItemProduction.RemoveObserver(observerId, token)) return false;
+                }
+                ItemObservers.Remove(observerId);
+                if (Connections.TryGetValue(observerId, out ConnectionIdentity current)
+                    && ReferenceEquals(current, identity)) Connections.Remove(observerId);
+                lifecycleRemoved = true;
+            }
+            bool replicationRemoved = ItemObserverReplicationAdapter.RemoveObserver(
+                observerId, ownerReference, transportReference);
+            return lifecycleRemoved || replicationRemoved;
+        }
+
         internal static bool TryManualItemRecovery(
             ulong observerId, ulong connectionToken, RegionKey region)
         {
@@ -925,6 +948,18 @@ namespace SteamP2PFriends.MultiObserver
                 Token = stagedNextToken
             };
             stagedConnections[observerId] = identity;
+            return true;
+        }
+
+        internal static bool TryGetDisconnectedConnectionToken(
+            ConnectionIdentity identity, object ownerReference, object transportReference, out ulong token)
+        {
+            token = 0UL;
+            if (identity == null || ownerReference == null || transportReference == null
+                || !ReferenceEquals(identity.SteamPlayerReference, ownerReference)
+                || !ReferenceEquals(identity.TransportReference, transportReference)
+                || identity.Token == 0UL) return false;
+            token = identity.Token;
             return true;
         }
 

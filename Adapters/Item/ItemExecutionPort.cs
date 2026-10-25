@@ -340,14 +340,28 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void OnObserverReplicationExited(ulong observerId, ulong connectionToken, RegionKey regionKey)
         {
-            _returnSettlement?.ReleaseWaiter(regionKey, observerId, connectionToken);
-            if (_isHostObserver != null && _isHostObserver(observerId))
+            string action = "release-waiter";
+            try
             {
-                _hostPresentationCleaner?.Invoke(regionKey);
+                _returnSettlement?.ReleaseWaiter(regionKey, observerId, connectionToken);
+                if (_isHostObserver != null && _isHostObserver(observerId))
+                {
+                    action = "host-presentation-cleanup";
+                    _hostPresentationCleaner?.Invoke(regionKey);
+                }
+                else
+                {
+                    action = "guest-baseline-unbind";
+                    _guestBaselineUnbinder?.Invoke(observerId, connectionToken, regionKey);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _guestBaselineUnbinder?.Invoke(observerId, connectionToken, regionKey);
+                string stack = ex.ToString();
+                if (stack.Length > 2048) stack = stack.Substring(0, 2048);
+                WriteRecoveryDiagnostic($"event=observer-exit-failed action={action} observer={observerId} "
+                    + $"connection={connectionToken} region={regionKey} stack={stack}");
+                throw;
             }
         }
 

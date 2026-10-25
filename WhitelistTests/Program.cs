@@ -141,6 +141,9 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("M2I08 ExplicitCapability", ItemObserverReplicationAdapterTests.Test_M2I08_CapabilityIsExplicitReliableEnqueue, ref total, ref passed, ref failed);
             RunTest("M2I10 LoadedRollback", ItemObserverReplicationAdapterTests.Test_M2I10_LoadedProjectionRollbackRequiresCurrentConnection, ref total, ref passed, ref failed);
             RunTest("M2I11 ExactDisconnect", ItemObserverReplicationAdapterTests.Test_M2I11_ExactDisconnectInvalidatesEvenReusedConnectionToken, ref total, ref passed, ref failed);
+            RunTest("IT146 LateDisconnectKeepsReconnectedBinding", ItemObserverReplicationAdapterTests.Test_IT146_LateDisconnectKeepsReconnectedBinding, ref total, ref passed, ref failed);
+            RunTest("IT147 DisconnectRequiresExactCoreOwnerAndTransport", ItemObserverReplicationAdapterTests.Test_IT147_DisconnectRequiresExactCoreOwnerAndTransport, ref total, ref passed, ref failed);
+            RunTest("IT149 ProductionDisconnectKeepsReconnectedOwner", ItemObserverReplicationAdapterTests.Test_IT149_ProductionDisconnectKeepsReconnectedOwner, ref total, ref passed, ref failed);
             // 0.2.4.10 C-P2-Item-01: 全图准备与首次到访
             RunTest("IT01 EarlyUnpreparedDeferred", ItemPreparationAndFirstDemandTests.Test_IT01_EarlyOnlineOperationBeforePreparationIsDeferred, ref total, ref passed, ref failed);
             RunTest("IT02 FullMapPreparationOnce", ItemPreparationAndFirstDemandTests.Test_IT02_FullMapPreparationPreparesOnceIncludingEmptyRegions, ref total, ref passed, ref failed);
@@ -212,6 +215,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT142 FailureTraceReopensOnlyAfterRealObserverExit", ItemPreparationAndFirstDemandTests.Test_IT142_FailureTraceReopensOnlyAfterRealObserverExit, ref total, ref passed, ref failed);
             RunTest("IT143 ExitedDeliveryIsRevokedWithoutAffectingOtherGuest", ItemPreparationAndFirstDemandTests.Test_IT143_ExitedDeliveryIsRevokedWithoutAffectingOtherGuest, ref total, ref passed, ref failed);
             RunTest("IT144 ConnectionFailureCleanupUsesExactIdentity", ItemPreparationAndFirstDemandTests.Test_IT144_ConnectionFailureCleanupUsesExactIdentity, ref total, ref passed, ref failed);
+            RunTest("IT145 ObserverExitFailureReportsIdentityAndStack", ItemPreparationAndFirstDemandTests.Test_IT145_ObserverExitFailureReportsIdentityAndStack, ref total, ref passed, ref failed);
+            RunTest("IT148 StaleExitPreservesCurrentAndOtherGuestDemand", ItemPreparationAndFirstDemandTests.Test_IT148_StaleExitPreservesCurrentAndOtherGuestDemand, ref total, ref passed, ref failed);
             RunTest("IT61 ItemFailureRecoveryPolicy", ItemPreparationAndFirstDemandTests.Test_IT61_ItemFailureRecoveryPolicyIsBounded, ref total, ref passed, ref failed);
             RunTest("IT62 ExceptionRecoveryLocalRetry", ItemPreparationAndFirstDemandTests.Test_IT62_ExceptionRecoveryRetriesOnlyTheFailedRegion, ref total, ref passed, ref failed);
             RunTest("IT63 RecoveryCommandFailClosed", ItemRecoveryCommandTests.Test_IT63_RecoveryCommandParsesAndFailsClosed, ref total, ref passed, ref failed);

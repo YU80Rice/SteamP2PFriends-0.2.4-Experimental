@@ -2379,6 +2379,67 @@ namespace SteamP2PFriends.WhitelistTests
             return firstTraces == 5;
         }
 
+        internal static bool Test_IT145_ObserverExitFailureReportsIdentityAndStack()
+        {
+            var diagnostics = new List<string>();
+            int unbindCalls = 0;
+            bool propagated = false;
+            var prep = new ItemPreparationAuthority(new TestNativeItemWarehouseBridge { SpawnPointCount = 1 });
+            var meta = new ItemMetadataStore();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                diagnosticSink: detail => diagnostics.Add(detail), isHostObserver: _ => false,
+                guestBaselineUnbinder: (observer, token, region) =>
+                {
+                    unbindCalls++;
+                    throw new NullReferenceException("simulated destroyed guest projection");
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(0, 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.BeginSession(new SessionEpoch(145UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(145UL), "MapPEI", 2, meta, 0f)) return false;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.Tick(0f);
+            try { seam.RemoveObserver(1001UL); }
+            catch (NullReferenceException) { propagated = true; }
+            string trace = string.Join("\n", diagnostics);
+            bool reported = trace.Contains("event=observer-exit-failed")
+                && trace.Contains("action=guest-baseline-unbind")
+                && trace.Contains("observer=1001") && trace.Contains("connection=201")
+                && trace.Contains("region=(0,0)") && trace.Contains("NullReferenceException")
+                && trace.Contains("ItemExecutionPort.OnObserverReplicationExited")
+                && trace.Contains("simulated destroyed guest projection");
+            if (unbindCalls == 0 || !reported)
+                Console.WriteLine($"IT145 exit trace expected unbind/identity/stack; calls={unbindCalls} reported={reported} trace={trace}");
+            return propagated && unbindCalls > 0 && reported;
+        }
+
+        internal static bool Test_IT148_StaleExitPreservesCurrentAndOtherGuestDemand()
+        {
+            var prep = new ItemPreparationAuthority(new TestNativeItemWarehouseBridge { SpawnPointCount = 1 });
+            var meta = new ItemMetadataStore();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create());
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(0, 4);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.BeginSession(new SessionEpoch(148UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(148UL), "MapPEI", 4, meta, 0f)) return false;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+            seam.Tick(0f);
+            seam.UpdateObserver(1001UL, 203UL, 3, 3, true);
+            seam.Tick(0f);
+            bool staleRemoved = seam.RemoveObserver(1001UL, 201UL);
+            bool preserved = seam.TryGetConnectionGeneration(1001UL, out ulong current) && current == 203UL
+                && seam.GetDemand(new RegionKey(0, 0)) == 1 && seam.GetDemand(new RegionKey(3, 3)) == 1;
+            bool currentRemoved = seam.RemoveObserver(1001UL, 203UL);
+            return !staleRemoved && preserved && currentRemoved
+                && !seam.TryGetConnectionGeneration(1001UL, out _)
+                && seam.GetDemand(new RegionKey(0, 0)) == 1 && seam.GetDemand(new RegionKey(3, 3)) == 0;
+        }
+
         internal static bool Test_IT143_ExitedDeliveryIsRevokedWithoutAffectingOtherGuest()
         {
             var bridge = new TestNativeItemWarehouseBridge();
