@@ -18,7 +18,7 @@ namespace SteamP2PFriends.WhitelistTests
             InstallBattlEyeTypeResolutionStub();
 
             Console.WriteLine("===============================================================");
-            Console.WriteLine("=== SteamP2PFriends Modular TestRunner (Target: 446 PASS) ===");
+            Console.WriteLine("=== SteamP2PFriends Modular TestRunner ===");
             Console.WriteLine("===============================================================");
             int total = 0, passed = 0, failed = 0;
 
@@ -241,6 +241,60 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT99 GuestLeaseCannotBypass", ItemAuthoritativePickupTests.Test_IT99_GuestLeaseCannotBypassInstanceLookup, ref total, ref passed, ref failed);
             RunTest("IT100 NativeRejectionAfterDistance", ItemAuthoritativePickupTests.Test_IT100_LegalDistanceStillHonorsNativeRejectionOnce, ref total, ref passed, ref failed);
             RunTest("IT101 MissingInstanceIgnoresClientPoint", ItemAuthoritativePickupTests.Test_IT101_MissingInstanceIgnoresClientPoint, ref total, ref passed, ref failed);
+            RunTest("IT102 HostPresentThenStepFivePending", ItemLocalPresentationPipelineTests.Test_IT102_SharedPresentThenRetiredStepFiveDuplicatesPending, ref total, ref passed, ref failed);
+            RunTest("IT103 StepFiveThenHostPresentPending", ItemLocalPresentationPipelineTests.Test_IT103_RetiredStepFiveThenSharedPresentKeepsOnePending, ref total, ref passed, ref failed);
+            RunTest("IT105 ReentryPresentPending", ItemLocalPresentationPipelineTests.Test_IT105_ReentryPresentKeepsOnePending, ref total, ref passed, ref failed);
+            RunTest("IT121c NotifyFailureCancelsPending", ItemLocalPresentationPipelineTests.Test_IT121c_NotifyFailureStillCancelsPending, ref total, ref passed, ref failed);
+            RunTest("IT121a NotStartedKeepsPending", ItemLocalPresentationPipelineTests.Test_IT121a_NotStartedKeepsPendingForRetry, ref total, ref passed, ref failed);
+            RunTest("IT121b UncertainKeepsPending", ItemLocalPresentationPipelineTests.Test_IT121b_UncertainKeepsPendingForQuarantine, ref total, ref passed, ref failed);
+            RunTest("IT121d BlockedRegionKeepsPending", ItemLocalPresentationPipelineTests.Test_IT121d_BlockedRegionSkipsButKeepsPending, ref total, ref passed, ref failed);
+            RunTest("IT123 UnconfirmedSurvivesRegionExit", ItemLocalPresentationPipelineTests.Test_IT123_UnconfirmedSideEffectSurvivesRegionExit, ref total, ref passed, ref failed);
+            RunTest("IT124 ProductionClassifierBoundary", ItemLocalPresentationPipelineTests.Test_IT124_ProductionClassifierJudgesRealBoundary, ref total, ref passed, ref failed);
+            RunTest("IT125 IncrementDestroyPolicy", ItemLocalPresentationPipelineTests.Test_IT125_IncrementDestroyPolicyMatrix, ref total, ref passed, ref failed);
+            RunTest("IT126 NonRetiredStepFivePassthrough", ItemLocalPresentationPipelineTests.Test_IT126_NonRetiredStepFiveKeepsNativePassthrough, ref total, ref passed, ref failed);
+            RunTest("IT129 ClientPendingBatchContractPlural", ItemLocalPresentationPipelineTests.Test_IT129_ClientPendingBatchContractIsPlural, ref total, ref passed, ref failed);
+            RunTest("IT130 OwnedBatchDefersOnStaleGeneration", ItemLocalPresentationPipelineTests.Test_IT130_OwnedBatchDefersOnStaleGeneration, ref total, ref passed, ref failed);
+            RunTest("IT131 ClassifierPrecheckAndPostEntryFailure", ItemLocalPresentationPipelineTests.Test_IT131_ClassifierDistinguishesPrecheckAndPostEntryFailure, ref total, ref passed, ref failed);
+            RunTest("IT132 PresentSharedSortOrderBeforeSideEffects", ItemLocalPresentationPipelineTests.Test_IT132_PresentSharedReadsSortOrderBeforeSideEffects, ref total, ref passed, ref failed);
+            RunTest("E02A1 StepFiveFirstPresentsTargetB", R01E02SliceATests.Test_E02_A1_StepFiveFirstPresentsTargetB, ref total, ref passed, ref failed);
+            RunTest("E02A2 SharedFirstStepFiveIdempotent", R01E02SliceATests.Test_E02_A2_SharedFirstThenStepFiveIdempotent, ref total, ref passed, ref failed);
+            RunTest("E02A3 IdentityGuardsRejectAndWait", R01E02SliceATests.Test_E02_A3_IdentityGuardsRejectAndWait, ref total, ref passed, ref failed);
+            RunTest("E02AC2 ProductionCombination", ItemLocalPresentationPipelineTests.Test_E02_AC2_ProductionCombination, ref total, ref passed, ref failed);
+            RunTest("E02 ProbeLeafMechanical", ItemLocalPresentationPipelineTests.Test_E02_ProbeLeafMechanical, ref total, ref passed, ref failed);
+            RunTest("E02B1 StepFiveFirstExitCleanupShared", R01E02SliceATests.Test_E02_B1_StepFiveFirstExitCleanupAndSharedDemand, ref total, ref passed, ref failed);
+            RunTest("E02C1 NewInstanceIdLifecycle", R01E02SliceATests.Test_E02_C1_NewInstanceIdLifecycle, ref total, ref passed, ref failed);
+            RunTest("R01 V1 BudgetedConsumptionAndReentry", R01E02SliceATests.Test_R01_V1_BudgetedConsumptionAndReentry, ref total, ref passed, ref failed);
+            RunTest("R01 V1 ModeledPickupDoesNotResurrect", R01E02SliceATests.Test_R01_V1_ModeledPickupDoesNotResurrect, ref total, ref passed, ref failed);
+            RunTest("R01 V1 AfterSnapshotFailureQuarantines", R01E02SliceATests.Test_R01_V1_AfterSnapshotFailureQuarantinesConsumer, ref total, ref passed, ref failed);
+            RunTest("E02C2 InvokeAndClassifyMatrix", R01E02SliceATests.Test_E02_C2_InvokeAndClassifyMatrix, ref total, ref passed, ref failed);
+            RunTest("E02C3 RegionInstanceQuarantineGate", R01E02SliceATests.Test_E02_C3_RegionInstanceQuarantineGate, ref total, ref passed, ref failed);
+            RunTest("E02D1 PendingBatchShapeMatrix", R01E02SliceATests.Test_E02_D1_PendingBatchShapeMatrix, ref total, ref passed, ref failed);
+            RunTest("E02D2 PendingWindowSharedDetection", ItemExecutionStaticILContractTests.Test_E02_D2_PendingWindowSharedDetection, ref total, ref passed, ref failed);
+            RunTest("E02D3 SpawnSignatureNegativeShapes", R01E02SliceATests.Test_E02_D3_SpawnSignatureNegativeShapes, ref total, ref passed, ref failed);
+            RunTest("E02D4 VerifyRegisteredNegativeProofs", R01E02SliceATests.Test_E02_D4_VerifyRegisteredNegativeProofs, ref total, ref passed, ref failed);
+            RunTest("R1 VerifyRegisteredSiblingCoexist", R01E02SliceATests.Test_R1_VerifyRegisteredAllowsSameOwnerSiblingTranspilers, ref total, ref passed, ref failed);
+            RunTest("R2A ReadModeWriterSource", R01E02SliceATests.Test_R2A_ReadModeWriterSource, ref total, ref passed, ref failed);
+            RunTest("R2B PrefixStepFiveModeSplit", R01E02SliceATests.Test_R2B_PrefixStepFiveModeSplit, ref total, ref passed, ref failed);
+            RunTest("R2C WrapperModeSplitClassification", R01E02SliceATests.Test_R2C_WrapperModeSplitAndDispatchClassification, ref total, ref passed, ref failed);
+            RunTest("R2C DestroyModelReadFailureWaits", R01E02SliceATests.Test_R2C_DestroyModelReadFailureWaitsAfterCancel, ref total, ref passed, ref failed);
+            RunTest("R2C DestroyPartialModelFailureWaits", R01E02SliceATests.Test_R2C_DestroyPartialModelFailureWaitsWithoutReplay, ref total, ref passed, ref failed);
+            RunTest("R2C DestroyOrderCoexistence", R01E02SliceATests.Test_R2C_DestroyOrderAndModelPendingCoexistence, ref total, ref passed, ref failed);
+            RunTest("R2C DispatchIncrementClassification", R01E02SliceATests.Test_R2C_DispatchIncrementClassification, ref total, ref passed, ref failed);
+            RunTest("R3 StepFiveCommittedPhysicalBinding", R01E02SliceATests.Test_R3_StepFiveWaitsForCommittedPhysicalBinding, ref total, ref passed, ref failed);
+            RunTest("R3 ConsumerCommittedPhysicalBinding", R01E02SliceATests.Test_R3_ConsumerWaitsForCommittedPhysicalBinding, ref total, ref passed, ref failed);
+            RunTest("E02B2 GuestExitUnbindsOriginal", R01E02SliceATests.Test_E02_B2_GuestExitUnbindsOriginalRegions, ref total, ref passed, ref failed);
+            RunTest("IT128 AdmissionRebuiltPerSession", ItemLocalPresentationPipelineTests.Test_IT128_AdmissionRebuiltPerSessionAndStaleRejected, ref total, ref passed, ref failed);
+            RunTest("IT122 SingleIdentityDeleteKeepsOther", ItemLocalPresentationPipelineTests.Test_IT122_SingleIdentityDeleteKeepsOtherIdentity, ref total, ref passed, ref failed);
+            RunTest("IT106 UnknownIdentityRejected", ItemLocalPresentationPipelineTests.Test_IT106_UnknownIdentityRejectsWithoutNativeElse, ref total, ref passed, ref failed);
+            RunTest("IT107 HostStepFiveEnterOnce", ItemLocalPresentationPipelineTests.Test_IT107_HostStepFiveEnterPresentsOnceThroughSeam, ref total, ref passed, ref failed);
+            RunTest("IT108 PartialConsumeAboveMinimum", ItemLocalPresentationPipelineTests.Test_IT108_PartialConsumeLeavesTailAboveMinimumBatch, ref total, ref passed, ref failed);
+            RunTest("IT110 RemovePresentedClearsSameId", ItemLocalPresentationPipelineTests.Test_IT110_RemovePresentedClearsModelAndPendingOfThatId, ref total, ref passed, ref failed);
+            RunTest("IT111 GuestStepFiveNoHostPresent", ItemLocalPresentationPipelineTests.Test_IT111_GuestStepFiveDoesNotPresentHost, ref total, ref passed, ref failed);
+            RunTest("IT118 GuestStepFiveFirstBaselineOnce", ItemLocalPresentationPipelineTests.Test_IT118_GuestStepFiveFirstDeliversBaselineOnce, ref total, ref passed, ref failed);
+            RunTest("IT112 SeamEnterThenStepFive", ItemLocalPresentationPipelineTests.Test_IT112_SeamEnterThenStepFiveDoesNotDuplicate, ref total, ref passed, ref failed);
+            RunTest("IT113 PickupRejectKeepsPresentation", ItemLocalPresentationPipelineTests.Test_IT113_PickupRejectDoesNotClearPresentation, ref total, ref passed, ref failed);
+            RunTest("IT114 FullBudgetConsume", ItemLocalPresentationPipelineTests.Test_IT114_FullBudgetConsumeClearsPending, ref total, ref passed, ref failed);
+            RunTest("IT116 DropAfterPickupSingle", ItemLocalPresentationPipelineTests.Test_IT116_DropAfterPickupReenqueuesSinglePresentation, ref total, ref passed, ref failed);
             #endregion
 
             #region 4. Adapters: Zombie Domain Tests (22 Tests)
@@ -712,6 +766,14 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("Item Step5 Destroy Gates", ItemExecutionStaticILContractTests.Test_StepFiveAndDestroyConsumeGatesAreBound,
                 ref total, ref passed, ref failed);
             RunTest("Item Region Prefix Finalizer Registration", ItemExecutionStaticILContractTests.Test_RegionPrefixRegistrationIncludesOrderedFinalizer,
+                ref total, ref passed, ref failed);
+            RunTest("Item Region Prefix Legacy Exception Propagation", ItemExecutionStaticILContractTests.Test_RegionPrefixLegacyCallPropagatesExceptions,
+                ref total, ref passed, ref failed);
+            RunTest("Item Destroy Wrapper Mode-First Order", ItemExecutionStaticILContractTests.Test_DestroyWrapperReadsModeBeforeOwnedState,
+                ref total, ref passed, ref failed);
+            RunTest("Item Owned Pending Transpiler Chain", ItemExecutionStaticILContractTests.Test_OwnedPendingTranspilerBindsAfterDedicatedGateChain,
+                ref total, ref passed, ref failed);
+            RunTest("Item Settlement Registration PatchInfo", ItemExecutionStaticILContractTests.Test_SettlementRegistrationVerifiedThroughPatchInfo,
                 ref total, ref passed, ref failed);
 
             _currentEvidenceClass = EvidenceClass.BuildArtifact;

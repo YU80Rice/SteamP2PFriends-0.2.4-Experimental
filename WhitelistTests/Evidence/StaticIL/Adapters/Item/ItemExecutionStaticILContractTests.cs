@@ -2,8 +2,10 @@ using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.MultiObserver.Lifecycle;
 using HarmonyLib;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace SteamP2PFriends.WhitelistTests
 {
@@ -218,6 +220,26 @@ namespace SteamP2PFriends.WhitelistTests
             return patch != null && pickupCalls > 0 && incrementCalls > 0 && askCalls > 0 && hostCalls > 0 && bindsPickup;
         }
 
+        /// <summary>E02 §6/D：pending 窗口识别与 transpiler 共用同一结果（真实 Update IL）。</summary>
+        internal static bool Test_E02_D2_PendingWindowSharedDetection()
+        {
+            MethodInfo update = AccessTools.Method(
+                typeof(SDG.Unturned.ItemManager), "Update", Type.EmptyTypes);
+            if (update == null) return false;
+            var codes = PatchProcessor.GetCurrentInstructions(update, out _, maxTranspilers: 0);
+            var probe = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemOwnedPresentationRuntimePatch);
+            var find = probe.GetMethods(System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Public)
+                .Single(m => m.Name == "TryFindPendingBatchWindow"
+                    && m.GetParameters().Length == 3);
+            if (find == null) return false;
+            var args = new object[] { codes, -1, -1 };
+            bool found = (bool)find.Invoke(null, args);
+            // 真实客户端 Update：唯一 pending 窗口（timer Restart..Stop），锚点唯一
+            return found && (int)args[1] > 0 && (int)args[2] > (int)args[1];
+        }
+
         internal static bool Test_HostStepFiveGenerationUsesSettlementGate()
         {
             MethodInfo method = typeof(ItemGenerationAuthorityAdapter).GetMethod(
@@ -226,17 +248,37 @@ namespace SteamP2PFriends.WhitelistTests
                 method, "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeHostGeneration");
             MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch).GetMethod(
                 "OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
-            int admission = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
-                prefix, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit");
-            return calls == 1 && admission == 1;
+            MethodInfo owned = typeof(SteamP2PFriends.Adapters.Item.ItemLocalPresentationDispatch).GetMethod(
+                "AdmitOwnedStepFive", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo legacy = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch).GetMethod(
+                "AdmitUnverified", BindingFlags.Static | BindingFlags.NonPublic);
+            int ownedAdmit = owned == null ? 0 : IlContractProbe.CountMethodCalls(
+                owned, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit");
+            int legacyAdmit = legacy == null ? 0 : IlContractProbe.CountMethodCalls(
+                legacy, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit");
+            MethodInfo handler = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                .FirstOrDefault(m => m.Name == "HandleNativeStepFive" && m.GetParameters().Length == 6);
+            int prefixOwned = handler == null ? 0 : IlContractProbe.CountMethodCalls(
+                handler, "SteamP2PFriends.Adapters.Item.ItemLocalPresentationDispatch", "AdmitOwnedStepFive");
+            int prefixHandler = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
+                prefix, "SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch", "HandleNativeStepFive");
+            return calls == 1 && ownedAdmit == 1 && legacyAdmit == 1 && prefixOwned == 1
+                && prefixHandler == 1;
         }
 
         internal static bool Test_StepFiveAndDestroyConsumeGatesAreBound()
         {
             MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
                 .GetMethod("OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
-            int stepGate = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
-                prefix, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit");
+            MethodInfo ownedAdmit = typeof(SteamP2PFriends.Adapters.Item.ItemLocalPresentationDispatch)
+                .GetMethod("AdmitOwnedStepFive", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo legacyAdmit = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("AdmitUnverified", BindingFlags.Static | BindingFlags.NonPublic);
+            int stepGate = (ownedAdmit == null ? 0 : IlContractProbe.CountMethodCalls(
+                    ownedAdmit, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit"))
+                + (legacyAdmit == null ? 0 : IlContractProbe.CountMethodCalls(
+                    legacyAdmit, "SteamP2PFriends.Adapters.Item.ItemStepFiveAdmission", "Admit"));
             int nativeScope = prefix == null ? 0 : IlContractProbe.CountMethodCalls(
                 prefix, "SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter", "EnterNativeStepFiveAskItems");
             MethodInfo finalizer = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
@@ -244,7 +286,7 @@ namespace SteamP2PFriends.WhitelistTests
             int destroyGate = IlContractProbe.CountAssemblyMethodCalls(
                 typeof(SteamP2PFriendsPlugin).Assembly,
                 "SteamP2PFriends.Adapters.Item.ItemSettlementGate", "TryAuthorizeIncrement");
-            return stepGate == 1 && nativeScope == 1 && finalizer != null && destroyGate > 0;
+            return stepGate == 2 && nativeScope == 1 && finalizer != null && destroyGate > 0;
         }
 
         internal static bool Test_RegionPrefixRegistrationIncludesOrderedFinalizer()
@@ -263,6 +305,102 @@ namespace SteamP2PFriends.WhitelistTests
                 && IlContractProbe.ContainsStringLiteral(register, "OnRegionUpdated_Finalizer")
                 && IlContractProbe.ContainsIntegerLiteral(register, Priority.First)
                 && IlContractProbe.ContainsIntegerLiteral(register, Priority.Last);
+        }
+
+        /// <summary>R2C 补齐结构证据：实际 ReceiveDestroyItem_Prefix 真正 mode-first——
+        /// ReadMode 调用 offset（实测 6）在 pendingInstantiations 的 Type.GetField/
+        /// FieldInfo.GetValue（42/55）与 NativeItemLocalPresentationView 构造（79）
+        /// 之前；nonCandidate 提前 return 不触 owned 静态面/视图。ReceiveItem_Prefix
+        /// 无 owned 存储读取（GetField/GetValue=0），dispatch 在 view 构造之后。</summary>
+        internal static bool Test_DestroyWrapperReadsModeBeforeOwnedState()
+        {
+            const BindingFlags All = BindingFlags.Static | BindingFlags.Public;
+            MethodInfo destroy = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemOwnedPresentationRuntimePatch)
+                .GetMethod("ReceiveDestroyItem_Prefix", All);
+            MethodInfo increment = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemOwnedPresentationRuntimePatch)
+                .GetMethod("ReceiveItem_Prefix", All);
+            if (destroy == null || increment == null) return false;
+            int FindCallOffset(MethodInfo method, string declaringTypeName, string name)
+            {
+                byte[] il = method.GetMethodBody()?.GetILAsByteArray();
+                if (il == null) return -1;
+                for (int offset = 0; offset + 4 < il.Length; offset++)
+                {
+                    int token = BitConverter.ToInt32(il, offset);
+                    try
+                    {
+                        MethodBase called = method.Module.ResolveMethod(token);
+                        if (called != null
+                            && called.DeclaringType?.FullName == declaringTypeName
+                            && called.Name == name)
+                            return offset;
+                    }
+                    catch { }
+                }
+                return -1;
+            }
+            int destroyReadMode = FindCallOffset(destroy,
+                "SteamP2PFriends.Adapters.Item.NativeItemStepFiveReader", "ReadMode");
+            int destroyGetField = FindCallOffset(destroy, "System.Type", "GetField");
+            int destroyGetValue = FindCallOffset(destroy,
+                "System.Reflection.FieldInfo", "GetValue");
+            int destroyViewCtor = FindCallOffset(destroy,
+                "SteamP2PFriends.Adapters.Item.NativeItemLocalPresentationView", ".ctor");
+            // ReceiveItem_Prefix：无 owned 存储读取；dispatch 在 view 构造之后
+            int incrementGetField = FindCallOffset(increment, "System.Type", "GetField");
+            int incrementGetValue = FindCallOffset(increment,
+                "System.Reflection.FieldInfo", "GetValue");
+            int incrementViewCtor = FindCallOffset(increment,
+                "SteamP2PFriends.Adapters.Item.NativeItemLocalPresentationView", ".ctor");
+            int incrementDispatch = FindCallOffset(increment,
+                "SteamP2PFriends.Adapters.Item.ItemLocalPresentationDispatch", "DispatchIncrement");
+            return destroyReadMode >= 0
+                && destroyGetField > destroyReadMode
+                && destroyGetValue > destroyReadMode
+                && (destroyViewCtor < 0 || destroyViewCtor > destroyReadMode)
+                && incrementGetField < 0 && incrementGetValue < 0
+                && incrementViewCtor >= 0 && incrementDispatch > incrementViewCtor;
+        }
+
+        /// <summary>R2B 补齐结构证据：实际 OnRegionUpdated_Prefix 中 non-Candidate 的
+        /// HandleNativeStepFive 调用（私有 3 参重载）不在任何异常处理区间内——异常按
+        /// 原合同向上传播；方法体仅存 owned 局部 catch 一个 handler。</summary>
+        internal static bool Test_RegionPrefixLegacyCallPropagatesExceptions()
+        {
+            MethodInfo prefix = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("OnRegionUpdated_Prefix", BindingFlags.Static | BindingFlags.Public);
+            if (prefix == null) return false;
+            MethodInfo ownedHandler = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemManagerRegionSyncPatch)
+                .GetMethod("HandleOwnedStepFive", BindingFlags.Static | BindingFlags.NonPublic);
+            if (ownedHandler == null) return false;
+            System.Reflection.MethodBody body = prefix.GetMethodBody();
+            if (body == null) return false;
+            // 唯一异常 handler = owned 局部 catch（原 non-Candidate catch 已移除）
+            if (body.ExceptionHandlingClauses.Count != 1) return false;
+            // 找到 non-Candidate 腿的 HandleNativeStepFive(3参) 调用 offset
+            byte[] il = body.GetILAsByteArray();
+            int legacyCallOffset = -1;
+            for (int offset = 0; offset + 4 < il.Length; offset++)
+            {
+                int token = BitConverter.ToInt32(il, offset);
+                try
+                {
+                    MethodBase called = prefix.Module.ResolveMethod(token);
+                    if (called != null && called.Name == "HandleNativeStepFive"
+                        && called.GetParameters().Length == 3)
+                    {
+                        legacyCallOffset = offset;
+                        break;
+                    }
+                }
+                catch { }
+            }
+            if (legacyCallOffset < 0) return false;
+            foreach (System.Reflection.ExceptionHandlingClause clause in body.ExceptionHandlingClauses)
+                if (legacyCallOffset >= clause.TryOffset
+                    && legacyCallOffset < clause.TryOffset + clause.TryLength)
+                    return false;
+            return true;
         }
 
         internal static bool Test_SessionBoundaryRetiresLegacyItemWriter()
@@ -286,6 +424,45 @@ namespace SteamP2PFriends.WhitelistTests
             int oldFullMap = regenerate == null ? 1 : IlContractProbe.CountMethodCalls(
                 regenerate, "SteamP2PFriends.Adapters.Item.Patches.ItemManagerP0B6RegenerateOnLevelLoadedPatch", "RegenerateAllItems");
             return beginCalls == 1 && bindCalls == 1 && generateGates == 1 && replicateGates == 1 && oldFullMap == 0;
+        }
+
+        internal static bool Test_SettlementRegistrationVerifiedThroughPatchInfo()
+        {
+            MethodInfo register = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemSettlementConsumptionPatch)
+                .GetMethod("RegisterManual");
+            MethodInfo verify = typeof(SteamP2PFriends.Adapters.Item.Patches.ItemSettlementConsumptionPatch)
+                .GetMethod("VerifyRegistered", BindingFlags.NonPublic | BindingFlags.Static);
+            if (register == null || verify == null) return false;
+            int verifiedTargets = IlContractProbe.CountMethodCalls(
+                register, "SteamP2PFriends.Adapters.Item.Patches.ItemSettlementConsumptionPatch", "VerifyRegistered");
+            int patchInfoReads = IlContractProbe.CountMethodCalls(verify, "HarmonyLib.Harmony", "GetPatchInfo");
+            return verifiedTargets == 3 && patchInfoReads == 1;
+        }
+
+        internal static bool Test_OwnedPendingTranspilerBindsAfterDedicatedGateChain()
+        {
+            MethodInfo update = AccessTools.Method(
+                typeof(SDG.Unturned.ItemManager), "Update", Type.EmptyTypes);
+            if (update == null) return false;
+            var generator = new DynamicMethod("it115", typeof(void), Type.EmptyTypes).GetILGenerator();
+            var chained = new List<CodeInstruction>(
+                SteamP2PFriends.Adapters.Item.Patches.ItemOwnedPresentationRuntimePatch.Update_Transpiler(
+                    SteamP2PFriends.Adapters.Item.Patches.ItemManagerUpdateDedicatedGatePatch.Update_Transpiler(
+                        PatchProcessor.GetCurrentInstructions(update, out _, maxTranspilers: 0), null),
+                    generator));
+            if (chained.Count == 0) return false;
+            if (SteamP2PFriends.Adapters.Item.Patches.ItemOwnedPresentationRuntimePatch.AnchorMatchCount != 1) return false;
+            int consume = 0;
+            int spawn = 0;
+            foreach (CodeInstruction instruction in chained)
+            {
+                MethodInfo called = instruction.operand as MethodInfo;
+                if (called == null) continue;
+                if (called.DeclaringType == typeof(SteamP2PFriends.Adapters.Item.Patches.ItemOwnedPresentationRuntimePatch)
+                    && called.Name == "ConsumeOwnedPendingBatch") consume++;
+                if (called.Name == "spawnItem") spawn++;
+            }
+            return consume == 1 && spawn == 1;
         }
     }
 }

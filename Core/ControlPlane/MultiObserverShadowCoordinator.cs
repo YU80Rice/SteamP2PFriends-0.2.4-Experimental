@@ -30,14 +30,14 @@ namespace SteamP2PFriends.MultiObserver
         private const int SessionEventLogLimit = 160;
         private const int SessionSummaryLogLimit = 120;
 
-        private sealed class ConnectionIdentity
+        internal sealed class ConnectionIdentity
         {
             internal object SteamPlayerReference;
             internal object TransportReference;
             internal ulong Token;
         }
 
-        private sealed class CaptureResult
+        internal sealed class CaptureResult
         {
             internal readonly List<ObserverShadowSample> Samples = new List<ObserverShadowSample>();
 
@@ -94,6 +94,9 @@ namespace SteamP2PFriends.MultiObserver
         private static readonly HashSet<ulong> CollisionObservers = new HashSet<ulong>();
 
         private static ItemProductionControlSeam ItemProduction;
+
+        /// <summary>E02 §4-1：wrapper 经由此把当前生产 seam 交给共同 dispatch。</summary>
+        internal static ItemProductionControlSeam ItemProductionSeam => ItemProduction;
         private static ItemPreparationAuthority ItemPreparation;
         private static ItemExecutionPort ItemExecution;
         private static DemandPolicy _itemDemandPolicy;
@@ -324,14 +327,16 @@ namespace SteamP2PFriends.MultiObserver
                 regionKey => UnpresentItemRegionFromHost(regionKey),
                 (observerId, token, regionKey) => UnbindGuestItemBaseline(observerId, token, regionKey),
                 isCandidateActive: () => ItemProductionMode == ItemProductionMode.Candidate);
-            BindItemAuthorityProduction(new ItemProductionControlSeam(
+            var seam = new ItemProductionControlSeam(
                 ItemPreparation,
                 itemMetaStore,
                 ItemExecution,
                 demandProjection,
                 itemDemandPolicy,
                 ItemLifecyclePolicy.HysteresisSeconds,
-                ControlPlaneLifecycle), ItemPreparation);
+                ControlPlaneLifecycle);
+            seam.BindOwnedNative(Adapters.Item.NativeItemStepFiveReader.Instance);
+            BindItemAuthorityProduction(seam, ItemPreparation);
             ItemProduction.RecoveryExhausted = ItemRecoveryCommandPatch.NotifyRecoveryExhausted;
             ItemProduction.RecoveryUnconfirmed = ItemRecoveryCommandPatch.NotifyRecoveryUnconfirmed;
             ItemExecution.AcquireRecoveryExhausted =
@@ -883,12 +888,25 @@ namespace SteamP2PFriends.MultiObserver
             out ulong token,
             out string failure)
         {
+            return TryGetStagedConnectionToken(
+                observerId, (object)steamPlayer, steamPlayer?.transportConnection,
+                stagedConnections, ref stagedNextToken, out token, out failure);
+        }
+
+        internal static bool TryGetStagedConnectionToken(
+            ulong observerId,
+            object ownerReference,
+            object transportReference,
+            Dictionary<ulong, ConnectionIdentity> stagedConnections,
+            ref ulong stagedNextToken,
+            out ulong token,
+            out string failure)
+        {
             token = 0UL;
             failure = "none";
-            object transport = steamPlayer.transportConnection;
             if (Connections.TryGetValue(observerId, out ConnectionIdentity identity)
-                && ReferenceEquals(identity.SteamPlayerReference, steamPlayer)
-                && ReferenceEquals(identity.TransportReference, transport))
+                && ReferenceEquals(identity.SteamPlayerReference, ownerReference)
+                && ReferenceEquals(identity.TransportReference, transportReference))
             {
                 stagedConnections[observerId] = identity;
                 token = identity.Token;
@@ -902,12 +920,28 @@ namespace SteamP2PFriends.MultiObserver
             }
             identity = new ConnectionIdentity
             {
-                SteamPlayerReference = steamPlayer,
-                TransportReference = transport,
+                SteamPlayerReference = ownerReference,
+                TransportReference = transportReference,
                 Token = stagedNextToken
             };
             stagedConnections[observerId] = identity;
             return true;
+        }
+
+        internal static bool TryReadCommittedItemConnection(
+            ulong observerId, out object owner, out object transport, out ulong token)
+        {
+            owner = null;
+            transport = null;
+            token = 0UL;
+            if (Connections.TryGetValue(observerId, out ConnectionIdentity identity))
+            {
+                owner = identity.SteamPlayerReference;
+                transport = identity.TransportReference;
+                token = identity.Token;
+                return token != 0UL;
+            }
+            return false;
         }
 
         private static void CountNativeLoadedItemRegions(
@@ -970,7 +1004,7 @@ namespace SteamP2PFriends.MultiObserver
             return sessionId + "|" + serverId + "|" + map;
         }
 
-        private static void CommitConnectionIdentities(
+        internal static void CommitConnectionIdentities(
             CaptureResult capture, HashSet<ulong> deferred)
         {
             // 暂缓观察者的连接身份与令牌必须原样续用：本拍没读到记录不等于换了连接，

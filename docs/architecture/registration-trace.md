@@ -44,6 +44,42 @@ Orders 61-64 → `Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationAudit
 Order 65 → `Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationDomainModules.cs:15-44`。
 矩阵中的旧 `PatchRegistry.cs:<line>` 仅是 Ticket 01 的历史锚点，不能作为当前源码入口读取。
 
+### 1.2 R01 物品呈现注册补充（受影响单元）
+
+`ItemSettlementConsumptionPatch.RegisterManual`（入口
+`Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationLegacyDiagnostics.cs:475`）在同一调用单元内新增
+以下 target，登记后由 `VerifyRegistered` 通过 `Harmony.GetPatchInfo` 逐项核对本插件 owner 的 patch 方法：
+
+| target | patch type / method | owner / patch method | 证据等级 |
+|---|---|---|---|
+| `ItemManager.Update()` | Transpiler / `ItemOwnedPresentationRuntimePatch.Update_Transpiler` | com.yu80rice.steamp2pfriends / 本插件方法 | S+H+R-Pending |
+| `ItemManager.ReceiveDestroyItem(byte,byte,uint,bool)` | Prefix / `ItemOwnedPresentationRuntimePatch.ReceiveDestroyItem_Prefix` | com.yu80rice.steamp2pfriends / 本插件方法 | S+H+R-Pending |
+| `ItemManager.ReceiveItem(byte,byte,ushort,byte,byte,byte[],Vector3,uint,bool)` | Prefix / `ItemOwnedPresentationRuntimePatch.ReceiveItem_Prefix` | com.yu80rice.steamp2pfriends / 本插件方法 | S+H+R-Pending |
+
+`ItemManager.Update()` 的 transpiler 登记由 `ItemSettlementConsumptionPatch.InspectPendingBatchShape`
+的三态探测决定（读取实际传入类型的元数据与真实 IL，不读静态值、无 IsDedicatedServer 旁路）：
+
+- **Client** = 静态 `pendingInstantiations`（`List<ItemInstantiationParameters>`，复数）+
+  实例 `instantiationTimer`（`Stopwatch`）+ `spawnItem` 完整九参（instance、void 返回，
+  `(byte,byte,ushort,byte,byte,byte[],Vector3,uint,bool)`）+ 无参实例 `Update` +
+  真实 IL 上 pending 消费窗口唯一存在（`TryFindPendingBatchWindow`，与 transpiler 共用同一识别）→
+  登记 owned Update transpiler。
+- **DedicatedWithoutBatch** = pending/spawn/Update 契约正确但 `instantiationTimer` 确实不存在
+  且无 pending 窗口 → 只跳过 owned Update transpiler，其他原生门照常登记。
+- **Unsupported**（半缺成员/类型错误/多窗口）= 明确抛错，不默认为专用服、不打半套补丁。
+
+SDK 事实：`pendingInstantiations` 在条件编译外无条件存在（`ItemManager:44` cctor），
+`instantiationTimer` 与实例化循环在 `#if !DEDICATED_SERVER` 内——专用服形态**并非没有 pending 列表**，
+真实判别是 timer 与消费窗口（E02 §6 实证，合成反例见 `Test_E02_D3_SpawnSignatureNegativeShapes`
+的 static/非 void → Unsupported）。
+
+`VerifyRegistered` 按 target 显式校验预期 patch 种类（Transpiler/Prefix）+ 精确 MethodInfo 引用 +
+owner + priority（`Priority.Normal`）；错误方法/优先级不符/同 owner 异类共存/未登记各自报错
+（`Test_E02_D4_VerifyRegisteredNegativeProofs` 反证）。
+
+`VerifyRegistered` 只证明登记事实与 patch 方法归属，不证明 transpiler 窗口语义或 Host/Guest 呈现结果；
+后者仍需 Runtime 证据。本补充不改变 §1.1 的 65 个 `RegisterManual`/`RegisterAtomically` 调用单元计数。
+
 ## 2. 插件实际注册调用链
 
 以下顺序来自当前源码的调用链，而不是架构图中的理想分层：

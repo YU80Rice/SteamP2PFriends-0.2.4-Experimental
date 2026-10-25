@@ -25,6 +25,7 @@ namespace SteamP2PFriends.Adapters.Item
         private readonly HashSet<RegionKey> _identityBlocked = new HashSet<RegionKey>();
         private readonly ItemFailureRecovery _recovery = new ItemFailureRecovery();
         private readonly ItemObserverRecoveryGate _halfPacketGate = new ItemObserverRecoveryGate();
+        private readonly HashSet<UnconfirmedItem> _unconfirmed = new HashSet<UnconfirmedItem>();
         private readonly HashSet<RegionKey> _worldCommitted = new HashSet<RegionKey>();
         private readonly HashSet<RegionKey> _delivered = new HashSet<RegionKey>();
         private readonly HashSet<DeliveredWaiter> _deliveredWaiters = new HashSet<DeliveredWaiter>();
@@ -74,6 +75,51 @@ namespace SteamP2PFriends.Adapters.Item
             try { RecoveryExhausted?.Invoke(observer, token, region, true); }
             catch (Exception) { }
         }
+
+        /// <summary>
+        /// 已进入原生副作用但结果未知：按“区域/实例”持久隔离，代次或会话重建都不解除。
+        /// 区域退出释放只清 half-packet 门，不清这里，避免重入后把不确定项当安全项重建。
+        /// </summary>
+        /// <summary>E02 §8.3：隔离记录补物理作用域——native regions 数组对象引用由实际
+        /// adapter 读取（非 Core epoch/测试自增代次）；无 native 来源时 owned 暂缓。</summary>
+        public void MarkUnconfirmedSideEffect(ulong observer, ulong token, RegionKey region,
+            uint instanceId, object nativeRegionsScope = null)
+        {
+            _unconfirmed.Add(new UnconfirmedItem
+            {
+                RegionX = region.X, RegionY = region.Y, Instance = instanceId,
+                NativeScope = nativeRegionsScope
+            });
+            LastFault = $"region={region} instance={instanceId} outcome=unconfirmed reason=local-side-effect";
+            try { RecoveryUnconfirmed?.Invoke(observer, token, region); }
+            catch (Exception) { }
+        }
+
+        public bool HasUnconfirmedSideEffect(ulong observer, ulong token, uint instanceId)
+        {
+            foreach (UnconfirmedItem item in _unconfirmed)
+            if (item.Instance == instanceId) return true;
+            return false;
+        }
+
+        /// <summary>E02 §8.3：按现有结构完整 key（region+instance）与物理 scope 匹配查询。
+        /// 语义：query scope=null（owned 无 native 来源）→ 暂缓（返回 true，不做万能匹配）；
+        /// 记录 scope=null（legacy 旧 Mark）→ 按 region/instance 命中；两者非 null →
+        /// 必须同数组引用才命中。</summary>
+        public bool HasUnconfirmedSideEffect(RegionKey region, uint instanceId,
+            object nativeRegionsScope = null)
+        {
+            if (nativeRegionsScope == null) return true;
+            foreach (UnconfirmedItem item in _unconfirmed)
+                if (item.Instance == instanceId && item.RegionX == region.X
+                    && item.RegionY == region.Y
+                    && (item.NativeScope == null
+                        || ReferenceEquals(item.NativeScope, nativeRegionsScope)))
+                    return true;
+            return false;
+        }
+
+        public int UnconfirmedSideEffectCount => _unconfirmed.Count;
 
         public void EnsureForDemand(RegionKey region)
         {
@@ -704,6 +750,20 @@ namespace SteamP2PFriends.Adapters.Item
             public ulong Observer;
             public ulong Token;
             public bool Host;
+        }
+
+        private struct UnconfirmedItem : IEquatable<UnconfirmedItem>
+        {
+            public byte RegionX;
+            public byte RegionY;
+            public uint Instance;
+            public object NativeScope;
+
+            public bool Equals(UnconfirmedItem other) => RegionX == other.RegionX
+                && RegionY == other.RegionY && Instance == other.Instance;
+            public override bool Equals(object obj) => obj is UnconfirmedItem other && Equals(other);
+            public override int GetHashCode() =>
+                RegionX.GetHashCode() ^ RegionY.GetHashCode() ^ Instance.GetHashCode();
         }
 
         private struct DeliveredWaiter : IEquatable<DeliveredWaiter>

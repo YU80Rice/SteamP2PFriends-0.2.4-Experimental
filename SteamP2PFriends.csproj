@@ -137,6 +137,15 @@
     <Compile Include="Adapters\Item\ItemFailureRecovery.cs" />
     <Compile Include="Adapters\Item\ItemObserverRecoveryGate.cs" />
     <Compile Include="Adapters\Item\ItemStepFiveAdmission.cs" />
+    <Compile Include="Adapters\Item\ItemStepFiveNativeContract.cs" />
+    <Compile Include="Adapters\Item\NativeItemStepFiveReader.cs" />
+    <Compile Include="Adapters\Item\ItemSpawnResult.cs" />
+    <Compile Include="Adapters\Item\ItemLocalPresentationView.cs" />
+    <Compile Include="Adapters\Item\ItemPresentationRetirement.cs" />
+    <Compile Include="Adapters\Item\ItemLocalPresentationPipeline.cs" />
+    <Compile Include="Adapters\Item\ItemLocalPresentationDispatch.cs" />
+    <Compile Include="Adapters\Item\NativeItemLocalPresentationView.cs" />
+    <Compile Include="Adapters\Item\NativeItemPresentationLists.cs" />
     <Compile Include="Adapters\Item\ItemDeletionDispatch.cs" />
     <Compile Include="Adapters\Item\ItemSettlementGate.cs" />
     <Compile Include="Adapters\Item\ItemAuthoritativePickup.cs" />
@@ -151,6 +160,7 @@
     <Compile Include="Adapters\Item\Patches\\ItemManagerWorldSyncDiagnosticPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemCreationTrackingPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemSettlementConsumptionPatch.cs" />
+    <Compile Include="Adapters\Item\Patches\\ItemOwnedPresentationRuntimePatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemAuthoritativePickupPatch.cs" />
     <Compile Include="Adapters\Item\Patches\\ItemRecoveryCommandPatch.cs" />
     <Compile Include="Adapters\Resource\ResourceDomainAdapter.cs" />

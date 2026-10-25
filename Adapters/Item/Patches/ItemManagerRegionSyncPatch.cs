@@ -534,31 +534,132 @@ namespace SteamP2PFriends.Adapters.Item.Patches
             ref System.IDisposable __state)
         {
             if (step == 5) __state = ItemObserverReplicationAdapter.EnterNativeStepFiveAskItems();
-            if (step == 5 && player?.movement?.loadedRegions != null)
+            if (step == 5)
             {
-                SteamPlayer owner = player.channel?.owner;
-                ulong observer = owner?.playerID?.steamID.m_SteamID ?? 0UL;
-                ulong token = observer == 0UL ? 0UL
-                    : MultiObserverShadowCoordinator.GetItemConnectionGeneration(observer);
-                int worldSize = System.Math.Min(player.movement.loadedRegions.GetLength(0),
-                    player.movement.loadedRegions.GetLength(1));
-                ItemStepFiveAdmission admission = ItemSettlementGate.StepFiveAdmission;
-                if (admission != null)
+                // R2B：step5 先分模式。owned(Candidate) 无条件进入 owned 处理——
+                // player/投影缺失时等待+诊断并抑制原生，不受外层 loadedRegions 条件
+                // 约束；non-Candidate 保留原 loaded 条件、legacy 调用与异常语义。
+                SteamP2PFriends.Adapters.Item.ItemModeRaw mode =
+                    Adapters.Item.NativeItemStepFiveReader.Instance.ReadMode();
+                if (mode.IsCandidate)
                 {
-                    var request = new ItemStepFiveRequest(observer, token,
-                        new SteamP2PFriends.Core.Identity.RegionKey(new_x, new_y),
-                        ItemManager.ITEM_REGIONS, worldSize, player.channel?.IsLocalPlayer == true);
-                    admission.Admit(request, new ItemStepFiveLoadedProjection(region =>
+                    try
                     {
-                        if (region.X < player.movement.loadedRegions.GetLength(0)
-                            && region.Y < player.movement.loadedRegions.GetLength(1))
-                            player.movement.loadedRegions[region.X, region.Y].isItemsLoaded = true;
-                    }));
+                        return HandleOwnedStepFive(player, new_x, new_y);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        RoleLogger.Error("[Shared]", "[ItemRegionSync] owned step5 deferred after failure: "
+                            + ex.GetType().Name + " " + ex.Message);
+                        return false;
+                    }
+                }
+                if (player?.movement?.loadedRegions != null)
+                {
+                    // R2B 补齐：non-Candidate 保留原 loaded 条件与 legacy 调用，
+                    // 异常按原合同向上传播（Finalizer 释放 scope），不做局部吞异常。
+                    return HandleNativeStepFive(player, new_x, new_y);
                 }
             }
             if (step != 0) return true;
             ItemObserverReplicationAdapter.ObserveRelevance(player, new_x, new_y);
             return true;
+        }
+
+        /// <summary>R2B：owned(Candidate) 的 step5 分流——player/投影缺失返回等待并
+        /// 抑制原生；player 存在则交给共同 dispatch（DispatchStepFive）。</summary>
+        private static bool HandleOwnedStepFive(Player player, byte new_x, byte new_y)
+        {
+            if (player?.movement?.loadedRegions == null)
+            {
+                RoleLogger.Warn("[Shared]", "[ItemRegionSync] owned step5 waiting: player/loaded projection missing"
+                    + " center=(" + new_x + "," + new_y + ")");
+                return false;
+            }
+            ItemStepFiveResult result = ItemLocalPresentationDispatch.DispatchStepFive(
+                Adapters.Item.NativeItemStepFiveReader.Instance, player, new_x, new_y,
+                MultiObserver.MultiObserverShadowCoordinator.ItemProductionSeam,
+                null);
+            return result == ItemStepFiveResult.RunOriginal;
+        }
+
+        private static bool HandleNativeStepFive(Player player, byte new_x, byte new_y)
+        {
+            ItemStepFiveResult result = ItemLocalPresentationDispatch.DispatchStepFive(
+                Adapters.Item.NativeItemStepFiveReader.Instance, player, new_x, new_y,
+                MultiObserver.MultiObserverShadowCoordinator.ItemProductionSeam,
+                () => AdmitUnverified(player, new_x, new_y));
+            return result == ItemStepFiveResult.RunOriginal;
+        }
+
+        internal static bool HandleNativeStepFive(
+            ItemStepFiveFacts facts,
+            IItemStepFiveLoadedProjection loaded,
+            System.Action admitUnverified,
+            int worldSize,
+            byte x,
+            byte y)
+        {
+            ItemStepFiveHandoff decision = ItemLocalPresentationDispatch.Decide(facts);
+            if (!facts.Retired)
+            {
+                admitUnverified?.Invoke();
+                return true;
+            }
+            if (decision != ItemStepFiveHandoff.Handled) return false;
+            ItemLocalPresentationDispatch.AdmitOwnedStepFive(
+                facts, ItemSettlementGate.StepFiveAdmission, loaded,
+                x, y, ItemManager.ITEM_REGIONS, worldSize);
+            return false;
+        }
+
+        private static ItemStepFiveFacts ReadStepFiveFacts(Player player, byte x, byte y)
+        {
+            var facts = new ItemStepFiveFacts();
+            try { facts.Dedicated = Dedicator.IsDedicatedServer; } catch { facts.Dedicated = true; }
+            try { facts.IsServer = Provider.isServer; } catch { facts.IsServer = false; }
+            try { facts.CenterSafe = Regions.checkSafe(x, y); } catch { facts.CenterSafe = false; }
+            facts.Retired = ItemPresentationRetirement.IsRetiredListenHost();
+            facts.LocalHost = player?.channel != null && player.channel.IsLocalPlayer;
+            facts.IdentityKnown = false;
+            facts.ConnectionCurrent = false;
+            Player host = null;
+            try { host = ItemLocalPresentationDispatch.ResolveCurrentHostPlayer(); }
+            catch { host = null; }
+            facts.SameHostObject = facts.LocalHost && object.ReferenceEquals(player, host);
+            if (ItemLocalPresentationDispatch.TryReadBoundGeneration(player, out ulong observer, out ulong token))
+            {
+                facts.IdentityKnown = true;
+                facts.ConnectionCurrent = !facts.LocalHost || facts.SameHostObject;
+                facts.BoundObserver = observer;
+                facts.BoundToken = token;
+            }
+            facts.ProjectionAvailable = new NativeItemLocalPresentationView(player).ProjectionAvailable(x, y);
+            return facts;
+        }
+
+        private static void AdmitUnverified(Player player, byte x, byte y)
+        {
+            SteamPlayer owner = player.channel?.owner;
+            ulong observer = owner?.playerID?.steamID.m_SteamID ?? 0UL;
+            ulong token = observer == 0UL ? 0UL
+                : MultiObserverShadowCoordinator.GetItemConnectionGeneration(observer);
+            int worldSize = System.Math.Min(player.movement.loadedRegions.GetLength(0),
+                player.movement.loadedRegions.GetLength(1));
+            ItemStepFiveAdmission admission = ItemSettlementGate.StepFiveAdmission;
+            if (admission == null) return;
+            admission.Admit(new ItemStepFiveRequest(observer, token,
+                new SteamP2PFriends.Core.Identity.RegionKey(x, y),
+                ItemManager.ITEM_REGIONS, worldSize, player.channel?.IsLocalPlayer == true),
+                new ItemStepFiveLoadedProjection(region =>
+                    ProjectLoadedBit(player, region)));
+        }
+
+        private static void ProjectLoadedBit(Player player, SteamP2PFriends.Core.Identity.RegionKey region)
+        {
+            if (region.X < player.movement.loadedRegions.GetLength(0)
+                && region.Y < player.movement.loadedRegions.GetLength(1))
+                player.movement.loadedRegions[region.X, region.Y].isItemsLoaded = true;
         }
 
         [HarmonyFinalizer]

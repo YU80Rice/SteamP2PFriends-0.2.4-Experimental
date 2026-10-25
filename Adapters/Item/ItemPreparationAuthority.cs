@@ -35,6 +35,9 @@ namespace SteamP2PFriends.Adapters.Item
         ItemNaturalCreationOutcome CreateOneNatural(byte x, byte y, float now);
         bool CommitRespawnTime(byte x, byte y, float now);
         void BindOriginTracker(IItemOriginTracker tracker);
+        /// <summary>E02 §8.3：物理作用域只读引用（真实 adapter 的 regions 数组对象；
+        /// 无 native 来源时返回 null → owned 暂缓）。</summary>
+        object ReadNativeRegionsScope();
     }
 
     public enum ItemPreparationStatus : byte
@@ -56,41 +59,12 @@ namespace SteamP2PFriends.Adapters.Item
         private static readonly System.Reflection.FieldInfo ManagerField =
             typeof(ItemManager).GetField("manager",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        private static readonly System.Reflection.MethodInfo DestroyAllInRegionMethod =
-            typeof(ItemManager).GetMethod("DestroyAllInRegion",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        private static readonly System.Reflection.MethodInfo CancelInstantiationsInRegionMethod =
-            typeof(ItemManager).GetMethod("CancelInstantiationsInRegion",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        private static readonly System.Reflection.MethodInfo CancelInstantiationByInstanceIdMethod =
-            typeof(ItemManager).GetMethod("CancelInstantiationByInstanceId",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         private static readonly System.Reflection.MethodInfo AskItemsMethod =
             typeof(ItemManager).GetMethod("askItems",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
                 null,
                 new[] { typeof(SDG.NetTransport.ITransportConnection), typeof(byte), typeof(byte), typeof(float) },
                 null);
-        private static readonly System.Reflection.FieldInfo PendingInstantiationsField =
-            typeof(ItemManager).GetField("pendingInstantiations",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        private static readonly System.Type ItemInstantiationParametersType =
-            typeof(ItemManager).Assembly.GetType("SDG.Unturned.ItemInstantiationParameters");
-        private static readonly System.Reflection.FieldInfo RegionXField = ItemInstantiationParametersType?.GetField("region_x");
-        private static readonly System.Reflection.FieldInfo RegionYField = ItemInstantiationParametersType?.GetField("region_y");
-        private static readonly System.Reflection.FieldInfo AssetIdField = ItemInstantiationParametersType?.GetField("assetId");
-        private static readonly System.Reflection.FieldInfo AmountField = ItemInstantiationParametersType?.GetField("amount");
-        private static readonly System.Reflection.FieldInfo QualityField = ItemInstantiationParametersType?.GetField("quality");
-        private static readonly System.Reflection.FieldInfo StateField = ItemInstantiationParametersType?.GetField("state");
-        private static readonly System.Reflection.FieldInfo PointField = ItemInstantiationParametersType?.GetField("point");
-        private static readonly System.Reflection.FieldInfo InstanceIdField = ItemInstantiationParametersType?.GetField("instanceID");
-        private static readonly System.Reflection.FieldInfo SortOrderField = ItemInstantiationParametersType?.GetField("sortOrder");
-        private static readonly System.Reflection.FieldInfo ShouldPlayEffectField = ItemInstantiationParametersType?.GetField("shouldPlayEffect");
-        private static bool AreInstantiationFieldsResolved =>
-            RegionXField != null && RegionYField != null && AssetIdField != null
-            && AmountField != null && QualityField != null && StateField != null
-            && PointField != null && InstanceIdField != null && SortOrderField != null
-            && ShouldPlayEffectField != null;
         private static readonly System.Reflection.FieldInfo LastDroppedField =
             typeof(ItemData).GetField("_lastDropped",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -112,6 +86,14 @@ namespace SteamP2PFriends.Adapters.Item
             try { return ItemManager.regions; }
             catch (Exception) { return null; }
         }
+
+        /// <summary>E02 §8.3：物理作用域只读引用（真实 ItemManager.regions 数组对象）。</summary>
+        internal object ReadNativeRegionsScope()
+        {
+            return SafeGetRegions();
+        }
+
+        object INativeItemWarehouseBridge.ReadNativeRegionsScope() => SafeGetRegions();
 
         public bool AreInputsAvailable(byte worldSize, out string failureReason)
         {
@@ -252,51 +234,13 @@ namespace SteamP2PFriends.Adapters.Item
             if (region == null)
                 throw new InvalidOperationException($"ItemRegion ({x}, {y}) is null.");
 
-            if (CancelInstantiationsInRegionMethod == null || DestroyAllInRegionMethod == null)
-                throw new InvalidOperationException("ItemManager CancelInstantiationsInRegion or DestroyAllInRegion reflection targets not found.");
-
-            CancelInstantiationsInRegionMethod.Invoke(null, new object[] { x, y });
-            DestroyAllInRegionMethod.Invoke(null, new object[] { region });
-            region.isNetworked = true;
-
-            int itemCount = region.items?.Count ?? 0;
-            if (itemCount > 0)
-            {
-                if (PendingInstantiationsField == null || ItemInstantiationParametersType == null || !AreInstantiationFieldsResolved)
-                    throw new InvalidOperationException("ItemManager pendingInstantiations or ItemInstantiationParameters reflection targets not found for non-empty region presentation.");
-
-                var pendingList = PendingInstantiationsField.GetValue(null) as System.Collections.IList;
-                if (pendingList == null)
-                    throw new InvalidOperationException("ItemManager pendingInstantiations list instance not found for non-empty region presentation.");
-
-                var cameraPos = GetCameraPositionSafe(out bool hasCamera);
-
-                for (int i = 0; i < region.items.Count; i++)
-                {
-                    ItemData data = region.items[i];
-                    if (data?.item == null) continue;
-                    float sortOrder = hasCamera ? (cameraPos - data.point).sqrMagnitude : 0f;
-                    object param = Activator.CreateInstance(ItemInstantiationParametersType);
-                    RegionXField.SetValue(param, x);
-                    RegionYField.SetValue(param, y);
-                    AssetIdField.SetValue(param, data.item.id);
-                    AmountField.SetValue(param, data.item.amount);
-                    QualityField.SetValue(param, data.item.quality);
-                    StateField.SetValue(param, data.item.state);
-                    PointField.SetValue(param, data.point);
-                    InstanceIdField.SetValue(param, data.instanceID);
-                    SortOrderField.SetValue(param, sortOrder);
-                    ShouldPlayEffectField.SetValue(param, false);
-
-                    int insertIndex = pendingList.Count;
-                    for (int j = 0; j < pendingList.Count; j++)
-                    {
-                        float existingOrder = (float)SortOrderField.GetValue(pendingList[j]);
-                        if (sortOrder < existingOrder) { insertIndex = j; break; }
-                    }
-                    pendingList.Insert(insertIndex, param);
-                }
-            }
+            Player host = ItemLocalPresentationDispatch.ResolveCurrentHostPlayer();
+            if (host == null)
+                throw new InvalidOperationException("Host player missing for item presentation.");
+            var view = new NativeItemLocalPresentationView(host);
+            if (!view.ProjectionAvailable(x, y))
+                throw new InvalidOperationException("Host loaded projection unavailable.");
+            ItemLocalPresentationPipeline.PresentSharedRegion(view, x, y);
         }
 
         public void UnpresentRegionFromHost(byte x, byte y)
@@ -308,9 +252,7 @@ namespace SteamP2PFriends.Adapters.Item
             if (region == null)
                 throw new InvalidOperationException($"ItemRegion ({x}, {y}) is null.");
 
-            CancelInstantiationsInRegionMethod?.Invoke(null, new object[] { x, y });
-            DestroyAllInRegionMethod?.Invoke(null, new object[] { region });
-            region.isNetworked = false;
+            new ItemLocalPresentationPipeline(new NativeItemLocalPresentationView()).Unpresent(x, y);
         }
 
         public void BindGuestBaseline(ulong observerId, ulong connectionToken, byte x, byte y)
@@ -409,7 +351,7 @@ namespace SteamP2PFriends.Adapters.Item
             return dispatch.Remove(
                 new ItemDeletionRequest(x, y, instanceId, wasNetworked),
                 () => ItemSettlementGate.TryAuthorizeIncrement(x, y),
-                () => CancelInstantiationByInstanceIdMethod?.Invoke(null, new object[] { instanceId }),
+                () => CancelOwnedPending(x, y, instanceId),
                 () =>
                 {
                     region.items.RemoveAt(index);
@@ -574,6 +516,14 @@ namespace SteamP2PFriends.Adapters.Item
             }
         }
 
+        private static void CancelOwnedPending(byte x, byte y, uint instanceId)
+        {
+            // 按实例取消不依赖 Host 投影：无 Player 视图即可遍历 pending 并删除该身份全部副本，
+            // 不再退到原生单删入口（那会留下同身份重复项）。
+            new ItemLocalPresentationPipeline(new NativeItemLocalPresentationView())
+                .CancelPendingInstance(x, y, instanceId);
+        }
+
         private static SteamPlayer FindClient(ulong observerId)
         {
             if (Provider.clients == null) return null;
@@ -605,6 +555,23 @@ namespace SteamP2PFriends.Adapters.Item
         }
 
         public INativeItemWarehouseBridge Bridge => _bridge;
+
+        /// <summary>E02 §8.3：物理作用域——经实际 adapter 读取的 regions 数组对象引用；
+        /// adapter 无 native 来源时为 null（owned 暂缓，不万能匹配）。</summary>
+        public object NativeRegionsScope
+        {
+            get
+            {
+                try
+                {
+                    return _bridge.ReadNativeRegionsScope();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
         public ItemPreparationStatus Status => _status;
         public bool IsReady => _status == ItemPreparationStatus.Ready;
         public int PreparedRegionCount => _preparedRegions.Count;

@@ -111,6 +111,9 @@ namespace SteamP2PFriends.Adapters.Item
         public string LastAcquireDetail { get; private set; }
         public string LastReleaseReceiptDetail { get; private set; }
         public string LastReplicationDetail { get; private set; }
+        public bool IsConfiguredHost(ulong observerId) =>
+            _isHostObserver != null && _isHostObserver(observerId);
+
         public int HostPresentationCount => _hostPresentationCount;
         public int GuestBaselineBindingCount => _guestBaselineBindingCount;
 

@@ -2691,6 +2691,8 @@ namespace SteamP2PFriends.WhitelistTests
                 ItemOriginTrackingSeam.SetActiveTracker(tracker);
             }
 
+            public object ReadNativeRegionsScope() => null;
+
             public void DropItem(byte x, byte y, ItemData data)
             {
                 if (!Regions.TryGetValue((x, y), out var list))

@@ -29,6 +29,8 @@ namespace SteamP2PFriends.Adapters.Item
         private readonly LifecycleOrchestrationEngine _engine;
         private readonly ItemDemandCycle _cycle;
         private readonly ItemReturnSettlement _settlement;
+        private ItemStepFiveAdmission _admission;
+        private IItemStepFiveNative _native;
 
         public ItemProductionControlSeam(
             ItemPreparationAuthority preparationAuthority,
@@ -90,6 +92,9 @@ namespace SteamP2PFriends.Adapters.Item
             _settlement.ConnectionCurrent = (observer, token) =>
                 _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
                 && IsCoreConnectionGenerationCurrent(current, token);
+            ItemSettlementGate.ConnectionGenerationCurrent = (observer, token) =>
+                _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
+                && IsCoreConnectionGenerationCurrent(current, token);
             ItemSettlementGate.AllowsConsumption = (x, y) => !_settlement.BlocksConsumption(new RegionKey(x, y));
             ItemSettlementGate.BlocksRegion = (x, y) =>
             {
@@ -98,22 +103,46 @@ namespace SteamP2PFriends.Adapters.Item
             };
             ItemSettlementGate.BlocksRegionForObserver = (observer, token, x, y) =>
                 _settlement.BlocksConsumption(observer, token, new RegionKey(x, y));
+            ItemSettlementGate.MarkUnconfirmedSideEffect = (observer, token, x, y, instanceId) =>
+                _settlement.MarkUnconfirmedSideEffect(observer, token, new RegionKey(x, y),
+                    instanceId, _preparationAuthority.NativeRegionsScope);
+            ItemSettlementGate.UnconfirmedSideEffect = (observer, token, instanceId) =>
+                _settlement.HasUnconfirmedSideEffect(observer, token, instanceId);
+            ItemSettlementGate.UnconfirmedSideEffectForRegion = (x, y, instanceId) =>
+                _settlement.HasUnconfirmedSideEffect(new RegionKey(x, y), instanceId,
+                    _preparationAuthority.NativeRegionsScope);
+            ItemSettlementGate.UnconfirmedSideEffectCount = () => _settlement.UnconfirmedSideEffectCount;
             ItemSettlementGate.EnsureStepFiveSettlement = (x, y) =>
                 _settlement.EnsureForDemand(new RegionKey(x, y));
-            ItemSettlementGate.StepFiveAdmission = new ItemStepFiveAdmission(
-                request => RegisterNativeStepFiveDemand(request.ObserverId, request.ConnectionToken,
-                    (byte)request.Center.X, (byte)request.Center.Y),
+            ItemSettlementGate.StepFiveAdmission = BuildAdmission();
+            _admission = ItemSettlementGate.StepFiveAdmission;
+            ItemSettlementGate.WasDelivered = (x, y) =>
+                _settlement.WasDelivered(new RegionKey(x, y));
+        }
+
+        private ItemStepFiveAdmission BuildAdmission()
+        {
+            SessionEpoch epoch = _engine.SessionEpoch;
+            return new ItemStepFiveAdmission(
+                request => RegisterNativeStepFiveDemand(request),
                 (request, region) => RegisterNativeStepFiveObserver(request.ObserverId,
                     request.ConnectionToken, region, request.Host),
                 (request, region) => _settlement.NeedsSettlement(region) || _settlement.BlocksConsumption(region),
                 (request, region) => _settlement.WasDeliveredFor(region,
                     request.ObserverId, request.ConnectionToken),
-                request => _settlement.Refresh());
-            ItemSettlementGate.WasDelivered = (x, y) =>
-                _settlement.WasDelivered(new RegionKey(x, y));
+                request => _settlement.Refresh(),
+                () => _engine.IsSessionActive && _engine.SessionEpoch.Equals(epoch),
+                (bound, loaded) => ValidateOwnedStepFive(bound, loaded, epoch),
+                RegisterOwnedDemand);
+        }
+
+        internal void BindOwnedNative(IItemStepFiveNative native)
+        {
+            _native = native ?? throw new ArgumentNullException(nameof(native));
         }
 
         public DemandPolicy DemandPolicy => _policy;
+        public ItemStepFiveAdmission Admission => _admission;
         public int ProjectedDemandRegionCount => _projection.GetDemandRegionCount(_policy);
         public bool IsSessionActive => _engine.IsSessionActive;
         public SessionEpoch SessionEpoch => _engine.SessionEpoch;
@@ -134,12 +163,16 @@ namespace SteamP2PFriends.Adapters.Item
             _engine.BeginSession(sessionEpoch);
             _settlement.ResetIdentity();
             _manualCooldown.Clear();
+            _admission = BuildAdmission();
+            ItemSettlementGate.StepFiveAdmission = _admission;
         }
         public void EndSession()
         {
             _engine.EndSession();
             _settlement.ResetIdentity();
             _manualCooldown.Clear();
+            if (_admission != null && ReferenceEquals(ItemSettlementGate.StepFiveAdmission, _admission))
+                ItemSettlementGate.StepFiveAdmission = null;
         }
         public void AdvanceTime(float deltaTime) => _engine.AdvanceTime(deltaTime);
         public void Flush(float deltaTime)
@@ -253,15 +286,120 @@ namespace SteamP2PFriends.Adapters.Item
             _settlement.CommitPending();
         }
 
-        private void RegisterNativeStepFiveDemand(ulong observerId, ulong connectionToken, byte centerX, byte centerY)
+        private void RegisterNativeStepFiveDemand(ItemStepFiveRequest request)
         {
-            if (observerId == 0UL || connectionToken == 0UL || !_engine.IsSessionActive) return;
+            if (!RegisterOwnedDemandGuard(request)) return;
             DomainDemandProjection result = _engine.ObserveForNativeStepFive(
-                DomainIds.Item, observerId, connectionToken,
-                centerX, centerY, gameplayAuthorized: true,
-                suppressReplication: region => true);
+                DomainIds.Item, request.ObserverId, request.ConnectionToken,
+                (byte)request.Center.X, (byte)request.Center.Y, gameplayAuthorized: true,
+                suppressReplication: region => request.Host && !_executionPort.IsConfiguredHost(request.ObserverId));
             ReleaseExitedRegions(result);
             _settlement.Refresh();
+        }
+
+        private bool RegisterOwnedDemandGuard(ItemStepFiveRequest request)
+        {
+            if (!_engine.IsSessionActive || request.ObserverId == 0UL || request.ConnectionToken == 0UL)
+                return false;
+            if (!_engine.TryGetConnectionGeneration(DomainIds.Item, request.ObserverId, out ulong current)
+                || !IsCoreConnectionGenerationCurrent(current, request.ConnectionToken))
+                return false;
+            return true;
+        }
+
+        private ItemStepFiveResult RegisterOwnedDemand(ItemStepFiveRequest request)
+        {
+            if (!RegisterOwnedDemandGuard(request)
+                || request.Host != _executionPort.IsConfiguredHost(request.ObserverId))
+                return ItemStepFiveResult.Rejected;
+            DomainDemandProjection result = _engine.ObserveForNativeStepFive(
+                DomainIds.Item, request.ObserverId, request.ConnectionToken,
+                (byte)request.Center.X, (byte)request.Center.Y, gameplayAuthorized: true,
+                suppressReplication: null);
+            ReleaseExitedRegions(result);
+            _settlement.Refresh();
+            return ItemStepFiveResult.Accepted;
+        }
+
+        private ItemStepFiveResult ValidateOwnedStepFive(
+            ItemBoundStepFiveRequest bound, IItemStepFiveLoadedProjection loaded, SessionEpoch capturedEpoch)
+        {
+            if (_native == null) return ItemStepFiveResult.Rejected;
+            if (capturedEpoch == null || bound.Epoch == null || !capturedEpoch.Equals(bound.Epoch))
+                return ItemStepFiveResult.Rejected;
+            if (!_engine.IsSessionActive || !_engine.SessionEpoch.Equals(capturedEpoch))
+                return ItemStepFiveResult.Rejected;
+            ItemBindingRaw binding = _native.ReadBinding(bound.PlayerKey);
+            ItemStepFiveResult result = ValidateCurrentBinding(binding,
+                bound.Value.ObserverId, bound.Value.ConnectionToken, bound.Value.Host);
+            if (result != ItemStepFiveResult.Accepted) return result;
+            return ValidateOwnedShape(binding, bound.Value, loaded);
+        }
+
+        private static bool SameReference(object left, object right) =>
+            left != null && right != null && object.ReferenceEquals(left, right);
+
+        private static ItemClientRaw FindClientBySteamId(ItemBindingRaw binding, ulong steamId)
+        {
+            if (binding.Clients == null) return null;
+            for (int i = 0; i < binding.Clients.Count; i++)
+                if (binding.Clients[i] != null && binding.Clients[i].SteamId == steamId)
+                    return binding.Clients[i];
+            return null;
+        }
+
+        private ItemStepFiveResult ValidateOwnedBinding(ItemBindingRaw binding, ItemStepFiveRequest request)
+            => ValidateOwnedBinding(binding, request.ObserverId,
+                request.ConnectionToken, request.Host);
+
+        internal ItemStepFiveResult ValidateCurrentBinding(
+            ItemBindingRaw binding, ulong observerId, ulong connectionToken, bool host)
+        {
+            if (!_engine.IsSessionActive) return ItemStepFiveResult.Rejected;
+            if (!_engine.TryGetConnectionGeneration(DomainIds.Item, observerId, out ulong current)
+                || current == 0UL) return ItemStepFiveResult.Waiting;
+            if (current != connectionToken) return ItemStepFiveResult.Rejected;
+            return ValidateOwnedBinding(binding, observerId, connectionToken, host);
+        }
+
+        private static ItemStepFiveResult ValidateOwnedBinding(
+            ItemBindingRaw binding, ulong observerId, ulong connectionToken, bool host)
+        {
+            if (binding == null) return ItemStepFiveResult.Rejected;
+            if (binding.CallbackPlayer == null || binding.CallbackOwner == null)
+                return ItemStepFiveResult.Rejected;
+            if (binding.CallbackOwnerSteamId == 0UL || observerId != binding.CallbackOwnerSteamId)
+                return ItemStepFiveResult.Rejected;
+            ItemClientRaw client = FindClientBySteamId(binding, binding.CallbackOwnerSteamId);
+            if (client == null) return ItemStepFiveResult.Rejected;
+            if (!SameReference(client.Owner, binding.CallbackOwner)) return ItemStepFiveResult.Rejected;
+            if (!SameReference(client.Player, binding.CallbackPlayer)) return ItemStepFiveResult.Rejected;
+            if (!SameReference(client.Connection, binding.CallbackTransport)) return ItemStepFiveResult.Rejected;
+            bool isHost = binding.CallbackOwnerSteamId == binding.ProviderClientSteamId;
+            if (isHost != host) return ItemStepFiveResult.Rejected;
+            if (binding.CommittedToken == 0UL || binding.CommittedToken != connectionToken)
+                return ItemStepFiveResult.Waiting;
+            if (!object.ReferenceEquals(binding.CommittedOwner, binding.CallbackOwner)
+                || !object.ReferenceEquals(binding.CommittedTransport, binding.CallbackTransport))
+                return ItemStepFiveResult.Waiting;
+            return ItemStepFiveResult.Accepted;
+        }
+
+        private static ItemStepFiveResult ValidateOwnedShape(
+            ItemBindingRaw binding, ItemStepFiveRequest request, IItemStepFiveLoadedProjection loaded)
+        {
+            if (loaded == null) return ItemStepFiveResult.Rejected;
+            if (binding.LoadedWidth <= 0 || binding.LoadedHeight <= 0
+                || binding.HasLoadedCell == null || binding.CanProjectCell == null)
+                return ItemStepFiveResult.Rejected;
+            if (request.WorldSize != binding.LoadedWidth || request.WorldSize != binding.LoadedHeight)
+                return ItemStepFiveResult.Rejected;
+            if (!binding.HasLoadedCell((byte)request.Center.X, (byte)request.Center.Y))
+                return ItemStepFiveResult.Waiting;
+            foreach (RegionKey region in ItemStepFiveAdmission.EnumerateRequestedRegions(request))
+                if (!binding.CanProjectCell(region.X, region.Y))
+                    return ItemStepFiveResult.Waiting;
+            return ItemStepFiveResult.Accepted;
         }
     }
 }

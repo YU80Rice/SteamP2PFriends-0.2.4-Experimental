@@ -8,6 +8,11 @@ namespace SteamP2PFriends.Adapters.Item
         public static Func<byte, byte, bool> AllowsConsumption { get; set; }
         public static Func<byte, byte, bool> BlocksRegion { get; set; }
         public static Func<ulong, ulong, byte, byte, bool> BlocksRegionForObserver { get; set; }
+        public static Action<ulong, ulong, byte, byte, uint> MarkUnconfirmedSideEffect { get; set; }
+        public static Func<ulong, ulong, uint, bool> UnconfirmedSideEffect { get; set; }
+        public static Func<byte, byte, uint, bool> UnconfirmedSideEffectForRegion { get; set; }
+        public static Func<int> UnconfirmedSideEffectCount { get; set; }
+        public static Func<ulong, ulong, bool> ConnectionGenerationCurrent { get; set; }
         public static System.Action<byte, byte> EnsureStepFiveSettlement { get; set; }
         public static Func<byte, byte, bool> WasDelivered { get; set; }
         public static ItemStepFiveAdmission StepFiveAdmission { get; set; }
