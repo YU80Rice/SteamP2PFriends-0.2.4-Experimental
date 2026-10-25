@@ -1,1 +1,39 @@
-# R03 — Guest 离开后旧 Item 资格精确清理且房间继续运行\n\n**What to build:** 客机断线、身份失效或会话退出时，旧 Item 订阅、待交付与恢复资格被精确撤销；已启动的有效区域结算按既定规则收尾，其他玩家和领域继续运行，不因失效观察者清理进入空引用及补偿连锁故障。\n\n**Blocked by:** None — can start immediately；不存在对 R01/R02 的已证实前置依赖。\n\n**Label:** ready-for-human\n**Status:** `implemented-pending-runtime`；源码阶段已由 R5 Standards/Spec 双 CLEAN 后限定提交 `ebf4493`。原现场 NRE、真实原生退出清理与 Guest 离开后房间继续运行由用户批准并入 R04 Runtime；原八条 AC 保留，AC1 历史证据、AC8 全票/Runtime 闭环未完成。\n**Version:** SPF 0.2.4.10 Experimental / 实机返修 R03\n\n## 已知事实与证据边界\n\n- 本轮 Host 诊断记录先断线清理，随后 Item SnapshotRemove、ObserverCompensation、ObserverRemove 空引用，再进入 Item 域 failClosed。\n- 异常发生于后期，不能用它解释先前入服提示或 Host 幽灵副本。\n- 现有摘要没有完整异常堆栈与失效对象快照，尚未定位具体空引用；不能预先指定某一处 null-check 为修复。\n\n## Acceptance criteria\n\n- [ ] 先取得异常堆栈和清理边界对象/身份的限量关联证据，以真实失效、销毁或断开顺序建立生产清理入口 Red；不把日志记录缺失当作无异常。\n- [ ] 覆盖共享观察者移除、原生客机基线解绑和失败补偿的不同回调顺序、重复清理与迟到回调；记录实际 Red→Green。\n- [ ] 清理只消费当前会话及被撤销的 Core 连接代次，不重建已离开的观察者；旧回调不撤销重连后的新资格。\n- [ ] 原生对象已销毁或关联消失时，确定已完成清理可幂等结束；真实未确认的操作失败仍保留可诊断状态，不用宽泛吞异常伪报成功。\n- [ ] 旧等待者、恢复资格和待交付被精确清除；有效会话/区域已启动的结算继续收尾，已执行删除/补货不回滚或重做。\n- [ ] Guest 离开后仍在场的 Host/其他 Guest 正常加载与交互；会话结束和换图不继续写旧仓库，Resource/Collision 行为不被该修复改变。\n- [ ] 如果查证异常实际需要前票接口或行为，明确登记真实依赖及原因；不为调度顺序制造阻塞边。\n- [ ] 完成必要回归、全新独立 Standards/Spec 双 CLEAN、限定提交、delivery/audit 和真实主会话回报；原生销毁无法自动验证的边界明确保留 Runtime。\n\n## 协作与非目标\n\n同票返修复用构建会话；两轮完整双轴任一非 CLEAN 时暂停并直接求救专家。本票不处理资产特例、不重写共享引擎、不恢复旧 Writer，也不以消除错误日志代替清理行为正确。\n\n\n## 源码与 Runtime 阶段划分（用户批准，2026-10-25）\n\n用户明确批准 R03 先交付当前证据支持的源码修复；原现场 Host NRE 根因、真实原生对象销毁/解绑顺序及 Guest 离开后房间继续运行，转入 R04 同场 Runtime 验收。此决定改变原 AC1 的证据时序/源码交付前置，不表示历史 NRE 已定位或解决，不改变原八条 AC 文本，也不允许将八条 AC 全部勾选。\n\n源码阶段只有在本次候选双轴 CLEAN、限定提交与 ticket/delivery/audit/index/主会话交付闭环后才标记 `implemented-pending-runtime` / `ready-for-human`。当前源码阶段仍未关闭；AC1 的历史现场证据与 AC8 的交付完成仍待闭环。R04 Runtime 负责原生退出清理与多人房间继续运行验证，玩家仅进行游戏内操作并导出 UMM 包，由 Agent 分析日志；未审候选不部署。\n\n**Approval:** 用户于 2026-10-14 批准四票拆分并授权自动逐票调度。\n
+# R03 — Guest 离开后旧 Item 资格精确清理且房间继续运行
+
+**What to build:** 客机断线、身份失效或会话退出时，旧 Item 订阅、待交付与恢复资格被精确撤销；已启动的有效区域结算按既定规则收尾，其他玩家和领域继续运行，不因失效观察者清理进入空引用及补偿连锁故障。
+
+**Blocked by:** None — can start immediately；不存在对 R01/R02 的已证实前置依赖。
+
+**Label:** ready-for-human
+**Status:** `implemented-pending-runtime`；源码阶段已由 R5 Standards/Spec 双 CLEAN 后限定提交 `ebf4493`。原现场 NRE、真实原生退出清理与 Guest 离开后房间继续运行由用户批准并入 R04 Runtime；原八条 AC 保留，AC1 历史证据、AC8 全票/Runtime 闭环未完成。
+**Version:** SPF 0.2.4.10 Experimental / 实机返修 R03
+
+## 已知事实与证据边界
+
+- 本轮 Host 诊断记录先断线清理，随后 Item SnapshotRemove、ObserverCompensation、ObserverRemove 空引用，再进入 Item 域 failClosed。
+- 异常发生于后期，不能用它解释先前入服提示或 Host 幽灵副本。
+- 现有摘要没有完整异常堆栈与失效对象快照，尚未定位具体空引用；不能预先指定某一处 null-check 为修复。
+
+## Acceptance criteria
+
+- [ ] 先取得异常堆栈和清理边界对象/身份的限量关联证据，以真实失效、销毁或断开顺序建立生产清理入口 Red；不把日志记录缺失当作无异常。
+- [ ] 覆盖共享观察者移除、原生客机基线解绑和失败补偿的不同回调顺序、重复清理与迟到回调；记录实际 Red→Green。
+- [ ] 清理只消费当前会话及被撤销的 Core 连接代次，不重建已离开的观察者；旧回调不撤销重连后的新资格。
+- [ ] 原生对象已销毁或关联消失时，确定已完成清理可幂等结束；真实未确认的操作失败仍保留可诊断状态，不用宽泛吞异常伪报成功。
+- [ ] 旧等待者、恢复资格和待交付被精确清除；有效会话/区域已启动的结算继续收尾，已执行删除/补货不回滚或重做。
+- [ ] Guest 离开后仍在场的 Host/其他 Guest 正常加载与交互；会话结束和换图不继续写旧仓库，Resource/Collision 行为不被该修复改变。
+- [ ] 如果查证异常实际需要前票接口或行为，明确登记真实依赖及原因；不为调度顺序制造阻塞边。
+- [ ] 完成必要回归、全新独立 Standards/Spec 双 CLEAN、限定提交、delivery/audit 和真实主会话回报；原生销毁无法自动验证的边界明确保留 Runtime。
+
+## 协作与非目标
+
+同票返修复用构建会话；两轮完整双轴任一非 CLEAN 时暂停并直接求救专家。本票不处理资产特例、不重写共享引擎、不恢复旧 Writer，也不以消除错误日志代替清理行为正确。
+
+
+## 源码与 Runtime 阶段划分（用户批准，2026-10-25）
+
+用户明确批准 R03 先交付当前证据支持的源码修复；原现场 Host NRE 根因、真实原生对象销毁/解绑顺序及 Guest 离开后房间继续运行，转入 R04 同场 Runtime 验收。此决定改变原 AC1 的证据时序/源码交付前置，不表示历史 NRE 已定位或解决，不改变原八条 AC 文本，也不允许将八条 AC 全部勾选。
+
+源码阶段只有在本次候选双轴 CLEAN、限定提交与 ticket/delivery/audit/index/主会话交付闭环后才标记 `implemented-pending-runtime` / `ready-for-human`。当前源码阶段仍未关闭；AC1 的历史现场证据与 AC8 的交付完成仍待闭环。R04 Runtime 负责原生退出清理与多人房间继续运行验证，玩家仅进行游戏内操作并导出 UMM 包，由 Agent 分析日志；未审候选不部署。
+
+**Approval:** 用户于 2026-10-14 批准四票拆分并授权自动逐票调度。
