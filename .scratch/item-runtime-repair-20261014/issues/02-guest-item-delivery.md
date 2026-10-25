@@ -5,7 +5,7 @@
 **Blocked by:** None — can start immediately；调度安排在 R01 后不构成逻辑阻塞边。
 
 **Label:** ready-for-human
-**Status:** implemented-pending-runtime - R02 implementation and static verification complete; cumulative round 4 Standards and Spec are CLEAN. Guest Runtime acceptance remains pending.
+**Status:** implemented-pending-runtime - R02 实现与静态验证已完成；累计第 4 轮 Standards 和 Spec 均为 CLEAN。Guest Runtime 验收仍待完成。
 **Version:** SPF 0.2.4.10 Experimental / 实机返修 R02
 
 ## 已知事实与证据边界
@@ -35,8 +35,8 @@
 **Approval:** 用户于 2026-10-14 批准四票拆分并授权自动逐票调度。
 
 
-## Approved continuation: R02-AC7-Collision
+## 已批准的续行修复：R02-AC7-Collision
 
-Scope is limited to exact identity matching in `ItemExecutionPort.ClearObserverFailuresForConnection`, its collision regression and required ticket/delivery/audit evidence. Preserve every existing region/failure-kind entry for the disconnected observer/token while retaining colliding identities. Do not migrate other key families or alter G1 delivery retry behavior.
+范围仅限于 `ItemExecutionPort.ClearObserverFailuresForConnection` 的身份精确匹配、对应碰撞回归，以及必要的票据、交付和审计记录。断开 observer/token 的全部既有 region/failure-kind 条目均须清理，同时保留身份碰撞但不属于目标连接的记录。不迁移其他键族，也不改变 G1 交付重试行为。
 
-The pre-fix production-path collision is captured by IT144: disconnect observer 5/token 7 must clear its failures in multiple regions and kinds without clearing observer 7/token 7 at region Y=5. The complete R02 candidate from `3fb2eb5e87ab3eddbc6782fcc708418a7d11d52a` passed the one fresh independent Standards/Spec round authorized for this increment (R02 cumulative round 4): both axes are CLEAN. Reviewer reports and native provenance are recorded under `.scratch/matt-orchestrate/item-runtime-repair-20261025-vela/messages/`. Static acceptance is complete; Guest Runtime remains pending under the separate human test plan.
+IT144 记录了修复前的生产路径碰撞：断开 observer 5/token 7 时，必须清理其在多个区域和故障类型中的记录，同时保留 region Y=5、observer 7/token 7 的记录。以 `3fb2eb5e87ab3eddbc6782fcc708418a7d11d52a` 为基线的完整 R02 候选，已通过本增量获准的唯一一轮全新独立 Standards/Spec 审查（R02累计第4轮），两轴均为 CLEAN。审查报告与 native provenance 保存在 `.scratch/matt-orchestrate/item-runtime-repair-20261025-vela/messages/`。静态验收已完成；Guest Runtime 仍待独立人工计划验收。
