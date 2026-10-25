@@ -64,6 +64,7 @@ namespace SteamP2PFriends.Adapters.Item
                 () => _engine.SessionEpoch.Value,
                 _executionPort.ClassifyRegionFailure,
                 itemRetry);
+            _settlement.DiagnosticSink = _executionPort.WriteRecoveryDiagnostic;
             var nativeBridge = _preparationAuthority.Bridge as DefaultNativeItemWarehouseBridge;
             if (nativeBridge != null)
                 nativeBridge.CoreConnectionCurrent = (observer, token) =>
@@ -73,6 +74,10 @@ namespace SteamP2PFriends.Adapters.Item
                 RecoveryExhausted?.Invoke(observer, token, region, possibleHalfPacket);
             _settlement.RecoveryUnconfirmed = (observer, token, region) =>
                 RecoveryUnconfirmed?.Invoke(observer, token, region);
+            _settlement.ObserverDeliveryFailure = (observer, token, region, exception) =>
+                _executionPort.HandleObserverReplicationFailure(observer, token, region, exception);
+            _settlement.ObserverFailureChainCompleted = _executionPort.CompleteObserverFailureChain;
+            _settlement.ObserverDisconnected = _executionPort.ClearObserverFailuresForConnection;
             _cycle = new ItemDemandCycle(
                 _preparationAuthority.Bridge,
                 _metadataStore,
@@ -215,10 +220,8 @@ namespace SteamP2PFriends.Adapters.Item
         {
             for (int i = 0; i < result.ExitedRegions.Length; i++)
             {
-                _settlement.ReleaseWaiter(
+                _settlement.ReleaseExitedRegion(
                     result.ExitedRegions[i], result.ObserverId, result.ConnectionToken);
-                _settlement.ReleaseHalfPacketForExitedRegion(
-                    result.ObserverId, result.ConnectionToken, result.ExitedRegions[i]);
             }
         }
 

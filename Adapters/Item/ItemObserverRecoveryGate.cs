@@ -8,7 +8,7 @@ namespace SteamP2PFriends.Adapters.Item
     {
         private readonly HashSet<Key> _blocked = new HashSet<Key>();
 
-        internal void Block(ulong observerId, ulong connectionToken, RegionKey region) =>
+        internal bool Block(ulong observerId, ulong connectionToken, RegionKey region) =>
             _blocked.Add(new Key(observerId, connectionToken, region));
 
         internal bool IsBlocked(ulong observerId, ulong connectionToken, RegionKey region) =>

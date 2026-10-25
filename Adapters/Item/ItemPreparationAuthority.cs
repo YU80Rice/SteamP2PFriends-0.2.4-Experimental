@@ -406,26 +406,8 @@ namespace SteamP2PFriends.Adapters.Item
             failureReason = string.Empty;
             try
             {
-                var spawns = LevelItems.spawns;
-                if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1)
-                    || spawns[x, y] == null)
-                {
-                    failureReason = "spawn-input-unavailable";
-                    return false;
-                }
-                if (spawns[x, y].Count <= 0)
-                {
-                    failureReason = "spawn-input-empty";
-                    return false;
-                }
-                ItemRegion[,] regions = SafeGetRegions();
-                if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1)
-                    || regions[x, y]?.items == null)
-                {
-                    failureReason = "region-input-unavailable";
-                    return false;
-                }
-                return true;
+                return ItemPreparationAuthority.TryGetNaturalInputs(
+                    LevelItems.spawns, SafeGetRegions(), new RegionKey(x, y), out _, out failureReason);
             }
             catch (Exception ex)
             {
@@ -449,12 +431,12 @@ namespace SteamP2PFriends.Adapters.Item
             try
             {
                 var spawns = LevelItems.spawns;
-                if (spawns == null || x >= spawns.GetLength(0) || y >= spawns.GetLength(1) || spawns[x, y] == null || spawns[x, y].Count == 0)
-                    return ItemNaturalCreationOutcome.MissingInputs;
                 ItemRegion[,] regions = SafeGetRegions();
-                if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1) || regions[x, y]?.items == null)
+                if (!ItemPreparationAuthority.TryGetNaturalInputs(
+                        spawns, regions, new RegionKey(x, y), out List<ItemSpawnpoint> naturalSpawnPoints, out _))
                     return ItemNaturalCreationOutcome.MissingInputs;
-                ItemSpawnpoint spawn = spawns[x, y][UnityEngine.Random.Range(0, spawns[x, y].Count)];
+                if (naturalSpawnPoints.Count == 0) return ItemNaturalCreationOutcome.NoChange;
+                ItemSpawnpoint spawn = naturalSpawnPoints[UnityEngine.Random.Range(0, naturalSpawnPoints.Count)];
                 if (!SafezoneManager.checkPointValid(spawn.point)) return ItemNaturalCreationOutcome.Declined;
                 for (int i = 0; i < regions[x, y].items.Count; i++)
                     if ((regions[x, y].items[i].point - spawn.point).sqrMagnitude < 4f) return ItemNaturalCreationOutcome.NoChange;
@@ -552,6 +534,30 @@ namespace SteamP2PFriends.Adapters.Item
         {
             _bridge = bridge ?? new DefaultNativeItemWarehouseBridge();
             _bridge.BindOriginTracker(this);
+        }
+
+        internal static bool TryGetNaturalInputs(
+            List<ItemSpawnpoint>[,] spawnPoints, ItemRegion[,] regions, RegionKey region,
+            out List<ItemSpawnpoint> naturalSpawnPoints, out string failureReason)
+        {
+            naturalSpawnPoints = null;
+            failureReason = string.Empty;
+            int x = region.X;
+            int y = region.Y;
+            if (spawnPoints == null || x >= spawnPoints.GetLength(0) || y >= spawnPoints.GetLength(1)
+                || spawnPoints[x, y] == null)
+            {
+                failureReason = "spawn-input-unavailable";
+                return false;
+            }
+            if (regions == null || x >= regions.GetLength(0) || y >= regions.GetLength(1)
+                || regions[x, y]?.items == null)
+            {
+                failureReason = "region-input-unavailable";
+                return false;
+            }
+            naturalSpawnPoints = spawnPoints[x, y];
+            return true;
         }
 
         public INativeItemWarehouseBridge Bridge => _bridge;

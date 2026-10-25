@@ -50,6 +50,9 @@ namespace SteamP2PFriends.Adapters.Item
 
         private int _hostPresentationCount;
         private int _guestBaselineBindingCount;
+        private const int RecoveryDiagnosticLimit = 32;
+        private readonly HashSet<ObserverFailureKey> _firstObserverFailureKeys = new HashSet<ObserverFailureKey>();
+        private int _recoveryDiagnosticCount;
 
         private readonly Dictionary<RegionKey, ItemAcquisitionReceipt> _receipts =
             new Dictionary<RegionKey, ItemAcquisitionReceipt>();
@@ -158,7 +161,11 @@ namespace SteamP2PFriends.Adapters.Item
                 && _generationReader(ticket.RegionKey) == ticket.RegionGeneration.Value;
         }
 
-        public void ResetReplication(uint sessionEpoch) { }
+        public void ResetReplication(uint sessionEpoch)
+        {
+            _firstObserverFailureKeys.Clear();
+            _recoveryDiagnosticCount = 0;
+        }
 
         public void OnAcquire(LeaseTicket ticket)
         {
@@ -288,6 +295,7 @@ namespace SteamP2PFriends.Adapters.Item
             }
             _guestBaselineBinder?.Invoke(observerId, connectionToken, regionKey);
             _guestBaselineBindingCount++;
+            CompleteObserverFailureChain(observerId, connectionToken, regionKey);
         }
 
         public void OnObserverReplicationEntered(ulong observerId, ulong connectionToken, RegionKey regionKey)
@@ -324,6 +332,7 @@ namespace SteamP2PFriends.Adapters.Item
             {
                 _guestBaselineBinder?.Invoke(observerId, connectionToken, regionKey);
                 _guestBaselineBindingCount++;
+                CompleteObserverFailureChain(observerId, connectionToken, regionKey);
                 LastReplicationDetail = $"domain={DomainIds.Item} observer={observerId} region={regionKey} role=guest outcome=bound";
             }
             _diagnosticSink(LastReplicationDetail);
@@ -365,15 +374,75 @@ namespace SteamP2PFriends.Adapters.Item
         public EObserverReplicationFailureDisposition HandleObserverReplicationFailure(
             ulong observerId, ulong connectionToken, RegionKey regionKey, Exception exception)
         {
-            if (exception is ItemObserverReplicationFailureException failure && failure.SafeToRetry)
+            bool safeToRetry = exception is ItemObserverReplicationFailureException failure
+                && failure.SafeToRetry;
+            string failureKind = safeToRetry ? "confirmed-not-sent" : "possible-half-packet";
+            ObserverFailureKey key = CreateObserverFailureKey(observerId, connectionToken, regionKey, failureKind);
+            if (_firstObserverFailureKeys.Count < RecoveryDiagnosticLimit
+                && _firstObserverFailureKeys.Add(key))
+            {
+                var retry = LifecyclePolicy.FailedRetry;
+                Exception root = exception?.InnerException ?? exception;
+                WriteRecoveryDiagnostic(
+                    $"event=first-observer-failure region={regionKey} observer={observerId} connection={connectionToken} "
+                    + $"attempt=1 budget={retry.MaxRetries}/{retry.MaxElapsedSeconds:0}s disposition={(safeToRetry ? "retry" : "quarantine")} "
+                    + $"notifyType={(safeToRetry ? "none" : failureKind)} exception={exception} stack={root?.StackTrace ?? "unavailable"}");
+            }
+            if (safeToRetry)
                 return EObserverReplicationFailureDisposition.Retry;
             _returnSettlement?.QuarantineHalfPacket(observerId, connectionToken, regionKey);
             return EObserverReplicationFailureDisposition.Quarantine;
         }
 
+        private static ObserverFailureKey CreateObserverFailureKey(ulong observerId, ulong connectionToken,
+            RegionKey regionKey, string failureKind) => new ObserverFailureKey
+            {
+                ObserverId = observerId, ConnectionToken = connectionToken,
+                Region = regionKey, FailureKind = failureKind
+            };
+
+        public void CompleteObserverFailureChain(ulong observerId, ulong connectionToken, RegionKey regionKey)
+        {
+            _firstObserverFailureKeys.Remove(CreateObserverFailureKey(observerId, connectionToken, regionKey, "confirmed-not-sent"));
+            _firstObserverFailureKeys.Remove(CreateObserverFailureKey(observerId, connectionToken, regionKey, "possible-half-packet"));
+        }
+
+        public void ClearObserverFailuresForConnection(ulong observerId, ulong connectionToken)
+        {
+            _firstObserverFailureKeys.RemoveWhere(key =>
+                key.ObserverId == observerId && key.ConnectionToken == connectionToken);
+        }
+
+        private struct ObserverFailureKey : IEquatable<ObserverFailureKey>
+        {
+            public ulong ObserverId;
+            public ulong ConnectionToken;
+            public RegionKey Region;
+            public string FailureKind;
+            public bool Equals(ObserverFailureKey other) => ObserverId == other.ObserverId
+                && ConnectionToken == other.ConnectionToken && Region.Equals(other.Region)
+                && StringComparer.Ordinal.Equals(FailureKind, other.FailureKind);
+            public override bool Equals(object obj) => obj is ObserverFailureKey other && Equals(other);
+            public override int GetHashCode() => ObserverId.GetHashCode() ^ ConnectionToken.GetHashCode()
+                ^ Region.GetHashCode() ^ StringComparer.Ordinal.GetHashCode(FailureKind);
+        }
+
+        internal void WriteRecoveryDiagnostic(string detail)
+        {
+            if (_recoveryDiagnosticCount >= RecoveryDiagnosticLimit) return;
+            _recoveryDiagnosticCount++;
+            _diagnosticSink("[ItemRecovery] " + detail);
+        }
+
         public void OnAcquireRecoveryExhausted(
-            RegionKey region, ulong observerId, ulong connectionToken) =>
+            RegionKey region, ulong observerId, ulong connectionToken)
+        {
+            RetrySchedule retry = LifecyclePolicy.FailedRetry;
+            WriteRecoveryDiagnostic($"event=recovery-notice type=confirmed-failure-manual-retry target={observerId} "
+                + $"connection={connectionToken} region={region} attempt=exhausted "
+                + $"budget={retry.MaxRetries}/{retry.MaxElapsedSeconds:0}s");
             AcquireRecoveryExhausted?.Invoke(observerId, connectionToken, region);
+        }
 
         public object CaptureRegionState(RegionKey regionKey) => null;
         public void RestoreRegionState(RegionKey regionKey, object state) { }

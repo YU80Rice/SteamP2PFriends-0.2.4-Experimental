@@ -1895,9 +1895,9 @@ namespace SteamP2PFriends.WhitelistTests
             finally { ItemCycleThresholds.Override = null; }
         }
 
-        internal static bool Test_IT59_EmptyNaturalInputsDoNotFinishSettlement()
+        internal static bool Test_IT59_MissingInputsDoNotFinishSettlement()
         {
-            var bridge = new TestNativeItemWarehouseBridge { EmptyNaturalInputs = true };
+            var bridge = new TestNativeItemWarehouseBridge { MissingNaturalInputs = true };
             var prep = new ItemPreparationAuthority(bridge);
             bridge.GenerateNaturalItem(0, 0, CreateTestItemData(1001U, false, 0f));
             var meta = new ItemMetadataStore();
@@ -1923,6 +1923,507 @@ namespace SteamP2PFriends.WhitelistTests
                 seam.Tick(0f);
                 seam.Tick(0f);
                 return seam.IsRegionIsolated(new RegionKey(0, 0)) && presented == 1;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT133_ProductionNaturalInputsDistinguishEmptyFromMissing()
+        {
+            int size = 2;
+            var spawnPoints = new List<ItemSpawnpoint>[size, size];
+            spawnPoints[0, 0] = new List<ItemSpawnpoint>();
+            var regions = new ItemRegion[size, size];
+            regions[0, 0] = (ItemRegion)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(ItemRegion));
+            regions[0, 0].items = new List<ItemData>();
+            bool emptyAvailable = ItemPreparationAuthority.TryGetNaturalInputs(
+                spawnPoints, regions, new RegionKey(0, 0), out List<ItemSpawnpoint> empty, out string emptyReason);
+            spawnPoints[0, 0] = null;
+            bool missingSpawnRejected = !ItemPreparationAuthority.TryGetNaturalInputs(
+                spawnPoints, regions, new RegionKey(0, 0), out _, out string missingSpawnReason);
+            spawnPoints[0, 0] = new List<ItemSpawnpoint>();
+            regions[0, 0] = null;
+            bool missingRegionRejected = !ItemPreparationAuthority.TryGetNaturalInputs(
+                spawnPoints, regions, new RegionKey(0, 0), out _, out string missingRegionReason);
+            return emptyAvailable && empty != null && empty.Count == 0 && string.IsNullOrEmpty(emptyReason)
+                && missingSpawnRejected && missingSpawnReason == "spawn-input-unavailable"
+                && missingRegionRejected && missingRegionReason == "region-input-unavailable";
+        }
+
+        internal static bool Test_IT136_UnconfirmedNoticeDeduplicatesPerObserverRegion()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create());
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2.0f);
+            int notices = 0;
+            seam.RecoveryUnconfirmed = (_, __, ___) => notices++;
+            seam.BeginSession(new SessionEpoch(101UL));
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+            var mark = ItemSettlementGate.MarkUnconfirmedSideEffect;
+            mark(1001UL, 201UL, 0, 0, 4001U);
+            mark(1001UL, 201UL, 0, 0, 4001U);
+            mark(1002UL, 202UL, 0, 0, 4001U);
+            seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+            mark(1001UL, 201UL, 0, 0, 4001U);
+            return notices == 3 && ItemSettlementGate.UnconfirmedSideEffectCount?.Invoke() == 1;
+        }
+
+        internal static bool Test_IT135_UncertainReplicationFailureNotifiesOnceWithTrace()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            var diagnostics = new List<string>();
+            int notices = 0;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                diagnosticSink: detail => diagnostics.Add(detail));
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 1);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2.0f);
+            seam.RecoveryExhausted = (_, __, ___, half) => { if (half) notices++; };
+            seam.BeginSession(new SessionEpoch(101UL));
+            Exception cause;
+            try { throw new InvalidOperationException("native askItems failed"); }
+            catch (Exception ex) { cause = ex; }
+            var failure = new ItemObserverReplicationFailureException("send result unknown", false, cause);
+            var region = new RegionKey(0, 0);
+            var first = port.HandleObserverReplicationFailure(1001UL, 201UL, region, failure);
+            var duplicate = port.HandleObserverReplicationFailure(1001UL, 201UL, region, failure);
+            return first == EObserverReplicationFailureDisposition.Quarantine
+                && duplicate == EObserverReplicationFailureDisposition.Quarantine
+                && notices == 1 && diagnostics.Count == 2
+                && diagnostics[0].Contains("observer=1001") && diagnostics[0].Contains("connection=201")
+                && diagnostics[0].Contains("attempt=1") && diagnostics[0].Contains("budget=3/10s")
+                && diagnostics[0].Contains("native askItems failed") && diagnostics[0].Contains("stack=")
+                && diagnostics[1].Contains("type=possible-half-packet")
+                && diagnostics[1].Contains("target=1001") && diagnostics[1].Contains("region=(0,0)");
+        }
+
+        internal static bool Test_IT134_ZeroSpawnPointRegionSettlesAndDelivers()
+        {
+            var bridge = new TestNativeItemWarehouseBridge { SpawnPointCount = 0 };
+            var prep = new ItemPreparationAuthority(bridge);
+            bridge.GenerateNaturalItem(0, 0, CreateTestItemData(1001U, false, 0f));
+            bridge.GenerateNaturalItem(0, 0, CreateTestItemData(1002U, true, 0f));
+            var meta = new ItemMetadataStore();
+            float now = 10f;
+            int guestBaselines = 0;
+            int notices = 0;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                () => now, guestBaselineBinder: (_, __, ___) => guestBaselines++);
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 1);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2.0f);
+            seam.RecoveryExhausted = (_, __, ___, ____) => notices++;
+            seam.BeginSession(new SessionEpoch(101UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 1, meta, 0f)) return false;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.Tick(0f);
+            seam.RemoveObserver(1001UL);
+            seam.Tick(2f);
+            now = 40f;
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.Tick(0f);
+                seam.Tick(0f);
+                bool naturalExpired = !bridge.Regions[(0, 0)].Exists(item => item.instanceID == 1001U);
+                bool droppedKept = bridge.Regions[(0, 0)].Exists(item => item.instanceID == 1002U);
+                return guestBaselines == 2 && notices == 0 && naturalExpired && droppedKept
+                    && !seam.IsRegionIsolated(new RegionKey(0, 0));
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT137_HalfPacketExitReturnDeliversFreshBaseline()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            var diagnostics = new List<string>();
+            int attempts = 0;
+            int notices = 0;
+            var delivered = new List<RegionKey>();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                diagnosticSink: detail => diagnostics.Add(detail),
+                guestBaselineBinder: (observer, token, region) =>
+                {
+                    attempts++;
+                    if (attempts == 1)
+                        throw new ItemObserverReplicationFailureException(
+                            "send result unknown", false, new InvalidOperationException("partial native send"));
+                    delivered.Add(region);
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2.0f);
+            seam.RecoveryExhausted = (_, __, ___, half) => { if (half) notices++; };
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.BeginSession(new SessionEpoch(101UL));
+                if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                seam.Tick(2.1f);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                for (int step = 0; step < 16 && attempts < 3; step++) seam.Tick(0.25f);
+                string trace = string.Join("\n", diagnostics);
+                bool regionUnblocked = !(ItemSettlementGate.BlocksRegionForObserver?.Invoke(1001UL, 201UL, 0, 0) ?? true);
+                return attempts == 3 && notices == 1 && delivered.Count == 2
+                    && delivered[0].Equals(new RegionKey(1, 1))
+                    && delivered[1].Equals(new RegionKey(0, 0))
+                    && regionUnblocked
+                    && trace.Contains("event=first-observer-failure")
+                    && trace.Contains("type=possible-half-packet");
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT138_SettlementConfirmedNotSentRetriesOnlyGuestDelivery()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            var diagnostics = new List<string>();
+            float now = 0f;
+            int firstGuestCalls = 0;
+            int secondGuestCalls = 0;
+            var delivered = new List<string>();
+            int halfNotices = 0;
+            bool delayHonored = false;
+            bool targetGateObserved = false, peerGateOpen = false;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                () => now,
+                diagnosticSink: detail => diagnostics.Add(detail),
+                guestBaselineBinder: (observer, token, region) =>
+                {
+                    bool targetRegion = region.Equals(new RegionKey(0, 0));
+                    if (targetRegion && observer == 1001UL && ++firstGuestCalls == 2)
+                        ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                            () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null);
+                    if (targetRegion && observer == 1002UL) secondGuestCalls++;
+                    ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                        () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(true), () => { });
+                    delivered.Add(observer + "/" + region);
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.RecoveryExhausted = (_, __, ___, half) => { if (half) halfNotices++; };
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.BeginSession(new SessionEpoch(101UL));
+                if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                seam.UpdateObserver(1002UL, 202UL, 1, 1, true);
+                now += 2.1f;
+                seam.Tick(2.1f);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+                for (int step = 0; step < 40 && firstGuestCalls < 3; step++)
+                {
+                    now += 0.25f;
+                    seam.Tick(0.25f);
+                    if (!delayHonored && firstGuestCalls == 2
+                        && string.Join("\n", diagnostics).Contains("event=delivery-confirmed-not-sent"))
+                    {
+                        targetGateObserved = ItemSettlementGate.BlocksRegionForObserver?.Invoke(1001UL, 201UL, 0, 0) ?? false;
+                        peerGateOpen = !(ItemSettlementGate.BlocksRegionForObserver?.Invoke(1002UL, 202UL, 0, 0) ?? true);
+                        ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, false);
+                        now += 0.25f;
+                        seam.Tick(0.25f);
+                        delayHonored = firstGuestCalls == 2;
+                    }
+                }
+                bool passed = delayHonored && targetGateObserved && peerGateOpen
+                    && firstGuestCalls == 3 && secondGuestCalls == 2 && halfNotices == 0
+                    && delivered.Contains("1001/(0,0)") && delivered.Contains("1002/(0,0)")
+                    && !seam.IsRegionIsolated(new RegionKey(0, 0));
+                if (!passed) Console.WriteLine($"IT138 first={firstGuestCalls} second={secondGuestCalls} halfNotices={halfNotices} delivered={string.Join(";", delivered)} isolated={seam.IsRegionIsolated(new RegionKey(0, 0))} diagnostics={string.Join("|", diagnostics)}");
+                return passed;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT139_ConfirmedNotSentExhaustionAndManualRestart()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            float now = 0f;
+            int firstCalls = 0, secondCalls = 0, safeNotices = 0;
+            var firstCallTimes = new List<float>();
+            bool allowManualSuccess = false;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                () => now, guestBaselineBinder: (observer, token, region) =>
+                {
+                    if (!region.Equals(new RegionKey(0, 0))) return;
+                    if (observer == 1001UL)
+                    {
+                        firstCalls++;
+                        firstCallTimes.Add(now);
+                        if (firstCalls > 1 && !allowManualSuccess)
+                            ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                                () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null);
+                    }
+                    if (observer == 1002UL) secondCalls++;
+                    ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                        () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(true), () => { });
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.RecoveryExhausted = (observer, _, __, half) =>
+                { if (observer == 1001UL && !half) safeNotices++; };
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.BeginSession(new SessionEpoch(101UL));
+                if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                seam.UpdateObserver(1002UL, 202UL, 1, 1, true);
+                now += 2.1f; seam.Tick(2.1f);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+                for (int i = 0; i < 80 && firstCalls < 5; i++) { now += 0.25f; seam.Tick(0.25f); }
+                for (int i = 0; i < 8; i++) { now += 0.25f; seam.Tick(0.25f); }
+                if (firstCalls != 5 || secondCalls != 2 || safeNotices != 1
+                    || firstCallTimes[2] - firstCallTimes[1] < 0.49f
+                    || firstCallTimes[3] - firstCallTimes[2] < 0.99f
+                    || firstCallTimes[4] - firstCallTimes[3] < 1.99f) return false;
+                allowManualSuccess = true;
+                if (!seam.TryManualRecovery(1001UL, 201UL, new RegionKey(0, 0))) return false;
+                if (seam.TryManualRecovery(1001UL, 201UL, new RegionKey(0, 0))) return false;
+                seam.Tick(0f);
+                return firstCalls == 6 && secondCalls == 2 && safeNotices == 1;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT140_ConfirmedNotSentRetryDeadlineStopsDelivery()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            float now = 0f, firstFaultAt = -1f;
+            int firstCalls = 0, safeNotices = 0;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                () => now, guestBaselineBinder: (observer, token, region) =>
+                {
+                    if (!region.Equals(new RegionKey(0, 0)) || observer != 1001UL) return;
+                    firstCalls++;
+                    if (firstCalls == 2) firstFaultAt = now;
+                    if (firstCalls > 1)
+                        ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                            () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null);
+                    ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                        () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(true), () => { });
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.RecoveryExhausted = (observer, _, __, half) =>
+                { if (observer == 1001UL && !half) safeNotices++; };
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.BeginSession(new SessionEpoch(101UL));
+                if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, false);
+                now += 20f; seam.Tick(20f);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                now += 20f; seam.Tick(20f);
+                ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+                for (int i = 0; i < 40 && firstCalls < 4; i++) { now += 0.25f; seam.Tick(0.25f); }
+                if (firstCalls != 4 || firstFaultAt < 40f) return false;
+                now = firstFaultAt + 10f;
+                seam.Tick(0f);
+                for (int i = 0; i < 4; i++) seam.Tick(0f);
+                return firstCalls == 4 && safeNotices == 1;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT141_UnknownDuringDeliveryRetryQuarantinesOnce()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            float now = 0f;
+            int calls = 0, halfNotices = 0, safeNotices = 0;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                () => now, guestBaselineBinder: (observer, token, region) =>
+                {
+                    if (!region.Equals(new RegionKey(0, 0))) return;
+                    calls++;
+                    if (calls == 2)
+                        ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                            () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null);
+                    if (calls == 3)
+                        ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                            () => throw new InvalidOperationException("native askItems result unknown"), null);
+                    ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                        () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(true), () => { });
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.RecoveryExhausted = (_, __, ___, half) => { if (half) halfNotices++; else safeNotices++; };
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.BeginSession(new SessionEpoch(101UL));
+                if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                now += 2.1f; seam.Tick(2.1f);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                for (int i = 0; i < 20 && calls < 3; i++) { now += 0.25f; seam.Tick(0.25f); }
+                for (int i = 0; i < 20; i++) { now += 0.25f; seam.Tick(0.25f); }
+                bool blocked = ItemSettlementGate.BlocksRegionForObserver?.Invoke(1001UL, 201UL, 0, 0) ?? false;
+                return calls == 3 && halfNotices == 1 && safeNotices == 0 && blocked;
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_IT142_FailureTraceReopensOnlyAfterRealObserverExit()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            var diagnostics = new List<string>();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                diagnosticSink: detail => diagnostics.Add(detail));
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.BeginSession(new SessionEpoch(101UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+            Exception failure = null;
+            try { ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null); }
+            catch (Exception ex) { failure = ex; }
+            if (failure == null) return false;
+            var region = new RegionKey(0, 0);
+            port.HandleObserverReplicationFailure(1001UL, 201UL, region, failure);
+            port.HandleObserverReplicationFailure(1002UL, 202UL, region, failure);
+            port.OnObserverReplicationExited(1001UL, 201UL, region);
+            port.HandleObserverReplicationFailure(1001UL, 201UL, region, failure);
+            int firstTraces = diagnostics.FindAll(line => line.Contains("event=first-observer-failure")).Count;
+            seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+            port.HandleObserverReplicationFailure(1001UL, 201UL, region, failure);
+            port.HandleObserverReplicationFailure(1002UL, 202UL, region, failure);
+            int reopenedTraces = diagnostics.FindAll(line => line.Contains("event=first-observer-failure")).Count;
+            port.DeliverSettlementBaseline(1001UL, 201UL, region, false);
+            port.HandleObserverReplicationFailure(1001UL, 201UL, region, failure);
+            int afterSuccessTraces = diagnostics.FindAll(line => line.Contains("event=first-observer-failure")).Count;
+            return firstTraces == 2 && reopenedTraces == 3 && afterSuccessTraces == 4;
+        }
+
+        internal static bool Test_IT144_ConnectionFailureCleanupUsesExactIdentity()
+        {
+            var prep = new ItemPreparationAuthority(new TestNativeItemWarehouseBridge());
+            var meta = new ItemMetadataStore();
+            var diagnostics = new List<string>();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                diagnosticSink: detail => diagnostics.Add(detail));
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(0, 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            Exception safe = null, unknown = null;
+            try { ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null); }
+            catch (Exception ex) { safe = ex; }
+            try { ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                () => throw new InvalidOperationException("askItems outcome unknown"), null); }
+            catch (Exception ex) { unknown = ex; }
+            var targetA = new RegionKey(0, 0);
+            var targetB = new RegionKey(0, 1);
+            var collision = new RegionKey(1, 5);
+            port.HandleObserverReplicationFailure(5UL, 7UL, targetA, safe);
+            port.HandleObserverReplicationFailure(7UL, 7UL, collision, safe);
+            port.HandleObserverReplicationFailure(5UL, 7UL, targetB, unknown);
+            port.OnObserverDisconnected(5UL, 7UL);
+            port.HandleObserverReplicationFailure(5UL, 7UL, targetA, safe);
+            port.HandleObserverReplicationFailure(7UL, 7UL, collision, safe);
+            port.HandleObserverReplicationFailure(5UL, 7UL, targetB, unknown);
+            int firstTraces = diagnostics.FindAll(line => line.Contains("event=first-observer-failure")).Count;
+            if (firstTraces != 5) Console.WriteLine($"IT144 expected 5 first traces after exact disconnect cleanup, actual={firstTraces}");
+            return firstTraces == 5;
+        }
+
+        internal static bool Test_IT143_ExitedDeliveryIsRevokedWithoutAffectingOtherGuest()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            var meta = new ItemMetadataStore();
+            float now = 0f;
+            int firstCalls = 0, secondCalls = 0;
+            var diagnostics = new List<string>();
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(),
+                () => now, diagnosticSink: detail => diagnostics.Add(detail),
+                guestBaselineBinder: (observer, token, region) =>
+                {
+                    if (!region.Equals(new RegionKey(0, 0))) return;
+                    if (observer == 1001UL && ++firstCalls == 2)
+                        ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                            () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(false), null);
+                    if (observer == 1002UL) secondCalls++;
+                    ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
+                        () => ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(true), () => { });
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 2);
+            projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 1f, 1f, true);
+            try
+            {
+                seam.BeginSession(new SessionEpoch(101UL));
+                if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 2, meta, 0f)) return false;
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                seam.UpdateObserver(1002UL, 202UL, 1, 1, true);
+                now += 2.1f; seam.Tick(2.1f);
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                seam.UpdateObserver(1002UL, 202UL, 0, 0, true);
+                for (int i = 0; i < 20 && !string.Join("\n", diagnostics).Contains("event=delivery-confirmed-not-sent"); i++)
+                    { now += 0.25f; seam.Tick(0.25f); }
+                if (firstCalls != 2 || secondCalls != 2) return false;
+                seam.UpdateObserver(1001UL, 201UL, 1, 1, true);
+                now += 5f; seam.Tick(5f);
+                seam.UpdateObserver(1001UL, 203UL, 1, 1, true);
+                bool oldTokenRejected = !seam.TryManualRecovery(1001UL, 201UL, new RegionKey(1, 1));
+                return oldTokenRejected && firstCalls == 2 && secondCalls == 2
+                    && !ItemSettlementGate.BlocksRegionForObserver(1002UL, 202UL, 0, 0);
             }
             finally { ItemCycleThresholds.Override = null; }
         }
@@ -2265,8 +2766,9 @@ namespace SteamP2PFriends.WhitelistTests
             var meta = new ItemMetadataStore();
             float now = 10f;
             int notices = 0;
+            var diagnostics = new List<string>();
             var port = new ItemExecutionPort(prep, meta, _ => 1U, ItemLifecyclePolicy.Create(), () => now,
-                null, _ => true, _ => { });
+                detail => diagnostics.Add(detail), _ => true, _ => { });
             var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
             var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 1);
             projection.Register(policy);
@@ -2292,7 +2794,12 @@ namespace SteamP2PFriends.WhitelistTests
                 now = 51f;
                 seam.Tick(0f);
                 seam.Tick(0f);
-                return notices == 1 && seam.IsRegionIsolated(new RegionKey(0, 0));
+                string trace = string.Join("\n", diagnostics);
+                return notices == 1 && seam.IsRegionIsolated(new RegionKey(0, 0))
+                    && trace.Contains("event=settlement-first-failure")
+                    && trace.Contains("target=1001/201") && trace.Contains("attempt=1")
+                    && trace.Contains("budget=3/10s") && trace.Contains("simulated natural creation exception")
+                    && trace.Contains("event=recovery-notice type=recovery-exhausted");
             }
             finally { ItemCycleThresholds.Override = null; }
         }
@@ -2637,7 +3144,6 @@ namespace SteamP2PFriends.WhitelistTests
             public bool DeclineRespawn;
             public bool ThrowOnRespawn;
             public bool MissingNaturalInputs;
-            public bool EmptyNaturalInputs;
             public bool MissingNaturalAsset;
             public Action<byte, byte> OnRespawn;
             private uint _nextRespawnId = 7001U;
@@ -2646,9 +3152,8 @@ namespace SteamP2PFriends.WhitelistTests
 
             public bool AreNaturalInputsAvailable(byte x, byte y, out string failureReason)
             {
-                failureReason = MissingNaturalInputs ? "test-natural-inputs-unavailable"
-                    : EmptyNaturalInputs ? "test-natural-inputs-empty" : string.Empty;
-                return !MissingNaturalInputs && !EmptyNaturalInputs;
+                failureReason = MissingNaturalInputs ? "test-natural-inputs-unavailable" : string.Empty;
+                return !MissingNaturalInputs;
             }
 
             public float ReadLastRespawn(byte x, byte y) =>
@@ -2660,7 +3165,7 @@ namespace SteamP2PFriends.WhitelistTests
             {
                 if (ThrowOnRespawn) throw new InvalidOperationException("simulated natural creation exception");
                 if (MissingNaturalInputs) return ItemNaturalCreationOutcome.MissingInputs;
-                if (SpawnPointCount <= 0) return ItemNaturalCreationOutcome.MissingInputs;
+                if (SpawnPointCount <= 0) return ItemNaturalCreationOutcome.NoChange;
                 if (MissingNaturalAsset) return ItemNaturalCreationOutcome.MissingAsset;
                 if (DeclineRespawn) return ItemNaturalCreationOutcome.Declined;
                 return TryApplyNativeRespawn(x, y, now)
