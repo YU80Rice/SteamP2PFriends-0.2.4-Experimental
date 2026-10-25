@@ -1,6 +1,6 @@
 # R02 交付摘要 — SPF 0.2.4.10
 
-**State:** implemented-pending-runtime; **Label:** `ready-for-human`. Static implementation and the authorized fresh dual-axis review are complete; Guest Runtime acceptance remains pending.
+**State:** implemented-pending-runtime; **Label:** `ready-for-human`. Commit: `0979b62` (`Fix R02 observer failure identity cleanup`). Static implementation and the authorized fresh dual-axis review are complete; Guest Runtime acceptance remains pending.
 
 ## 修复
 

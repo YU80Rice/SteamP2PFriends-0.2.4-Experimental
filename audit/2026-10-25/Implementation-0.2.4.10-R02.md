@@ -2,6 +2,7 @@
 
 - **Ticket:** R02, Guest region entry/return automatically delivers current Item baseline; real failures only notify.
 - **Baseline:** branch `codex/structure-baseline-0.2.4`, HEAD `3fb2eb5e87ab3eddbc6782fcc708418a7d11d52a`; R01 is a prior frozen delivery, not R02 review evidence.
+- **R02 commit:** `0979b62` (`Fix R02 observer failure identity cleanup`); scoped source, test, ticket, delivery and audit commit on the same branch.
 - **Status:** R02 static implementation and review complete (`implemented-pending-runtime` / `ready-for-human`); cumulative round 4 Standards and Spec CLEAN; Guest Runtime pending.
 - **Issue:** `.scratch/item-runtime-repair-20261014/issues/02-guest-item-delivery.md` retains all 10 original acceptance criteria; label `ready-for-human`; status `implemented-pending-runtime`.
 
