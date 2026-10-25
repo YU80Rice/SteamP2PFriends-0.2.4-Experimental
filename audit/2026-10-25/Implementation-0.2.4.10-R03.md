@@ -2,7 +2,7 @@
 
 - 票据：R03，Guest 离开后精确撤销旧 Item 资格，房间继续运行。
 - 固定基线：`codex/structure-baseline-0.2.4` / `c081dfda29bdac2b703af9871b887b3a45ab5c05`。
-- 源码提交：`ebf4493`（实现）；交付记录闭环提交：`f74301a`（当前 HEAD）。
+- 源码提交：ebf4493（实现）；f74301a、6d87387 分别补齐源码阶段交付记录与 R5 报告路径。
 - 状态：`implemented-pending-runtime` / `ready-for-human`。历史 NRE、原生 Guest 退出清理及 Guest 离开后房间继续运行转 R04 Runtime；原八条 AC 未全完成。
 
 ## 故障证据与退出顺序
