@@ -2,7 +2,7 @@
 
 - **Ticket:** R02, Guest region entry/return automatically delivers current Item baseline; real failures only notify.
 - **Baseline:** branch `codex/structure-baseline-0.2.4`, HEAD `3fb2eb5e87ab3eddbc6782fcc708418a7d11d52a`; R01 is a prior frozen delivery, not R02 review evidence.
-- **R02 commit:** `0979b62` (`Fix R02 observer failure identity cleanup`); scoped source, test, ticket, delivery and audit commit on the same branch.
+- **R02 commit series:** `0979b62` implements the reviewed source/test and initial ticket/delivery/audit; `1c93e7f` records final review status; `1593155` marks the ten static acceptance items complete. Final HEAD is `1593155aa12833cc504b070c9f5d24916be92bc4`.
 - **Status:** R02 static implementation and review complete (`implemented-pending-runtime` / `ready-for-human`); cumulative round 4 Standards and Spec CLEAN; Guest Runtime pending.
 - **Issue:** `.scratch/item-runtime-repair-20261014/issues/02-guest-item-delivery.md` retains all 10 original acceptance criteria; label `ready-for-human`; status `implemented-pending-runtime`.
 
@@ -25,7 +25,7 @@ Failure handling keeps first exception and bounded region/job/observer/connectio
 | 7 | IT136 retains notice dedupe. IT142 proves repeated chain events and engine compensation do not reopen the trace, a real projection exit/reentry does, and successful delivery closes that chain; IT143 checks exact pending delivery revocation; IT144 reproduces and fixes connection cleanup identity collision while retaining target-region/failure-kind reopen and the colliding observer dedupe. |
 | 8 | IT137 proves possible-half-packet quarantine, true region exit, return settlement wait, new baseline delivery and final unblock. IT141 proves a later unknown result during safe retry quarantines once and stops blind replay. Actual native `ITEM_REGIONS` bytes require Runtime evidence. |
 | 9 | No edits to writer, Core identity, native protocol, pickup, or 20m eligibility. IT138/139/143 isolate one observer's delivery retry; R01 evidence remains prior-ticket context only. |
-| 10 | Current candidate Release build and full 614/614 Whitelist pass recorded below. The cumulative R02 round-3 Standards P2 is repaired in the separately authorized AC7-Collision slice; one fresh dual-axis round 4 remains mandatory. Source Green is not Guest Runtime PASS. |
+| 10 | Current candidate Release build and full 614/614 Whitelist pass recorded below. The cumulative R02 round-3 Standards P2 is repaired in the separately authorized AC7-Collision slice; the authorized round 4 is complete with both axes CLEAN. Source Green is not Guest Runtime PASS. |
 
 ## Verification
 
@@ -61,4 +61,4 @@ The resident expert supplied G1; its one authorized fresh dual-axis round was cu
 - Standards: CLEAN, native `01a17207-c160-70e2-9779-1627e0b4bd4e`; Spec: CLEAN, native `01a17207-ed09-7c01-897f-fd60bdd55530`. Both native `turn_context` records confirm `gpt-6-luna/high`. Full reports: `.scratch/matt-orchestrate/item-runtime-repair-20261025-vela/messages/R02-round4-standards-report.md`, `R02-round4-spec-report.md`; native session provenance and final-answer line locations: `R02-round4-reviewer-native-provenance.json`.
 - Standards confirms the sole round-3 P2 was corrected by field-exact observer/token matching and that the prior `ItemReturnSettlement` notification string key remains an explicitly deferred maintainability smell, not a new blocker. Spec confirms IT144 exercises the actual disconnect cleanup chain and retains the full R02 AC1–10 and G1 retry, unknown-result, lifecycle and runtime boundaries.
 - Final static evidence is Release production build exit 0, Whitelist build exit 0, runner exit 0 (`614/614 PASS`, Failed 0). Exact logs are under `.scratch/matt-orchestrate/item-runtime-repair-20261025-vela/messages/`. Guest Runtime remains PENDING for SP, listen-host, U3DS and P2P; no player test or deployment was performed.
-- Cumulative history is retained: rounds 1 and 2 NON-CLEAN; round 3 Standards NON-CLEAN / Spec CLEAN; round 4 both CLEAN. This is the AC7-Collision increment's only authorized fresh review round.
+- Cumulative history is retained: rounds 1 and 2 NON-CLEAN; round 3 Standards NON-CLEAN / Spec CLEAN; round 4 both CLEAN. This is the AC7-Collision increment's only authorized fresh review round. Final root Vela delivery was sent with receipt `msg-876fb353-1e38-4217-ae7c-18344d6c6776` (`sent`).
