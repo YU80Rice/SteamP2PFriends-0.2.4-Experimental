@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-当前候选已修复审查指出的问题，通过GBA-R2-G1定向Red→Green及当前正式回归，并取得GBA-R3双轴CLEAN。限定提交与最终指纹DLL/ZIP仍在完成；Runtime仍为 `implemented-pending-runtime`，不代表实机验收。
+实现已限定提交，Release DLL及唯一ZIP完成指纹/清单核验并可供R04手测。GBA-R2-G1定向Red→Green、当前正式回归及GBA-R3双轴CLEAN均闭合；Runtime仍为 `implemented-pending-runtime`，不代表实机验收。
 
 ## 身份与证据
 
@@ -34,7 +34,10 @@
 - GBA01最终定向Green与当前正式Main：`integrated-run-gba-r2-g1/`，runId `e61c06a2-8d95-4a81-a053-4bc45d016559`，`632/632 PASS`，Framework本地630、CoreCLR 10.0.9 x86 NIL01/GBA01各1；父子stderr为空、exit 0、唯一协议及逐行ledger闭合。两child实际MVID均为生产`2ec64d10-dc14-4c9c-afe2-6c22276e6d14`、测试`70033a4d-4063-4072-92da-e450a521a30c`；GBA01方法token `0x060000FE`、准入目标token `0x06000862`，实际host加载路径为`native-host/bin/Release/net10.0/input/`。
 - 根从builder SubAgentActivity与四个独立native原文核实Round 1、2均为完整有效BLOCKED/BLOCKED、gpt-6-luna/high，累计2轮保留；详见`review-rounds-01-02-root-native-evidence.json`及R2 Spec完整文稿/根续记。专家`GBA-R2-G1`匹配满足根的有条件恢复授权；当时冻结候选等待新鲜native双轴第3轮。此前关于身份无法核实的文字保留为当时状态，不是当前根核实结论；Round 3最终结论见下节。
 - GBA-R3 Standards/Spec审查者最初各自因缺少可见身份查询而暂记来源阻断；根随后以builder父rollout真实SubAgentActivity、各自session_meta/turn_context和原始final核验两位均为fresh gpt-6-luna/high。原实例仅作同轮followup澄清并分别给出最终CLEAN，未重扫仓库、重跑测试或改候选；双轴结论保持原技术审阅内容。证据及原文见`.scratch/matt-orchestrate/item-guest-binding-admission-20261027/review-round-03/`，原生来源见`root-native-provenance.json`，初始阻断及终判分别留档。
-- 双轴已CLEAN；限定提交、Cutover指纹DLL/ZIP正在完成。R04游戏验证及僵尸掉落仍待实机。632/632为G1当前候选的正式Main，不由历史计数拼接。
+- Round 3双轴已CLEAN；Standards native `01a1798d-92f0-79c0-9e60-59430fb6bb05`、Spec native `01a1798d-c269-7833-a2bd-80a71bf83b6b`。原实例各自同轮澄清身份阻断后终判CLEAN；原始意见与原生来源证据完整保留于`review-round-03/`。
+- 唯一实现提交：`0f94e1333b755bc2fe07d81e1cc2dbe32c74a0ba`。Release DLL位于`artifacts/Item-GuestBindingAdmission/0f94e13-20261027-0259/SteamP2PFriends.dll`；唯一final包为`artifacts/Item-GuestBindingAdmission/Item-GuestBindingAdmission-0f94e13-final.zip`。SHA-256=`133BBC899B4B0A032769715E2231F3F7940D8F4DE8C19ED29D81CB6C243C8826`，MVID=`2ec64d10-dc14-4c9c-afe2-6c22276e6d14`，版本/程序集/文件版本=`0.2.4.10`，Case-ID=`SPF-0.2.4.10-Experimental-ItemSlice-Cutover`，CandidateRole=`Cutover`。
+- `Tools/Verify-BuildFingerprintArtifact.ps1` 对实际包内DLL返回`INDEPENDENT_ARTIFACT_VERIFICATION_PASS`；ZIP清单含插件DLL、简体中文README、artifact manifest与指纹核验记录，DLL SHA-256与外部交付DLL相同；没有捆入native测试host。安装回滚和最小R04步骤见包内`README.zh-CN.md`。
+- R04游戏验证及僵尸掉落仍待实机。632/632为G1当前候选的正式Main，不由历史计数拼接，也不宣称Runtime通过。
 
 ## 根核验续记
 
