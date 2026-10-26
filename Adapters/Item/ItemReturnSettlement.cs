@@ -174,6 +174,7 @@ namespace SteamP2PFriends.Adapters.Item
         public Action<ulong, ulong, RegionKey, bool> RecoveryExhausted { get; set; }
         public Action<string> DiagnosticSink { get; set; }
         public Action<ulong, ulong, RegionKey, Exception> ObserverDeliveryFailure { get; set; }
+        internal Func<ulong, ulong, RegionKey, ItemGuestAdmission> DeliveryAdmission { get; set; }
         public Action<ulong, ulong, RegionKey> ObserverFailureChainCompleted { get; set; }
         public Action<ulong, ulong> ObserverDisconnected { get; set; }
 
@@ -540,12 +541,31 @@ namespace SteamP2PFriends.Adapters.Item
                     RemoveDelivery(key);
                     continue;
                 }
+                if (!delivery.Host && DeliveryAdmission != null)
+                {
+                    ItemGuestAdmission admission = DeliveryAdmission(key.Observer, key.Token, key.Region);
+                    if (admission == ItemGuestAdmission.Waiting)
+                    {
+                        delivery.AwaitingAdmission = true;
+                        _retries.RefreshExhaustion(delivery.RetryKey, _now());
+                        continue;
+                    }
+                    if (admission == ItemGuestAdmission.Rejected)
+                    {
+                        RemoveDelivery(key);
+                        continue;
+                    }
+                }
                 bool manualInitial = delivery.ManualInitialPending;
-                if (!manualInitial && !_retries.TryClaimAttempt(delivery.RetryKey, _now()))
+                bool admissionOnlyWait = delivery.AwaitingAdmission
+                    && delivery.AttemptId == 0 && !manualInitial;
+                if (!manualInitial && !admissionOnlyWait
+                    && !_retries.TryClaimAttempt(delivery.RetryKey, _now()))
                 {
                     NotifyDeliveryExhausted(key, delivery);
                     continue;
                 }
+                delivery.AwaitingAdmission = false;
                 delivery.ManualInitialPending = false;
                 used++;
                 try { Deliver?.Invoke(key.Observer, key.Token, key.Region, delivery.Host); }
@@ -609,6 +629,30 @@ namespace SteamP2PFriends.Adapters.Item
                 { Region = key.Region, Observer = key.Observer, Token = key.Token });
             _delivered.Add(key.Region);
             ObserverFailureChainCompleted?.Invoke(key.Observer, key.Token, key.Region);
+        }
+
+        private void QueueDeliveryAdmissionWait(Waiter waiter, RegionKey region, Job job)
+        {
+            var key = new DeliveryWaiterKey
+            {
+                Session = job.Session, Generation = job.Generation, Region = region,
+                Observer = waiter.Observer, Token = waiter.Token
+            };
+            if (_deliveries.TryGetValue(key, out PendingDelivery existing))
+            {
+                existing.AwaitingAdmission = true;
+                return;
+            }
+            var delivery = new PendingDelivery
+            {
+                Session = job.Session, Generation = job.Generation, NoticeChain = job.NoticeChain,
+                SourceAttemptId = job.AttemptId, Host = waiter.Host, AttemptId = 0,
+                AwaitingAdmission = true
+            };
+            delivery.RetryKey = DeliveryWorkKey(key, delivery);
+            if (_retries == null) return;
+            _deliveries.Add(key, delivery);
+            _deliveryOrder.Add(key);
         }
 
         private void QueueDeliveryRetry(Waiter waiter, RegionKey region, Job job, Exception exception)
@@ -927,6 +971,18 @@ namespace SteamP2PFriends.Adapters.Item
                 }
                 catch (Exception ex)
                 {
+                    if (ex is ItemGuestBindingAdmissionException admissionFailure)
+                    {
+                        if (admissionFailure.Admission == ItemGuestAdmission.Waiting)
+                            QueueDeliveryAdmissionWait(waiter, region, job);
+                        else if (admissionFailure.Admission == ItemGuestAdmission.Rejected)
+                            RemoveDelivery(new DeliveryWaiterKey
+                            {
+                                Session = job.Session, Generation = job.Generation, Region = region,
+                                Observer = waiter.Observer, Token = waiter.Token
+                            });
+                        if (admissionFailure.Admission != ItemGuestAdmission.Accepted) continue;
+                    }
                     if (ex is ItemObserverReplicationFailureException failure && failure.SafeToRetry)
                     {
                         QueueDeliveryRetry(waiter, region, job, ex);
@@ -991,6 +1047,7 @@ namespace SteamP2PFriends.Adapters.Item
             public int AttemptId;
             public bool ExhaustionNotified;
             public bool ManualInitialPending;
+            public bool AwaitingAdmission;
         }
 
         private struct UnconfirmedItem : IEquatable<UnconfirmedItem>

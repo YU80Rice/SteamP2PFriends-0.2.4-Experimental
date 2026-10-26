@@ -373,6 +373,9 @@ namespace SteamP2PFriends.Adapters.Item
 
         public EDomainFailureKind ClassifyRegionFailure(Exception exception)
         {
+            if (exception is ItemGuestBindingAdmissionException admission)
+                return admission.Admission == ItemGuestAdmission.Waiting
+                    ? EDomainFailureKind.Deferred : EDomainFailureKind.Rejected;
             if (exception is ItemRegionNotPreparedException)
                 return EDomainFailureKind.Deferred;
             if (exception is ItemAcquireRejectedException)
@@ -388,6 +391,10 @@ namespace SteamP2PFriends.Adapters.Item
         public EObserverReplicationFailureDisposition HandleObserverReplicationFailure(
             ulong observerId, ulong connectionToken, RegionKey regionKey, Exception exception)
         {
+            if (exception is ItemGuestBindingAdmissionException admission)
+                return admission.Admission == ItemGuestAdmission.Waiting
+                    ? EObserverReplicationFailureDisposition.Retry
+                    : EObserverReplicationFailureDisposition.Rejected;
             bool safeToRetry = exception is ItemObserverReplicationFailureException failure
                 && failure.SafeToRetry;
             string failureKind = safeToRetry ? "confirmed-not-sent" : "possible-half-packet";

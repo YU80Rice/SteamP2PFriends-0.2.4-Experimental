@@ -52,6 +52,10 @@ namespace SteamP2PFriends.Adapters.Item
     public sealed class DefaultNativeItemWarehouseBridge : INativeItemWarehouseBridge
     {
         internal Func<ulong, ulong, bool> CoreConnectionCurrent { get; set; }
+        internal Func<ulong> BindingEpochReader { get; set; }
+        internal Func<ulong, ItemCommittedBinding> CommittedBindingReader { get; set; }
+        internal Func<ITransportConnection, byte, byte, System.Action> GuestAskItemsSenderFactory { get; set; }
+        internal System.Action<SteamPlayer, byte, byte> GuestLoadedProjection { get; set; }
 
         private static readonly System.Reflection.MethodInfo GenerateItemsMethod =
             typeof(ItemManager).GetMethod("generateItems",
@@ -255,27 +259,79 @@ namespace SteamP2PFriends.Adapters.Item
             new ItemLocalPresentationPipeline(new NativeItemLocalPresentationView()).Unpresent(x, y);
         }
 
+        private static System.Action PrepareNativeGuestAskItems(
+            ITransportConnection transport, byte x, byte y)
+        {
+            object manager = ManagerField?.GetValue(null);
+            if (manager == null || AskItemsMethod == null)
+                throw new ItemObserverReplicationFailureException(
+                    "ItemManager askItems unavailable before send.", safeToRetry: true);
+            return () => AskItemsMethod.Invoke(manager, new object[] { transport, x, y, 0f });
+        }
+
+        private static void CommitNativeGuestLoaded(SteamPlayer client, byte x, byte y)
+        {
+            if (client.player?.movement?.loadedRegions == null) return;
+            if (x >= client.player.movement.loadedRegions.GetLength(0)
+                || y >= client.player.movement.loadedRegions.GetLength(1)) return;
+            var loaded = client.player.movement.loadedRegions[x, y];
+            if (loaded != null) loaded.isItemsLoaded = true;
+        }
+
         public void BindGuestBaseline(ulong observerId, ulong connectionToken, byte x, byte y)
         {
-            if (observerId == 0UL) throw new ArgumentOutOfRangeException(nameof(observerId));
-            if (connectionToken == 0UL) throw new ArgumentOutOfRangeException(nameof(connectionToken));
-            SteamPlayer client = FindClient(observerId);
-            if (client == null) throw new InvalidOperationException($"Guest observer {observerId} not found in Provider.clients.");
-            if (client.transportConnection == null) throw new InvalidOperationException($"Guest observer {observerId} transport null.");
-            if (CoreConnectionCurrent != null && !CoreConnectionCurrent(observerId, connectionToken))
-                throw new InvalidOperationException($"Guest observer {observerId} connection generation is stale.");
+            Func<ITransportConnection, byte, byte, System.Action> prepareSend = GuestAskItemsSenderFactory;
+            System.Action<SteamPlayer, byte, byte> commitLoaded = GuestLoadedProjection;
+            if (prepareSend == null) prepareSend = PrepareNativeGuestAskItems;
+            if (commitLoaded == null) commitLoaded = CommitNativeGuestLoaded;
+            BindGuestBaselineCore(observerId, connectionToken, x, y,
+                prepareSend, commitLoaded);
+        }
 
-            object mgr = ManagerField?.GetValue(null);
-            if (mgr == null || AskItemsMethod == null) throw new InvalidOperationException("ItemManager askItems unavailable.");
+        internal void BindGuestBaselineCore(ulong observerId, ulong connectionToken, byte x, byte y,
+            Func<ITransportConnection, byte, byte, System.Action> prepareSend,
+            System.Action<SteamPlayer, byte, byte> commitLoaded)
+        {
+            var request = new ItemGuestBindingRequest(
+                BindingEpochReader?.Invoke() ?? 0UL, observerId, connectionToken, x, y);
+            SteamPlayer client = FindClient(request.Observer);
+            if (BindingEpochReader == null || CommittedBindingReader == null)
+            {
+                if (observerId == 0UL) throw new ArgumentOutOfRangeException(nameof(observerId));
+                if (connectionToken == 0UL) throw new ArgumentOutOfRangeException(nameof(connectionToken));
+                if (client == null) throw new InvalidOperationException($"Guest observer {observerId} not found in Provider.clients.");
+                if (client.transportConnection == null) throw new InvalidOperationException($"Guest observer {observerId} transport null.");
+                if (CoreConnectionCurrent != null && !CoreConnectionCurrent(observerId, connectionToken))
+                    throw new InvalidOperationException($"Guest observer {observerId} connection generation is stale.");
+            }
+            else
+            {
+                ItemCommittedBinding committed = CommittedBindingReader(request.Observer);
+                ItemGuestAdmission admission = ItemGuestBindingAdmission.Evaluate(
+                    request, client, client?.transportConnection, committed);
+                if (admission != ItemGuestAdmission.Accepted)
+                    throw new ItemGuestBindingAdmissionException(admission,
+                        admission == ItemGuestAdmission.Waiting
+                            ? "committed-session-or-physical-fact-unavailable"
+                            : "request-session-token-or-physical-identity-conflict");
+            }
+
+            System.Action send = prepareSend(client.transportConnection, request.X, request.Y);
             ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(
-                () => AskItemsMethod.Invoke(mgr, new object[] { client.transportConnection, x, y, 0f }),
-                () =>
-                {
-                    if (client.player?.movement?.loadedRegions == null) return;
-                    if (x >= client.player.movement.loadedRegions.GetLength(0) || y >= client.player.movement.loadedRegions.GetLength(1)) return;
-                    var lr = client.player.movement.loadedRegions[x, y];
-                    if (lr != null) lr.isItemsLoaded = true;
-                });
+                send, () => commitLoaded(client, request.X, request.Y));
+        }
+
+        internal ItemGuestAdmission ReadGuestAdmission(
+            ulong observerId, ulong connectionToken, byte x, byte y)
+        {
+            var request = new ItemGuestBindingRequest(
+                BindingEpochReader?.Invoke() ?? 0UL, observerId, connectionToken, x, y);
+            SteamPlayer client = FindClient(observerId);
+            if (BindingEpochReader == null || CommittedBindingReader == null)
+                return ItemGuestAdmission.Accepted;
+            ItemCommittedBinding committed = CommittedBindingReader(observerId);
+            return ItemGuestBindingAdmission.Evaluate(
+                request, client, client?.transportConnection, committed);
         }
 
         public bool ActivateRegionTiming(byte x, byte y, float activationTime, Func<uint, bool> isNaturalItem = null)
@@ -489,13 +545,36 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void UnbindGuestBaseline(ulong observerId, ulong connectionToken, byte x, byte y)
         {
-            if (observerId == 0UL) return;
+            UnbindGuestBaselineCore(observerId, connectionToken, x, y, (bound, regionX, regionY) =>
+                {
+                    if (bound?.player?.movement?.loadedRegions == null) return;
+                    if (regionX >= bound.player.movement.loadedRegions.GetLength(0)
+                        || regionY >= bound.player.movement.loadedRegions.GetLength(1)) return;
+                    var loaded = bound.player.movement.loadedRegions[regionX, regionY];
+                    if (loaded != null) loaded.isItemsLoaded = false;
+                });
+        }
+
+        internal ItemGuestAdmission UnbindGuestBaselineCore(ulong observerId, ulong connectionToken, byte x, byte y,
+            Action<SteamPlayer, byte, byte> clearLoaded)
+        {
+            var request = new ItemGuestBindingRequest(
+                BindingEpochReader?.Invoke() ?? 0UL, observerId, connectionToken, x, y);
             SteamPlayer client = FindClient(observerId);
-            if (client?.player?.movement?.loadedRegions != null && x < client.player.movement.loadedRegions.GetLength(0) && y < client.player.movement.loadedRegions.GetLength(1))
+            if (BindingEpochReader == null || CommittedBindingReader == null)
             {
-                var lr = client.player.movement.loadedRegions[x, y];
-                if (lr != null) lr.isItemsLoaded = false;
+                if (client?.player?.movement?.loadedRegions != null
+                    && x < client.player.movement.loadedRegions.GetLength(0)
+                    && y < client.player.movement.loadedRegions.GetLength(1))
+                    clearLoaded(client, x, y);
+                return client == null ? ItemGuestAdmission.Waiting : ItemGuestAdmission.Accepted;
             }
+            ItemCommittedBinding committed = CommittedBindingReader(observerId);
+            ItemGuestAdmission admission = ItemGuestBindingAdmission.Evaluate(
+                request, client, client?.transportConnection, committed);
+            if (admission != ItemGuestAdmission.Accepted) return admission;
+            clearLoaded(client, x, y);
+            return ItemGuestAdmission.Accepted;
         }
 
         private static void CancelOwnedPending(byte x, byte y, uint instanceId)

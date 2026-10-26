@@ -999,6 +999,16 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
                         Deadline = state.Clock + state.Policy.HysteresisSeconds
                     };
                 }
+                if (disposition == EObserverReplicationFailureDisposition.Rejected)
+                {
+                    AcquireRetryKey rejectedKey = TransactionKey(region, observerId, connectionToken);
+                    if (state.AcquireRetries.TryGetValue(rejectedKey, out AcquireRetry rejectedRetry))
+                    {
+                        state.AcquireRetries.Remove(rejectedKey);
+                        compensations.Add(() => state.AcquireRetries[rejectedKey] = rejectedRetry);
+                    }
+                    return;
+                }
                 if (disposition != EObserverReplicationFailureDisposition.Retry) return;
                 EDomainFailureKind kind = state.Port.ClassifyRegionFailure(ex);
                 ScheduleAcquireRetry(state, region, observerId, connectionToken,

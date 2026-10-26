@@ -35,6 +35,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Infrastructure\RegisteredTestExecution.cs" />
     <!-- Stage 7-2-2 钃濆浘 搂3锛氫粎寮曠敤缂栬瘧鍑虹殑鎻掍欢鍜岀幇鏈?Libs锛屼笉鐢熸垚/鍐欏叆浠讳綍娓告垙鎴栧瓨妗ｆ枃浠?-->
     <!-- 浣跨敤 DLL 寮曠敤锛圫teamP2PFriends.csproj 鐨?ProjectGuid 鍘嗗彶鏍煎紡闂涓嶄慨鏀癸級 -->
     <!-- Private=True 璁?CLR 鍔犺浇 SteamP2PFriends.dll 鏃惰兘瑙ｆ瀽鎵€鏈変紶閫掍緷璧?-->

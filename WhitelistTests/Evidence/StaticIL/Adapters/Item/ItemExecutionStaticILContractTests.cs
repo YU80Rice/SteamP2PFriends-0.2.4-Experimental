@@ -35,14 +35,20 @@ namespace SteamP2PFriends.WhitelistTests
             MethodInfo find = bridge.GetMethod("FindClient", BindingFlags.Static | BindingFlags.NonPublic);
             MethodInfo bind = bridge.GetMethod("BindGuestBaseline");
             MethodInfo unbind = bridge.GetMethod("UnbindGuestBaseline");
-            if (find == null || bind == null || unbind == null) return false;
-            int bindLookups = IlContractProbe.CountMethodCalls(bind, bridge.FullName, "FindClient");
-            int unbindLookups = IlContractProbe.CountMethodCalls(unbind, bridge.FullName, "FindClient");
+            MethodInfo bindCore = bridge.GetMethod("BindGuestBaselineCore", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo unbindCore = bridge.GetMethod("UnbindGuestBaselineCore", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (find == null || bind == null || unbind == null || bindCore == null || unbindCore == null) return false;
+            int bindLookups = IlContractProbe.CountMethodCalls(bindCore, bridge.FullName, "FindClient");
+            int unbindLookups = IlContractProbe.CountMethodCalls(unbindCore, bridge.FullName, "FindClient");
+            int coreCalls = IlContractProbe.CountMethodCalls(bind, bridge.FullName, "BindGuestBaselineCore")
+                + IlContractProbe.CountMethodCalls(unbind, bridge.FullName, "UnbindGuestBaselineCore");
             int handlers = find.GetMethodBody().ExceptionHandlingClauses.Count
                 + bind.GetMethodBody().ExceptionHandlingClauses.Count
-                + unbind.GetMethodBody().ExceptionHandlingClauses.Count;
-            Console.WriteLine($"NIL03 FindClient calls bind={bindLookups}, unbind={unbindLookups}; exception handlers={handlers}");
-            return bindLookups == 1 && unbindLookups == 1 && handlers == 0;
+                + unbind.GetMethodBody().ExceptionHandlingClauses.Count
+                + bindCore.GetMethodBody().ExceptionHandlingClauses.Count
+                + unbindCore.GetMethodBody().ExceptionHandlingClauses.Count;
+            Console.WriteLine($"NIL03 core FindClient calls bind={bindLookups}, unbind={unbindLookups}; wrappers={coreCalls}; handlers={handlers}");
+            return bindLookups == 1 && unbindLookups == 1 && coreCalls == 2 && handlers == 0;
         }
 
         internal static bool Test_All()
@@ -54,6 +60,7 @@ namespace SteamP2PFriends.WhitelistTests
                 && Test_ReceiptDomain()
                 && Test_ProductionCoordinatorWiresItemDemandAndLifecycle()
                 && Test_NativeActionInvocationsAndPreparationGate()
+                && Test_GuestBindingAdmissionWiring()
                 && Test_CoordinatorCallsNativeBridgeAndPreparationChain()
                 && Test_DirectConstructionAndRegistrationEvolutionContract()
                 && Test_SessionBoundaryRetiresLegacyItemWriter();
@@ -128,6 +135,41 @@ namespace SteamP2PFriends.WhitelistTests
             return itemPolicyField != null && itemPrepField != null && itemPortField != null && itemSeamField != null;
         }
 
+        internal static bool Test_GuestBindingAdmissionWiring()
+        {
+            Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
+            Type coordinator = assembly.GetType("SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator");
+            Type bridge = assembly.GetType(Namespace + ".DefaultNativeItemWarehouseBridge");
+            Type seam = assembly.GetType(Namespace + ".ItemProductionControlSeam");
+            MethodInfo snapshot = coordinator?.GetMethod("ReadCommittedItemBinding", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo epoch = coordinator?.GetMethod("ReadCurrentItemBindingEpoch", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo configure = seam?.GetMethod("ConfigureGuestBindingBridge", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo bindCore = bridge?.GetMethod("BindGuestBaselineCore", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo unbindCore = bridge?.GetMethod("UnbindGuestBaselineCore", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo productionConfigure = coordinator?.GetMethod("ConfigureItemControlPlane", BindingFlags.Static | BindingFlags.NonPublic);
+            if (snapshot == null || epoch == null || configure == null || bindCore == null
+                || unbindCore == null || productionConfigure == null) return false;
+            int readerUsesCommittedConnection = IlContractProbe.CountMethodCalls(snapshot,
+                coordinator.FullName, "TryReadCommittedItemConnection");
+            ConstructorInfo productionConstructor = seam.GetConstructors().SingleOrDefault();
+            int productionReaders = productionConstructor == null ? 0
+                : IlContractProbe.CountMethodCalls(productionConstructor,
+                    coordinator.FullName, "ReadCurrentItemBindingEpoch")
+                  + IlContractProbe.CountMethodCalls(productionConstructor,
+                    coordinator.FullName, "ReadCommittedItemBinding");
+            int coreEvaluate = IlContractProbe.CountMethodCalls(bindCore,
+                Namespace + ".ItemGuestBindingAdmission", "Evaluate")
+                + IlContractProbe.CountMethodCalls(unbindCore,
+                    Namespace + ".ItemGuestBindingAdmission", "Evaluate");
+            bool constructorWired = IlContractProbe.CountMethodCalls(productionConfigure, Namespace + ".ItemProductionControlSeam", ".ctor") == 1;
+            return readerUsesCommittedConnection == 1 && productionReaders == 2
+                && constructorWired
+                && coreEvaluate == 2
+                && IlContractProbe.CountMethodCalls(bindCore,
+                    "SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter",
+                    "DispatchCandidateGuestAskItems") == 1;
+        }
+
         internal static bool Test_NativeActionInvocationsAndPreparationGate()
         {
             Assembly assembly = typeof(SteamP2PFriendsPlugin).Assembly;
@@ -157,11 +199,16 @@ namespace SteamP2PFriends.WhitelistTests
                 assembly, "SteamP2PFriends.Adapters.Item.INativeItemWarehouseBridge", "BindGuestBaseline");
             MethodInfo bind = assembly.GetType("SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge")
                 ?.GetMethod("BindGuestBaseline");
+            MethodInfo bindCore = assembly.GetType("SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge")
+                ?.GetMethod("BindGuestBaselineCore", BindingFlags.Instance | BindingFlags.NonPublic);
             int dispatchCalls = bind == null ? 0 : IlContractProbe.CountMethodCalls(
-                bind,
+                bindCore,
                 "SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter",
                 "DispatchCandidateGuestAskItems");
-            return prepCalls > 0 && hostPresentCalls > 0 && guestBindCalls > 0 && dispatchCalls >= 1;
+            int coreRoute = bind == null ? 0 : IlContractProbe.CountMethodCalls(bind,
+                "SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge", "BindGuestBaselineCore");
+            return prepCalls > 0 && hostPresentCalls > 0 && guestBindCalls > 0
+                && coreRoute == 1 && dispatchCalls == 1;
         }
 
         internal static bool Test_DirectConstructionAndRegistrationEvolutionContract()

@@ -1,4 +1,5 @@
 using SDG.Unturned;
+using SDG.NetTransport;
 using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.MultiObserver.Demand;
@@ -12,6 +13,459 @@ namespace SteamP2PFriends.WhitelistTests
 {
     internal static class ItemPreparationAndFirstDemandTests
     {
+        private sealed class Gba01Scenario
+        {
+            public float Now = 1f;
+            public bool OriginalRan = true;
+            public int Sends, LoadedCalls, ExhaustionNotices;
+            public bool LastPossibleHalfPacket;
+            public readonly List<SteamPlayer> LoadedPlayers = new List<SteamPlayer>();
+        }
+
+        internal static bool Test_GBA01_NativeFirstObserveBindingAdmission()
+        {
+            const ulong observerId = 76561198000000001UL;
+            var region = new RegionKey(0, 0);
+            var scenario = new Gba01Scenario();
+            var diagnostics = new List<string>();
+            var bridge = new DefaultNativeItemWarehouseBridge();
+            var providerClients = typeof(Provider).GetField("_clients",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            object originalClients = providerClients?.GetValue(null);
+            object ledger = typeof(SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator)
+                .GetField("Ledger", System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.NonPublic)?.GetValue(null);
+            ItemCycleThresholds priorThresholds = ItemCycleThresholds.Override;
+            try
+            {
+                Console.WriteLine("GBA01 begin real SteamPlayer and transport fixture");
+                var owner = (SteamPlayer)System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(typeof(SteamPlayer));
+                var playerId = new SteamPlayerID(new Steamworks.CSteamID(observerId), 0,
+                    "GBA01", "GBA01", "GBA01", new Steamworks.CSteamID(0UL));
+                var idField = typeof(SteamPlayer).GetField("_playerID",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                idField?.SetValue(owner, playerId);
+                var transportAssembly = typeof(SteamPlayer).Assembly;
+                Type[] transportTypes = transportAssembly.GetTypes();
+                Type transportType = Array.Find(transportTypes, type => type.Name ==
+                    "TransportConnection_SteamNetworkingSockets");
+                if (transportType == null) throw new MissingMemberException(
+                    "GBA01 SteamNetworking transport type missing from " + transportAssembly.FullName);
+                if (!typeof(ITransportConnection).IsAssignableFrom(transportType))
+                    throw new InvalidCastException("GBA01 transport type is not the real interface implementation: "
+                        + transportType.AssemblyQualifiedName);
+                Console.WriteLine("GBA01 transport type=" + transportType.AssemblyQualifiedName);
+                object transport = System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(transportType);
+                System.Reflection.FieldInfo transportField = null;
+                for (Type type = typeof(SteamPlayer); type != null && transportField == null; type = type.BaseType)
+                    foreach (var field in type.GetFields(System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.DeclaredOnly))
+                        if (field.FieldType.IsAssignableFrom(transportType)) transportField = field;
+                if (providerClients == null || idField == null || transportField == null)
+                    throw new MissingMemberException("GBA01 real client identity/transport member missing");
+                transportField.SetValue(owner, transport);
+                if (!object.ReferenceEquals(owner.transportConnection, transport))
+                    throw new InvalidOperationException("GBA01 transport readback differs");
+                providerClients.SetValue(null, new List<SteamPlayer> { owner });
+                var warehouse = new TestNativeItemWarehouseBridge();
+                var preparation = new ItemPreparationAuthority(warehouse);
+                var metadata = new ItemMetadataStore();
+                var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+                var policy = ItemDemandPolicy.Create(1, 1);
+                projection.Register(policy);
+                var port = new ItemExecutionPort(preparation, metadata, _ => 1U,
+                    ItemLifecyclePolicy.Create(), () => scenario.Now, diagnostics.Add,
+                    _ => false,
+                    guestBaselineBinder: (id, token, key) => bridge.BindGuestBaseline(
+                        id, token, (byte)key.X, (byte)key.Y));
+                var seam = new ItemProductionControlSeam(
+                    preparation, metadata, port, projection, policy, 0f);
+                seam.ConfigureGuestBindingBridge(bridge,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ReadCurrentItemBindingEpoch,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ReadCommittedItemBinding,
+                    (connection, x, y) => () =>
+                    {
+                        scenario.Sends++;
+                        ItemObserverReplicationAdapter.NoteAskItemsOriginalRan(scenario.OriginalRan);
+                    },
+                    (client, x, y) => { scenario.LoadedCalls++; scenario.LoadedPlayers.Add(client); });
+                seam.RecoveryExhausted = (id, connection, key, half) =>
+                {
+                    scenario.ExhaustionNotices++;
+                    scenario.LastPossibleHalfPacket = half;
+                };
+                if (ledger == null || !(bool)ledger.GetType().GetMethod("BeginSession",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .Invoke(ledger, new object[] { "GBA01-native" }))
+                    throw new InvalidOperationException("GBA01 ledger session did not begin");
+                ulong epochValue = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.SessionEpoch;
+                var epoch = new SessionEpoch(epochValue);
+                if (!SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .TrySelectItemAuthorityWriter(epochValue, "GBA01-native"))
+                    throw new InvalidOperationException("GBA01 item writer selection failed");
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .BindItemAuthorityProduction(seam, preparation);
+                preparation.BindCoreSession(epoch, "GBA01-native");
+                seam.BeginSession(epoch);
+                port.OnSessionBegin(checked((uint)epochValue));
+                for (uint itemId = 1; itemId <= 12; itemId++)
+                    warehouse.GenerateNaturalItem(0, 0, CreateTestItemData(itemId, false, 0f));
+                if (!preparation.PrepareFullMap(epoch, "GBA01-native", 1))
+                    throw new InvalidOperationException("GBA01 fake warehouse preparation failed");
+                var staged = new Dictionary<ulong,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity>();
+                ulong nextToken = (ulong)typeof(SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator)
+                    .GetField("_nextConnectionToken", System.Reflection.BindingFlags.Static
+                        | System.Reflection.BindingFlags.NonPublic).GetValue(null);
+                if (!SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .TryGetStagedConnectionToken(observerId, owner, transport, staged,
+                        ref nextToken, out ulong token, out string failure))
+                    throw new InvalidOperationException("GBA01 identity stage failed: " + failure);
+                var capture = new SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CaptureResult
+                    { StagedConnections = staged, StagedNextConnectionToken = nextToken };
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .CommitConnectionIdentities(capture, new HashSet<ulong>());
+                if (!SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .TryReadCommittedItemConnection(observerId, out object committedOwner,
+                        out object committedTransport, out ulong committedToken)
+                    || !object.ReferenceEquals(committedOwner, owner)
+                    || !object.ReferenceEquals(committedTransport, transport)
+                    || committedToken != token)
+                    throw new InvalidOperationException("GBA01 committed physical identity readback failed");
+                var savedIdentity = staged[observerId];
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CommitConnectionIdentities(
+                    new SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CaptureResult
+                    { StagedConnections = new Dictionary<ulong,
+                        SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity>(),
+                      StagedNextConnectionToken = nextToken }, new HashSet<ulong>());
+                var realReaderWaiting = bridge.ReadGuestAdmission(observerId, token, 0, 0)
+                    == ItemGuestAdmission.Waiting;
+                var restoredIdentity = new Dictionary<ulong,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity>
+                    { [observerId] = savedIdentity };
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CommitConnectionIdentities(
+                    new SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CaptureResult
+                    { StagedConnections = restoredIdentity,
+                      StagedNextConnectionToken = nextToken }, new HashSet<ulong>());
+                var realReaderAccepted = bridge.ReadGuestAdmission(observerId, token, 0, 0)
+                    == ItemGuestAdmission.Accepted;
+                seam.UpdateObserver(observerId, token, 0, 0, true);
+                bool accepted = realReaderWaiting && realReaderAccepted && scenario.Sends == 1
+                    && scenario.LoadedCalls == 1 && !seam.IsRegionIsolated(region);
+                var ownerB = (SteamPlayer)System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(typeof(SteamPlayer));
+                idField.SetValue(ownerB, playerId);
+                object transportB = System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(transportType);
+                transportField.SetValue(ownerB, transportB);
+                providerClients.SetValue(null, new List<SteamPlayer> { ownerB });
+                var stagedB = new Dictionary<ulong,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ConnectionIdentity>();
+                ulong nextB = (ulong)typeof(SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator)
+                    .GetField("_nextConnectionToken", System.Reflection.BindingFlags.Static
+                        | System.Reflection.BindingFlags.NonPublic).GetValue(null);
+                if (!SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .TryGetStagedConnectionToken(observerId, ownerB, transportB, stagedB,
+                        ref nextB, out ulong tokenB, out string failureB))
+                    throw new InvalidOperationException("GBA01 reconnect stage failed: " + failureB);
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CommitConnectionIdentities(
+                    new SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.CaptureResult
+                    { StagedConnections = stagedB, StagedNextConnectionToken = nextB }, new HashSet<ulong>());
+                seam.UpdateObserver(observerId, tokenB, 0, 0, true);
+                bool reboundB = tokenB != 0UL && tokenB != token && scenario.Sends == 2
+                    && scenario.LoadedCalls == 2 && scenario.LoadedPlayers[1] == ownerB;
+                int clearsB = 0;
+                bool oldUnbindRejected = bridge.UnbindGuestBaselineCore(observerId, token, 0, 0,
+                    (client, x, y) => { if (object.ReferenceEquals(client, ownerB)) clearsB++; })
+                    == ItemGuestAdmission.Rejected && clearsB == 0 && reboundB;
+                int demandBeforeStaleDisconnect = seam.GetDemand(region);
+                var core = typeof(SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator);
+                core.GetMethod("OnItemObserverDisconnected", System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.NonPublic).Invoke(null,
+                    new object[] { observerId, owner, transport });
+                bool staleDisconnectKeptB = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .TryReadCommittedItemConnection(observerId, out object currentOwner,
+                        out object currentTransport, out ulong currentToken)
+                    && object.ReferenceEquals(currentOwner, ownerB)
+                    && object.ReferenceEquals(currentTransport, transportB) && currentToken == tokenB
+                    && seam.TryGetConnectionGeneration(observerId, out ulong domainTokenB)
+                    && domainTokenB == tokenB && seam.GetDemand(region) == demandBeforeStaleDisconnect
+                    && scenario.LoadedPlayers[1] == ownerB;
+                var settlement = (ItemReturnSettlement)typeof(ItemProductionControlSeam).GetField("_settlement",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .GetValue(seam);
+                ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 99f, 0f, true);
+                settlement.Note(region, 0);
+                settlement.RegisterPending(region, observerId, tokenB, false);
+                settlement.Note(region, 1);
+                settlement.CommitPending();
+                int sendsBeforeFault = scenario.Sends;
+                int loadedBeforeFault = scenario.LoadedCalls;
+                scenario.OriginalRan = false;
+                for (int step = 0; step < 24 && scenario.Sends == sendsBeforeFault; step++)
+                {
+                    scenario.Now += 0.5f;
+                    seam.Tick(0.5f);
+                }
+                bool confirmedNotSent = scenario.Sends == sendsBeforeFault + 1
+                    && scenario.LoadedCalls == loadedBeforeFault && !seam.IsRegionIsolated(region);
+                var retryController = typeof(ItemReturnSettlement).GetField("_retries",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .GetValue(settlement);
+                var chains = (System.Collections.IDictionary)retryController.GetType().GetField("_chains",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .GetValue(retryController);
+                string deliveryRetryKey = null; object chain = null;
+                foreach (System.Collections.DictionaryEntry entry in chains)
+                { deliveryRetryKey = (string)entry.Key; chain = entry.Value; }
+                if (chains.Count != 1 || chain == null)
+                    throw new InvalidOperationException("GBA01 expected one real delivery retry chain");
+                var chainType = chain.GetType();
+                float firstFaultAt = (float)chainType.GetField("FirstFaultAt",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(chain);
+                int retriesStarted = (int)chainType.GetField("RetriesStarted",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(chain);
+                var deliveries = (System.Collections.IDictionary)typeof(ItemReturnSettlement)
+                    .GetField("_deliveries", System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic).GetValue(settlement);
+                object delivery = null;
+                foreach (System.Collections.DictionaryEntry entry in deliveries) delivery = entry.Value;
+                int attemptId = (int)delivery.GetType().GetField("AttemptId",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic).GetValue(delivery);
+                int waitingSends = scenario.Sends;
+                providerClients.SetValue(null, new List<SteamPlayer>());
+                bool realWaiting = bridge.ReadGuestAdmission(observerId, tokenB, 0, 0)
+                    == ItemGuestAdmission.Waiting;
+                scenario.Now += 11f;
+                seam.Tick(0f);
+                int noticesWhileWaiting = scenario.ExhaustionNotices;
+                bool waitingDeliveryRetained = settlement.BlocksConsumption(observerId, tokenB, region);
+                bool faultBudgetPreserved = retryController.GetType().GetMethod("IsExhausted")
+                    .Invoke(retryController, new object[] { deliveryRetryKey }).Equals(true)
+                    && (float)chainType.GetField("FirstFaultAt",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        .GetValue(chain) == firstFaultAt
+                    && (int)chainType.GetField("RetriesStarted",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        .GetValue(chain) == retriesStarted
+                    && (int)delivery.GetType().GetField("AttemptId",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic)
+                        .GetValue(delivery) == attemptId;
+                providerClients.SetValue(null, new List<SteamPlayer> { ownerB });
+                scenario.OriginalRan = true;
+                bool restoredAccepted = bridge.ReadGuestAdmission(observerId, tokenB, 0, 0)
+                    == ItemGuestAdmission.Accepted;
+                seam.Tick(0f);
+                bool exhaustedAcceptedNotifiedOnce = scenario.ExhaustionNotices == 1
+                    && !scenario.LastPossibleHalfPacket && scenario.Sends == waitingSends
+                    && scenario.LoadedCalls == loadedBeforeFault;
+                bool manualRecoveryStarted = seam.TryManualRecovery(observerId, tokenB, region);
+                seam.Tick(0f);
+                bool manualRecoverySucceeded = manualRecoveryStarted
+                    && scenario.Sends == waitingSends + 1 && scenario.LoadedCalls == loadedBeforeFault + 1;
+                int sendsBeforeRejections = scenario.Sends;
+                int loadedBeforeRejections = scenario.LoadedCalls;
+                bool rejectedToken = ThrowsAdmission(
+                    () => bridge.BindGuestBaseline(observerId, tokenB + 1, 0, 0), ItemGuestAdmission.Rejected);
+                bridge.BindingEpochReader = () => epochValue + 1;
+                bool rejectedEpoch = ThrowsAdmission(
+                    () => bridge.BindGuestBaseline(observerId, tokenB, 0, 0), ItemGuestAdmission.Rejected);
+                bridge.BindingEpochReader = SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .ReadCurrentItemBindingEpoch;
+                object alteredTransport = System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(transportType);
+                transportField.SetValue(ownerB, alteredTransport);
+                bool rejectedTransport = ThrowsAdmission(
+                    () => bridge.BindGuestBaseline(observerId, tokenB, 0, 0), ItemGuestAdmission.Rejected);
+                transportField.SetValue(ownerB, transportB);
+                var otherOwner = (SteamPlayer)System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(typeof(SteamPlayer));
+                idField.SetValue(otherOwner, playerId);
+                transportField.SetValue(otherOwner, System.Runtime.Serialization.FormatterServices
+                    .GetUninitializedObject(transportType));
+                providerClients.SetValue(null, new List<SteamPlayer> { otherOwner });
+                bool rejectedOwner = ThrowsAdmission(
+                    () => bridge.BindGuestBaseline(observerId, tokenB, 0, 0), ItemGuestAdmission.Rejected);
+                providerClients.SetValue(null, new List<SteamPlayer> { ownerB });
+                bool rejectedWithoutSideEffects = scenario.Sends == sendsBeforeRejections
+                    && scenario.LoadedCalls == loadedBeforeRejections
+                    && !seam.IsRegionIsolated(region);
+                var engine = typeof(ItemProductionControlSeam).GetField("_engine",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .GetValue(seam);
+                int retriesBeforeRejectedObserve = (int)engine.GetType().GetMethod("PendingAcquireRetryCount")
+                    .Invoke(engine, new object[] { DomainIds.Item });
+                seam.UpdateObserver(observerId, tokenB + 1UL, 0, 0, true);
+                int retriesAfterRejectedObserve = (int)engine.GetType().GetMethod("PendingAcquireRetryCount")
+                    .Invoke(engine, new object[] { DomainIds.Item });
+                bool rejectedObserveNoRetry = retriesAfterRejectedObserve <= retriesBeforeRejectedObserve
+                    && scenario.Sends == sendsBeforeRejections
+                    && scenario.LoadedCalls == loadedBeforeRejections;
+                bool faultWaitingContract = confirmedNotSent && realWaiting && waitingDeliveryRetained
+                    && faultBudgetPreserved && noticesWhileWaiting == 0 && restoredAccepted && exhaustedAcceptedNotifiedOnce
+                    && manualRecoverySucceeded;
+                bool identityRejections = rejectedToken && rejectedEpoch && rejectedTransport
+                    && rejectedOwner && oldUnbindRejected && staleDisconnectKeptB && rejectedWithoutSideEffects
+                    && rejectedObserveNoRetry;
+                Console.WriteLine("GBA01 result sends=" + scenario.Sends + " loaded=" + scenario.LoadedCalls
+                    + " isolated=" + seam.IsRegionIsolated(region) + " accepted=" + accepted
+                    + " faultWaiting=" + faultWaitingContract + " noticesWhileWaiting=" + noticesWhileWaiting
+                    + " confirmedNotSent=" + confirmedNotSent + " realWaiting=" + realWaiting
+                    + " retained=" + waitingDeliveryRetained + " budgetPreserved=" + faultBudgetPreserved
+                    + " retryKey=" + deliveryRetryKey + " firstFaultAt=" + firstFaultAt
+                    + " retriesStarted=" + retriesStarted + " attemptId=" + attemptId + " restored=" + restoredAccepted
+                    + " acceptedNotice=" + exhaustedAcceptedNotifiedOnce + " manual=" + manualRecoverySucceeded
+                    + " demand=" + seam.DemandRegionCount + " leases=" + seam.ActiveLeaseCount
+                    + " acquire=" + port.LastAcquireDetail + " replication=" + port.LastReplicationDetail
+                    + " diagnostics=" + string.Join(" || ", diagnostics));
+                return accepted && identityRejections && faultWaitingContract;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("GBA01 failed: " + ex);
+                return false;
+            }
+            finally
+            {
+                ItemCycleThresholds.Override = priorThresholds;
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.EndItemAuthoritySession();
+                SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator
+                    .BindItemAuthorityProduction(null, null);
+                ledger?.GetType().GetMethod("EndSession",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(ledger, null);
+                var identities = typeof(SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator)
+                    .GetField("Connections", System.Reflection.BindingFlags.Static
+                        | System.Reflection.BindingFlags.NonPublic)?.GetValue(null) as System.Collections.IDictionary;
+                identities?.Remove(observerId);
+                providerClients?.SetValue(null, originalClients);
+            }
+        }
+
+        private static bool ThrowsAdmission(System.Action action, ItemGuestAdmission expected)
+        {
+            try { action(); }
+            catch (ItemGuestBindingAdmissionException ex) { return ex.Admission == expected; }
+            return false;
+        }
+
+        internal static bool Test_GBA02_AdmissionRequiresSameCommittedPhysicalIdentity()
+        {
+            var owner = new object();
+            var transport = new object();
+            var request = new ItemGuestBindingRequest(5UL, 11UL, 23UL, 1, 2);
+            var committed = new ItemCommittedBinding(true, true, 5UL, 23UL, owner, transport);
+            var waiting = new ItemCommittedBinding(true, false, 5UL, 0UL, null, null);
+            var inactive = new ItemCommittedBinding(false, true, 5UL, 23UL, owner, transport);
+            bool accepted = ItemGuestBindingAdmission.Evaluate(request, owner, transport, committed)
+                == ItemGuestAdmission.Accepted;
+            bool waitingForSnapshot = ItemGuestBindingAdmission.Evaluate(
+                request, owner, transport, waiting) == ItemGuestAdmission.Waiting;
+            bool waitingForNativeObject = ItemGuestBindingAdmission.Evaluate(
+                request, null, transport, committed) == ItemGuestAdmission.Waiting;
+            bool tokenRejected = ItemGuestBindingAdmission.Evaluate(request, owner, transport,
+                new ItemCommittedBinding(true, true, 5UL, 24UL, owner, transport))
+                == ItemGuestAdmission.Rejected;
+            bool ownerRejected = ItemGuestBindingAdmission.Evaluate(request, new object(), transport,
+                committed) == ItemGuestAdmission.Rejected;
+            bool transportRejected = ItemGuestBindingAdmission.Evaluate(request, owner, new object(),
+                committed) == ItemGuestAdmission.Rejected;
+            bool epochRejected = ItemGuestBindingAdmission.Evaluate(
+                new ItemGuestBindingRequest(6UL, 11UL, 23UL, 1, 2), owner, transport, committed)
+                == ItemGuestAdmission.Rejected;
+            bool inactiveRejected = ItemGuestBindingAdmission.Evaluate(
+                request, owner, transport, inactive) == ItemGuestAdmission.Rejected;
+            return accepted && waitingForSnapshot && waitingForNativeObject && tokenRejected
+                && ownerRejected && transportRejected && epochRejected && inactiveRejected;
+        }
+
+        internal static bool Test_GBA03_AdmissionWaitDoesNotChangeFaultDeadlineOrBudget()
+        {
+            var retries = new SteamP2PFriends.MultiObserver.Lifecycle.FailedRetryController(
+                new SteamP2PFriends.MultiObserver.Lifecycle.RetrySchedule(1f, 10f, 1, 1, 10f));
+            retries.ReportActualFault("delivery", 1, 0f);
+            bool missingNotCreated = !retries.RefreshExhaustion("missing", 100f);
+            bool beforeDeadline = !retries.RefreshExhaustion("delivery", 9.99f);
+            bool scheduleUnchanged = !retries.TryClaimAttempt("delivery", 0.5f);
+            bool firstAttemptClaimed = retries.TryClaimAttempt("delivery", 1f);
+            retries.RetryFailed("delivery", 1.1f);
+            bool retryLimitRefreshed = retries.RefreshExhaustion("delivery", 1.2f)
+                && retries.IsExhausted("delivery");
+            var deadline = new SteamP2PFriends.MultiObserver.Lifecycle.FailedRetryController(
+                new SteamP2PFriends.MultiObserver.Lifecycle.RetrySchedule(1f, 10f, 4, 4, 10f));
+            deadline.ReportActualFault("deadline", 1, 3f);
+            bool timeoutRespected = !deadline.RefreshExhaustion("deadline", 12.99f)
+                && deadline.RefreshExhaustion("deadline", 13f);
+            return missingNotCreated && beforeDeadline && scheduleUnchanged
+                && firstAttemptClaimed && retryLimitRefreshed && timeoutRespected;
+        }
+
+        internal static bool Test_GBA04_AdmissionMapsToDeferredAndRejectedWithoutHalfPacket()
+        {
+            var diagnostics = new List<string>();
+            var port = new ItemExecutionPort(new ItemPreparationAuthority(
+                    new TestNativeItemWarehouseBridge()), new ItemMetadataStore(), _ => 1U,
+                ItemLifecyclePolicy.Create(), () => 0f, diagnostics.Add);
+            var waiting = new ItemGuestBindingAdmissionException(ItemGuestAdmission.Waiting, "missing");
+            var rejected = new ItemGuestBindingAdmissionException(ItemGuestAdmission.Rejected, "stale");
+            bool waitingMapped = port.ClassifyRegionFailure(waiting)
+                    == EDomainFailureKind.Deferred
+                && port.HandleObserverReplicationFailure(1, 2, new RegionKey(0, 0), waiting)
+                    == EObserverReplicationFailureDisposition.Retry;
+            bool rejectedMapped = port.ClassifyRegionFailure(rejected)
+                    == EDomainFailureKind.Rejected
+                && port.HandleObserverReplicationFailure(1, 2, new RegionKey(0, 0), rejected)
+                    == EObserverReplicationFailureDisposition.Rejected;
+            bool unknownStillFailed = port.ClassifyRegionFailure(
+                new InvalidOperationException("unknown")) == EDomainFailureKind.Failed;
+            return waitingMapped && rejectedMapped && unknownStillFailed && diagnostics.Count == 0;
+        }
+
+        internal static bool Test_GBA08_SettlementWaitRetainsDeliveryUntilAdmission()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var prep = new ItemPreparationAuthority(bridge);
+            for (uint id = 1; id <= 12; id++)
+                bridge.GenerateNaturalItem(0, 0, CreateTestItemData(id, false, 0f));
+            var meta = new ItemMetadataStore();
+            float now = 10f; int calls = 0;
+            var port = new ItemExecutionPort(prep, meta, _ => 1U, CreateTestPolicy(), () => now, null,
+                id => false, null, (id, token, region) =>
+                {
+                    calls++;
+                    if (calls == 2) throw new ItemGuestBindingAdmissionException(
+                        ItemGuestAdmission.Waiting, "fixture-waiting");
+                });
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var policy = ItemDemandPolicy.Create(radius: 0, worldSize: 1); projection.Register(policy);
+            var seam = new ItemProductionControlSeam(prep, meta, port, projection, policy, 2f);
+            seam.BeginSession(new SessionEpoch(101UL));
+            if (!prep.PrepareFullMap(new SessionEpoch(101UL), "MapPEI", 1, meta, 0f)) return false;
+            var settlement = (ItemReturnSettlement)typeof(ItemProductionControlSeam).GetField("_settlement",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(seam);
+            ItemGuestAdmission admission = ItemGuestAdmission.Waiting;
+            settlement.DeliveryAdmission = (observer, token, region) => admission;
+            seam.UpdateObserver(1001UL, 201UL, 0, 0, true); seam.Tick(0f);
+            seam.RemoveObserver(1001UL); seam.Tick(2f); now = 40f;
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 99f, 0f, true);
+            try
+            {
+                seam.UpdateObserver(1001UL, 201UL, 0, 0, true);
+                for (int i = 0; i < 13; i++) { now += 1f; seam.Tick(1f); }
+                bool waitingRetained = calls == 2 && settlement.BlocksConsumption(1001UL, 201UL, new RegionKey(0, 0));
+                admission = ItemGuestAdmission.Accepted;
+                for (int i = 0; i < 3; i++) seam.Tick(0f);
+                return waitingRetained && calls == 3 && !settlement.BlocksConsumption(1001UL, 201UL, new RegionKey(0, 0))
+                    && !settlement.IsIsolated(new RegionKey(0, 0));
+            }
+            finally { ItemCycleThresholds.Override = null; }
+        }
+
         internal static bool Test_NIL00_NativeFixturePreflight()
         {
             Console.WriteLine("NIL00 begin native SteamPlayerID construction");

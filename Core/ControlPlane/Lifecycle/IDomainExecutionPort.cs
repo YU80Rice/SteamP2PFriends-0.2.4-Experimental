@@ -22,7 +22,8 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
     public enum EObserverReplicationFailureDisposition : byte
     {
         Retry = 0,
-        Quarantine = 1
+        Quarantine = 1,
+        Rejected = 2
     }
 
     /// <summary>领域声明观察者复制失败是安全重试还是可能半包，并在隔离分支执行本地处置。</summary>

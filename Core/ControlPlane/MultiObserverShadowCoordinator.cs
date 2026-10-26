@@ -979,6 +979,25 @@ namespace SteamP2PFriends.MultiObserver
             return false;
         }
 
+        internal static ulong ReadCurrentItemBindingEpoch()
+        {
+            if (!_itemWriterOwned || _itemWriterEpoch == 0UL || !Ledger.IsSessionActive
+                || _itemWriterEpoch != Ledger.SessionEpoch
+                || !string.Equals(_itemWriterWorld, Ledger.WorldIdentity, StringComparison.Ordinal)
+                || ItemProduction == null || !ItemProduction.IsSessionActive
+                || ItemProduction.SessionEpoch.Value != _itemWriterEpoch)
+                return 0UL;
+            return _itemWriterEpoch;
+        }
+
+        internal static ItemCommittedBinding ReadCommittedItemBinding(ulong observerId)
+        {
+            ulong epoch = ReadCurrentItemBindingEpoch();
+            bool found = TryReadCommittedItemConnection(observerId,
+                out object owner, out object transport, out ulong token);
+            return new ItemCommittedBinding(epoch != 0UL, found, epoch, token, owner, transport);
+        }
+
         private static void CountNativeLoadedItemRegions(
             PlayerMovement movement,
             out int desiredLoaded,

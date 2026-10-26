@@ -15,10 +15,7 @@ namespace SteamP2PFriends.WhitelistTests
     internal static class Program
     {
         private static EvidenceClass _currentEvidenceClass = EvidenceClass.PureMemory;
-        private static string _runLedgerPath;
-        private static string _productionMvid;
-        private static bool _runtimeDispatchConfigured;
-        private static int _nativeDispatchCount;
+        private static RegisteredTestExecution _registeredExecution;
 
         private static int Main(string[] args)
         {
@@ -153,6 +150,10 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT147 DisconnectRequiresExactCoreOwnerAndTransport", ItemObserverReplicationAdapterTests.Test_IT147_DisconnectRequiresExactCoreOwnerAndTransport, ref total, ref passed, ref failed);
             RunTest("IT149 ProductionDisconnectKeepsReconnectedOwner", ItemObserverReplicationAdapterTests.Test_IT149_ProductionDisconnectKeepsReconnectedOwner, ref total, ref passed, ref failed);
             // 0.2.4.10 C-P2-Item-01: 全图准备与首次到访
+            RunTest("GBA02 Admission Physical Identity", ItemPreparationAndFirstDemandTests.Test_GBA02_AdmissionRequiresSameCommittedPhysicalIdentity, ref total, ref passed, ref failed);
+            RunTest("GBA03 Wait Preserves Failure Budget", ItemPreparationAndFirstDemandTests.Test_GBA03_AdmissionWaitDoesNotChangeFaultDeadlineOrBudget, ref total, ref passed, ref failed);
+            RunTest("GBA04 Admission Failure Classification", ItemPreparationAndFirstDemandTests.Test_GBA04_AdmissionMapsToDeferredAndRejectedWithoutHalfPacket, ref total, ref passed, ref failed);
+            RunTest("GBA01 Native First Observe Binding", ItemPreparationAndFirstDemandTests.Test_GBA01_NativeFirstObserveBindingAdmission, ref total, ref passed, ref failed);
             RunTest("NIL00 Native Fixture Preflight", ItemPreparationAndFirstDemandTests.Test_NIL00_NativeFixturePreflight, ref total, ref passed, ref failed);
             RunTest("NIL04 Real Identity Value and Reference", ItemPreparationAndFirstDemandTests.Test_NIL04_RealIdentityValueAndReferenceSemantics, ref total, ref passed, ref failed);
             RunTest("NIL01 Real Native Lookup Contract", ItemPreparationAndFirstDemandTests.Test_NIL01_RealNativeLookupContract, ref total, ref passed, ref failed);
@@ -765,6 +766,14 @@ namespace SteamP2PFriends.WhitelistTests
             // 0.2.4.10 C-P2-Item-01: Item Execution Port 与 Demand Policy 结构门禁
             RunTest("Item Execution StaticIL", ItemExecutionStaticILContractTests.Test_All,
                 ref total, ref passed, ref failed);
+            RunTest("GBA05 Guest Binding Admission Wiring", ItemExecutionStaticILContractTests.Test_GuestBindingAdmissionWiring,
+                ref total, ref passed, ref failed);
+            RunTest("GBA06 Native Runner Protocol Rejects Invalid Evidence", RegisteredTestExecution.Test_ChildProtocolRejectsInvalidEvidence,
+                ref total, ref passed, ref failed);
+            RunTest("GBA07 Native Runner Pins Routes To Current Module", RegisteredTestExecution.Test_RouteRejectsSameNameFromOtherModule,
+                ref total, ref passed, ref failed);
+            RunTest("GBA08 Settlement Wait Retains Delivery Until Admission", ItemPreparationAndFirstDemandTests.Test_GBA08_SettlementWaitRetainsDeliveryUntilAdmission,
+                ref total, ref passed, ref failed);
             RunTest("NIL02 FindClient Native Null Operators", ItemExecutionStaticILContractTests.Test_NIL02_LookupDoesNotCallNativeNullOperators,
                 ref total, ref passed, ref failed);
             RunTest("NIL03 Bind Unbind Share Lookup", ItemExecutionStaticILContractTests.Test_NIL03_BindAndUnbindShareLookupWithoutCatch,
@@ -836,60 +845,18 @@ namespace SteamP2PFriends.WhitelistTests
 
             Console.WriteLine("\n===============================================================");
             Console.WriteLine($"=== Final Result: {passed}/{total} PASS (Failed: {failed}) ===");
-            bool dispatchComplete = !_runtimeDispatchConfigured || _nativeDispatchCount == 1;
-            Console.WriteLine("=== NIL01 runtime dispatch count: " + _nativeDispatchCount +
-                (_runtimeDispatchConfigured ? " (required: 1) ===" : " (not configured) ==="));
+            bool dispatchComplete = _registeredExecution.ValidateCompleteness();
+            Console.WriteLine("=== native runtime routes: NIL01=" + _registeredExecution.LookupCount +
+                "; GBA01=" + _registeredExecution.BindingCount + (_registeredExecution.Configured
+                    ? " (each required exactly once) ===" : " (not configured) ==="));
             Console.WriteLine("===============================================================");
             return failed == 0 && dispatchComplete ? 0 : 1;
         }
 
         private static void InitializeRunLedger()
         {
-            _runLedgerPath = Environment.GetEnvironmentVariable("SPF_TEST_RUN_LEDGER");
-            string dispatch = Environment.GetEnvironmentVariable("SPF_NIL01_DISPATCH");
-            _runtimeDispatchConfigured = !string.IsNullOrWhiteSpace(dispatch);
-            if (_runtimeDispatchConfigured && dispatch != "CoreCLR10.0.9-x86")
-                throw new InvalidOperationException("Unknown NIL01 dispatch mode: " + dispatch);
-            if (!string.IsNullOrWhiteSpace(_runLedgerPath) && !_runtimeDispatchConfigured)
-                throw new InvalidOperationException("A formal run ledger requires explicit NIL01 runtime dispatch.");
-            if (string.IsNullOrWhiteSpace(_runLedgerPath)) return;
-            Assembly production = Assembly.Load(new AssemblyName("SteamP2PFriends"));
-            _productionMvid = production.ManifestModule.ModuleVersionId.ToString();
-            Console.WriteLine("RUN_CANDIDATE production=" + production.Location + "; productionMvid=" + _productionMvid +
-                "; tests=" + typeof(Program).Assembly.Location + "; testsMvid=" + typeof(Program).Assembly.ManifestModule.ModuleVersionId);
-            File.WriteAllText(_runLedgerPath,
-                "ordinal\tevidenceClass\tregisteredName\tcallback\ttestPath\ttestMvid\tproductionPath\tproductionMvid\tlocalRuntime\tlocalArch\texecutionMode\tresult\tdetail\tchildExit\tstarted\tended\tchildStdout\tchildStderr" + Environment.NewLine,
-                new System.Text.UTF8Encoding(false));
-        }
-
-        private static void AppendRunLedger(int ordinal, string name, Func<bool> test, string mode,
-            string outcome, string detail, string childExit, DateTimeOffset started, DateTimeOffset ended,
-            string childOut, string childErr)
-        {
-            if (string.IsNullOrWhiteSpace(_runLedgerPath)) return;
-            MethodInfo method = test.Method;
-            string callback = method.DeclaringType?.FullName + "." + method.Name + "#0x" + method.MetadataToken.ToString("X8") +
-                ";target=" + (test.Target == null ? "null" : test.Target.GetType().FullName);
-            Assembly production = Assembly.Load(new AssemblyName("SteamP2PFriends"));
-            string[] fields = { ordinal.ToString(), _currentEvidenceClass.ToString(), name, callback,
-                method.Module.Assembly.Location, method.Module.ModuleVersionId.ToString(), production.Location, _productionMvid,
-                Environment.Version.ToString(), Environment.Is64BitProcess ? "x64" : "x86", mode,
-                outcome, detail, childExit, started.ToString("o"), ended.ToString("o"), childOut, childErr };
-            for (int i = 0; i < fields.Length; i++) fields[i] = EscapeLedgerField(fields[i]);
-            File.AppendAllText(_runLedgerPath, string.Join("\t", fields) + Environment.NewLine,
-                new System.Text.UTF8Encoding(false));
-        }
-
-        private static string RequiredEnvironment(string name)
-        {
-            string value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(value)) throw new InvalidOperationException("Required NIL01 dispatch value is missing: " + name);
-            return value;
-        }
-
-        private static string EscapeLedgerField(string value)
-        {
-            return (value ?? "").Replace("\\", "\\\\").Replace("\t", "\\t").Replace("\r", "\\r").Replace("\n", "\\n");
+            _registeredExecution = new RegisteredTestExecution();
+            _registeredExecution.BeginRun(typeof(Program).Assembly);
         }
 
         /// <summary>
@@ -939,128 +906,37 @@ namespace SteamP2PFriends.WhitelistTests
             };
         }
 
-        private static bool ExecuteNativeLookupChild(MethodInfo method, out string childExit,
-            out string childOut, out string childErr)
-        {
-            childExit = "";
-            string dotnet = RequiredEnvironment("SPF_NIL01_DOTNET");
-            string hostDll = RequiredEnvironment("SPF_NIL01_HOST_DLL");
-            if (string.IsNullOrWhiteSpace(_runLedgerPath)) throw new InvalidOperationException("NIL01 dispatch requires the per-run ledger path.");
-            Assembly production = Assembly.Load(new AssemblyName("SteamP2PFriends"));
-            Type bridge = production.GetType("SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge", true);
-            MethodInfo find = bridge.GetMethod("FindClient", BindingFlags.Static | BindingFlags.NonPublic);
-            if (find == null) throw new MissingMethodException("Current production FindClient method was not loaded.");
-            string productionMvid = production.ManifestModule.ModuleVersionId.ToString();
-            string testsMvid = method.Module.ModuleVersionId.ToString();
-            childOut = _runLedgerPath + ".nil01-child.stdout.txt";
-            childErr = _runLedgerPath + ".nil01-child.stderr.txt";
-            var start = new ProcessStartInfo(dotnet, "\"" + hostDll + "\" lookup")
-            {
-                WorkingDirectory = Path.GetDirectoryName(hostDll), UseShellExecute = false,
-                RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true,
-                StandardOutputEncoding = new System.Text.UTF8Encoding(false),
-                StandardErrorEncoding = new System.Text.UTF8Encoding(false)
-            };
-            start.EnvironmentVariables["SPF_NIL01_EXPECTED_PRODUCTION_MVID"] = productionMvid;
-            start.EnvironmentVariables["SPF_NIL01_EXPECTED_TESTS_MVID"] = testsMvid;
-            start.EnvironmentVariables["SPF_NIL01_EXPECTED_FINDCLIENT_TOKEN"] = "0x" + find.MetadataToken.ToString("X8");
-            string output, error;
-            bool timedOut = false;
-            using (Process process = Process.Start(start))
-            {
-                if (process == null) throw new InvalidOperationException("CoreCLR child process did not start.");
-                Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
-                Task<string> errorTask = process.StandardError.ReadToEndAsync();
-                if (!process.WaitForExit(60000))
-                {
-                    process.Kill(); process.WaitForExit();
-                    timedOut = true;
-                }
-                Task.WaitAll(outputTask, errorTask);
-                childExit = process.ExitCode.ToString(); output = outputTask.Result; error = errorTask.Result;
-            }
-            File.WriteAllText(childOut, output, new System.Text.UTF8Encoding(false));
-            File.WriteAllText(childErr, error, new System.Text.UTF8Encoding(false));
-            Console.WriteLine("NIL01 child stdout=" + childOut); Console.Write(output);
-            if (error.Length != 0) Console.Error.Write(error);
-            if (timedOut) throw new TimeoutException("NIL01 CoreCLR child exceeded 60 seconds.");
-            return ValidateNativeLookupChild(output, childExit, productionMvid, testsMvid, method, find);
-        }
-
-        private static bool ValidateNativeLookupChild(string output, string childExit, string productionMvid,
-            string testsMvid, MethodInfo method, MethodInfo find)
-        {
-            if (childExit != "0") throw new InvalidOperationException("NIL01 CoreCLR child exit was " + childExit + ".");
-            string expected = "NIL01_CHILD_PROTOCOL=1; RESULT=True; RUNTIME=10.0.9; ARCH=x86; PRODUCTION_MVID=" +
-                productionMvid + "; TESTS_MVID=" + testsMvid + "; METHOD=SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.Test_NIL01_RealNativeLookupContract; METHOD_TOKEN=0x" +
-                method.MetadataToken.ToString("X8") + "; TARGET_TOKEN=0x" + find.MetadataToken.ToString("X8");
-            int resultCount = 0, protocolCount = 0;
-            foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                if (line.StartsWith("TEST_RESULT=", StringComparison.Ordinal))
-                { resultCount++; if (line != "TEST_RESULT=True") throw new InvalidOperationException("NIL01 child reported a false or malformed result."); }
-                if (line.StartsWith("NIL01_CHILD_PROTOCOL=", StringComparison.Ordinal))
-                { protocolCount++; if (line != expected) throw new InvalidOperationException("NIL01 child identity/result protocol mismatch: " + line); }
-            }
-            if (resultCount != 1 || protocolCount != 1) throw new InvalidOperationException("NIL01 child omitted or duplicated its result protocol.");
-            return true;
-        }
-
-        private static bool ExecuteRegisteredTest(Func<bool> test, out string mode, out string childExit,
-            out string childOut, out string childErr)
-        {
-            mode = "local";
-            childExit = childOut = childErr = "";
-            string dispatch = Environment.GetEnvironmentVariable("SPF_NIL01_DISPATCH");
-            if (string.IsNullOrWhiteSpace(dispatch)) return test();
-            if (dispatch != "CoreCLR10.0.9-x86") throw new InvalidOperationException("Unknown NIL01 dispatch mode: " + dispatch);
-            if (!IsNativeLookupMethod(test.Method)) return test();
-            if (test.Target != null) throw new InvalidOperationException("NIL01 callback unexpectedly captures a target object.");
-            _nativeDispatchCount++;
-            mode = "CoreCLR-child";
-            return ExecuteNativeLookupChild(test.Method, out childExit, out childOut, out childErr);
-        }
-
-        private static bool IsNativeLookupMethod(MethodInfo method)
-        {
-            return method.IsStatic && method.ReturnType == typeof(bool) && method.GetParameters().Length == 0 &&
-                method.DeclaringType != null &&
-                method.DeclaringType.FullName == "SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests" &&
-                method.Name == "Test_NIL01_RealNativeLookupContract";
-        }
-
         private static void RunTest(string name, Func<bool> test, ref int total, ref int passed, ref int failed)
         {
             total++;
             int ordinal = total;
             DateTimeOffset started = DateTimeOffset.Now;
-            string mode = "Framework-local", childExit = "", childOut = "", childErr = "";
-            string outcome = "EXCEPTION", detail = "";
+            var result = new RegisteredTestExecution.Result();
             try
             {
-                if (ExecuteRegisteredTest(test, out mode, out childExit, out childOut, out childErr))
+                if (_registeredExecution.Execute(test, out result))
                 {
                     passed++;
-                    outcome = "PASS";
+                    result.Outcome = "PASS";
                     Console.WriteLine("  PASS [" + _currentEvidenceClass + "] " + name);
                 }
                 else
                 {
                     failed++;
-                    outcome = "FAIL";
+                    result.Outcome = "FAIL";
                     Console.WriteLine("  FAIL [" + _currentEvidenceClass + "] " + name);
                 }
             }
             catch (Exception ex)
             {
                 failed++;
-                detail = ex.ToString();
+                result.Detail = ex.ToString();
                 Console.WriteLine("  FAIL [" + _currentEvidenceClass + "] " + name + ": " + ex);
             }
             finally
             {
-                AppendRunLedger(ordinal, name, test, mode, outcome, detail, childExit,
-                    started, DateTimeOffset.Now, childOut, childErr);
+                _registeredExecution.AppendResult(ordinal, _currentEvidenceClass, name, test,
+                    result, started, DateTimeOffset.Now);
             }
         }
     }

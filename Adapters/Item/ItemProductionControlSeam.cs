@@ -67,9 +67,9 @@ namespace SteamP2PFriends.Adapters.Item
             _settlement.DiagnosticSink = _executionPort.WriteRecoveryDiagnostic;
             var nativeBridge = _preparationAuthority.Bridge as DefaultNativeItemWarehouseBridge;
             if (nativeBridge != null)
-                nativeBridge.CoreConnectionCurrent = (observer, token) =>
-                    _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
-                    && IsCoreConnectionGenerationCurrent(current, token);
+                ConfigureGuestBindingBridge(nativeBridge,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ReadCurrentItemBindingEpoch,
+                    SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator.ReadCommittedItemBinding);
             _settlement.RecoveryExhausted = (observer, token, region, possibleHalfPacket) =>
                 RecoveryExhausted?.Invoke(observer, token, region, possibleHalfPacket);
             _settlement.RecoveryUnconfirmed = (observer, token, region) =>
@@ -123,6 +123,26 @@ namespace SteamP2PFriends.Adapters.Item
             _admission = ItemSettlementGate.StepFiveAdmission;
             ItemSettlementGate.WasDelivered = (x, y) =>
                 _settlement.WasDelivered(new RegionKey(x, y));
+        }
+
+        internal void ConfigureGuestBindingBridge(DefaultNativeItemWarehouseBridge bridge,
+            Func<ulong> bindingEpochReader = null,
+            Func<ulong, ItemCommittedBinding> committedBindingReader = null,
+            Func<SDG.NetTransport.ITransportConnection, byte, byte, System.Action> sendFactory = null,
+            System.Action<SDG.Unturned.SteamPlayer, byte, byte> loadedProjection = null)
+        {
+            if (bridge == null) throw new ArgumentNullException(nameof(bridge));
+            bridge.BindingEpochReader = bindingEpochReader;
+            bridge.CommittedBindingReader = committedBindingReader;
+            bridge.GuestAskItemsSenderFactory = sendFactory;
+            bridge.GuestLoadedProjection = loadedProjection;
+            _settlement.DeliveryAdmission = bindingEpochReader != null && committedBindingReader != null
+                ? (observer, token, region) => bridge.ReadGuestAdmission(
+                    observer, token, (byte)region.X, (byte)region.Y)
+                : (Func<ulong, ulong, RegionKey, ItemGuestAdmission>)null;
+            bridge.CoreConnectionCurrent = (observer, token) =>
+                _engine.TryGetConnectionGeneration(DomainIds.Item, observer, out ulong current)
+                && IsCoreConnectionGenerationCurrent(current, token);
         }
 
         private ItemStepFiveAdmission BuildAdmission()

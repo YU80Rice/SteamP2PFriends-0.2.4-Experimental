@@ -56,6 +56,15 @@ namespace SteamP2PFriends.MultiObserver.Lifecycle
         public bool IsExhausted(string workKey) =>
             _chains.TryGetValue(workKey, out Chain chain) && chain.Exhausted;
 
+        public bool RefreshExhaustion(string workKey, float now)
+        {
+            if (!_chains.TryGetValue(workKey, out Chain chain) || chain.InFlight) return false;
+            if (chain.Exhausted) return true;
+            if (DeadlineReached(chain, now) || RetryLimitReached(chain))
+                chain.Exhausted = true;
+            return chain.Exhausted;
+        }
+
         public bool RequestManual(string workKey, float now)
         {
             if (!_chains.TryGetValue(workKey, out Chain chain) || !chain.Exhausted) return false;

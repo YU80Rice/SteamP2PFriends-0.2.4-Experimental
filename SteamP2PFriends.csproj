@@ -130,6 +130,7 @@
     <Compile Include="Adapters\Item\ItemMetadataStore.cs" />
     <Compile Include="Adapters\Item\ItemPreparationAuthority.cs" />
     <Compile Include="Adapters\Item\ItemExecutionPort.cs" />
+    <Compile Include="Adapters\Item\ItemGuestBindingAdmission.cs" />
     <Compile Include="Adapters\Item\ItemProductionControlSeam.cs" />
     <Compile Include="Adapters\Item\ItemCycleThresholds.cs" />
     <Compile Include="Adapters\Item\ItemDemandCycle.cs" />
