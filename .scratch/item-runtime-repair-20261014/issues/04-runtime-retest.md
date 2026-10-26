@@ -2,11 +2,21 @@
 
 **What to build:** 在三张源码返修均交付后，提供同一候选 DLL、身份记录和最小游戏内复测步骤；用户只操作游戏及导出 UMM 包，Agent 分析日志，分别判断旧阻断是否消失及原验收哪些项目仍未执行。
 
-**Blocked by:** 本票原生身份查找修复已交付供测试的独立候选；剩余阻塞为用户执行新会话的人工R04并回传各端UMM诊断包。旧1H1G失败历史保持原记录。
+**Blocked by:** 当前GuestBindingAdmission候选已交付；剩余阻塞为用户执行新会话的人工R04并回传各端UMM诊断包。旧1H1G失败历史及之前NativeIdentityLookup候选均保留为历史记录。
 
 **Label:** ready-for-human
 **Status:** Open — 本票源码候选已交付，等待用户执行R04实机验收；旧1H1G失败和僵尸掉落未确认状态保留。
 **Version:** SPF 0.2.4.10 Experimental / 实机复测 R04
+
+## 2026-10-27 当前GuestBindingAdmission候选（R04待测）
+
+- 来源提交：`0f94e1333b755bc2fe07d81e1cc2dbe32c74a0ba`；唯一测试包：`artifacts/Item-GuestBindingAdmission/Item-GuestBindingAdmission-0f94e13-final.zip`；DLL：`artifacts/Item-GuestBindingAdmission/0f94e13-20261027-0259/SteamP2PFriends.dll`。
+- DLL身份：版本`0.2.4.10`、net472/MSIL(AnyCPU)、MVID `2ec64d10-dc14-4c9c-afe2-6c22276e6d14`、SHA-256 `133BBC899B4B0A032769715E2231F3F7940D8F4DE8C19ED29D81CB6C243C8826`、Case-ID `SPF-0.2.4.10-Experimental-ItemSlice-Cutover`、Cutover；独立指纹核验PASS。
+- 当前候选自动化632/632 PASS（Framework 630 + CoreCLR x86 NIL01/GBA01各1）；Round 3 Standards/Spec CLEAN。此为源码/自动化证据，不是Runtime PASS。
+- 安装前关闭三端游戏、逐端备份旧DLL，只替换此DLL并核对版本/MVID；步骤及回滚说明见[包内README](../../../artifacts/Item-GuestBindingAdmission/0f94e13-20261027-0259/README.zh-CN.md)。
+- **当前最小1 Host + 2 Guest流程：** Host初区确认物品可见/可拾取；Guest 1首次加入确认无九区“可能半包”提示并检查交互；Guest 2加入同区，两位Guest各拾取并丢下；Guest 1去远区后退出、Guest 2留房，Host进入新区，确认两端仍能活动；Guest 1重连检查物资；Host结束并新开世界，Guest 1首次加入再检查交付。
+- 玩家只观察/操作游戏，通过UMM启动新会话并导出三端诊断包；不查看BepInEx窗口、不手工注入发送失败。异常后正常退出，再按角色回传UMM包并标明区域/操作顺序。
+- 原06的其他双Guest独立离开、分帧/多包、恢复与到期项以及07正常/受控超距请求仍分别OPEN；僵尸掉落仍未确认。R04将按本流程回传证据后再逐项判定，不关闭原06/07或僵尸事项。
 
 ## Acceptance criteria
 
@@ -33,7 +43,7 @@
 - 完整报告：`.scratch/matt-orchestrate/item-runtime-diagnosis-20261025-2329/expert/diagnosis.md`；新增修复草案：`.scratch/matt-orchestrate/item-runtime-diagnosis-20261025-2329/drafts/item-native-identity-lookup.md`。
 - 当前只授权诊断、记录与票草案；生产修改、构建、提交、部署和发布均未获本轮授权。
 
-## 2026-10-26 原生身份查找候选交付 / R04待验收
+## 历史：2026-10-26 原生身份查找候选交付记录（已由上方GBA包替代本轮测试候选）
 
 - 代码提交：`bd451123f98626d9ea991b4de681dd1b826b9f2c`；双轴第3轮Standards/Spec均CLEAN；正式Main 624/624（Framework本地623 + CoreCLR真实NIL01子进程1），不是Runtime通过。
 - 供人工测试的独立候选：`artifacts/Item-NativeIdentityLookup/bd45112-20261026-1030/SteamP2PFriends.dll`；版本0.2.4.10，net472/MSIL，MVID `88f119d8-9167-42c4-8e44-f560636aeca5`，SHA-256 `15B55640134CD4B2F9195BB65C4C38D5FC4005F219E00BE85BAA7F0E9D23FF9F`，Case-ID `SPF-0.2.4.10-Experimental-ItemSlice-Cutover`，role `Cutover`。独立产物门PASS；逐端安装、核SHA、回滚步骤见本票 [交付说明](../../item-native-identity-lookup/delivery.md) 和包内 `README.zh-CN.md`。

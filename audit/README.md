@@ -46,6 +46,7 @@ audit 小节。本索引提供「票据（Ticket）→ 交付报告」的查找�
 | R01 Host 刷新物品只有一份有效呈现 | `2026-10-25/Implementation-0.2.4.10-R01.md`（**implemented-pending-runtime**：R2C/R3/V1 收束；602/602 PASS、恢复产物独立核验 PASS、Standards/Spec 最终 CLEAN；幽灵现场状态仍待 Runtime） | `.scratch/item-runtime-repair-20261014/issues/01-host-item-presentation-delivery.md` |
 | R02 Guest 正常进区自动取得物品，真实失败才提示 | `2026-10-25/Implementation-0.2.4.10-R02.md`（**implemented-pending-runtime**：614/614 PASS；累计第4轮 Standards/Spec 双 CLEAN；Guest Runtime 待验收） | `.scratch/item-runtime-repair-20261014/issues/02-guest-item-delivery-delivery.md` |
 | R03 Guest 离开后精确清理旧 Item 资格，房间继续运行 | `2026-10-25/Implementation-0.2.4.10-R03.md`：R5 双轴 CLEAN（Luna/high），源码阶段限定提交 `ebf4493`；复用既有 619/619 全量结果并补 Whitelist build + IT145 定向。历史 NRE、原生退出清理和多人房间继续运行仍待 R04 Runtime，原八条 AC 未全部完成。 | `.scratch/item-runtime-repair-20261014/issues/03-observer-exit-cleanup-delivery.md` |
+| Guest Binding Admission — 合法Guest首次交付与发送前分类 | `2026-10-27/Implementation-0.2.4.10-Item-GuestBindingAdmission.md`（**implemented-pending-runtime**：GBA01真实Red→Green、632/632当前Main、R3 Standards/Spec CLEAN、限定提交`0f94e13`、Cutover DLL/ZIP身份核验PASS；R04/僵尸仍pending） | `.scratch/item-guest-binding-admission/delivery.md`；当前R04候选见`.scratch/item-runtime-repair-20261014/issues/04-runtime-retest.md` |
 
 
 ## Listen-Host Dedicated Gate 与 Join Routing 批（01–04 实施 + 共享 05 Runtime）

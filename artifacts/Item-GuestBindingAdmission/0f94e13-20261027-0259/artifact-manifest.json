@@ -1,0 +1,42 @@
+{
+  "ticket": "Item-GuestBindingAdmission",
+  "sourceCommit": "0f94e1333b755bc2fe07d81e1cc2dbe32c74a0ba",
+  "build": {
+    "configuration": "Release",
+    "binaryWriteTimeLocal": "2026-10-27T02:45:52+08:00",
+    "toolchain": "MSBuild 18.9.0-preview-26322-102+0cf89a94a"
+  },
+  "artifact": {
+    "file": "SteamP2PFriends.dll",
+    "version": "0.2.4.10",
+    "assemblyVersion": "0.2.4.10",
+    "fileVersion": "0.2.4.10",
+    "targetFramework": ".NET Framework 4.7.2",
+    "architecture": "MSIL (AnyCPU)",
+    "pluginGuid": "com.yu80rice.steamp2pfriends",
+    "mvid": "2ec64d10-dc14-4c9c-afe2-6c22276e6d14",
+    "sha256": "133BBC899B4B0A032769715E2231F3F7940D8F4DE8C19ED29D81CB6C243C8826",
+    "caseId": "SPF-0.2.4.10-Experimental-ItemSlice-Cutover",
+    "candidateRole": "Cutover"
+  },
+  "directAssemblyReferences": [
+    "0Harmony", "Assembly-CSharp", "BepInEx", "com.rlabrecque.steamworks.net",
+    "SDG.Glazier.Runtime", "SDG.NetPak.Runtime", "SDG.NetTransport",
+    "SystemEx", "UnityEngine.AnimationModule", "UnityEngine.AudioModule",
+    "UnityEngine.CoreModule", "UnityEngine.IMGUIModule", "UnityEngine.PhysicsModule",
+    "UnityEngine.TextRenderingModule"
+  ],
+  "formalMain": {
+    "runId": "e61c06a2-8d95-4a81-a053-4bc45d016559",
+    "result": "632/632 PASS",
+    "evidence": ".scratch/matt-orchestrate/item-guest-binding-admission-20261027/integrated-run-gba-r2-g1/"
+  },
+  "review": {
+    "round": 3,
+    "standards": "CLEAN",
+    "spec": "CLEAN",
+    "standardsNative": "01a1798d-92f0-79c0-9e60-59430fb6bb05",
+    "specNative": "01a1798d-c269-7833-a2bd-80a71bf83b6b"
+  },
+  "runtime": "pending (manual R04 1 Host + 2 Guest); zombie drops pending"
+}

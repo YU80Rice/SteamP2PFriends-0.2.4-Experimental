@@ -15,7 +15,7 @@
 
 Host初区、Guest加入后与Guest退出后的物资，玩家均观察正常且无幽灵；但两次世界首次Guest连接各出现九区长“可能半包”提示。同世界重连不再提示。截图可见九个不同格，不证明包实际不完整、同区重报或九区已完整交付。僵尸本场未确认。
 
-Host日志18次首错均为`BindGuestBaseline`发送前的stale身份拒绝，随后普通异常被默认分类为possible-half-packet，逐观察者/连接/区域隔离并通知。首次领域Observe先回调binder、后提交领域token；已提交的协调器物理身份与领域表不同。该时序机制尚待本票真实Red，不把源码推导写成已运行测试。
+Host日志18次首错均为`BindGuestBaseline`发送前的stale身份拒绝，随后普通异常被默认分类为possible-half-packet，逐观察者/连接/区域隔离并通知。首次领域Observe先回调binder、后提交领域token；已提交的协调器物理身份与领域表不同。立票时该时序机制尚待真实Red；后续已在真实Observe→binder生产准入路径复现Red并同测Green，详见[定向证据与正式审计](../../audit/2026-10-27/Implementation-0.2.4.10-Item-GuestBindingAdmission.md)及`.scratch/matt-orchestrate/item-guest-binding-admission-20261027/gba-r2-g1-targeted/`。
 
 复用[诊断与源码因果](../matt-orchestrate/item-runtime-diagnosis-20261027-halfpacket/expert/diagnosis.md)及[根会话/包索引](../matt-orchestrate/item-runtime-diagnosis-20261027-halfpacket/evidence-index.json)，不重复调查包/哈希。
 
@@ -25,11 +25,11 @@ Host日志18次首错均为`BindGuestBaseline`发送前的stale身份拒绝，�
 
 ## 验收与禁止项
 
-- [ ] 真实首次Observe→binder生产准入Red→同测Green；物理owner/transport/token及会话校验不弱化。
-- [ ] 等待、过期拒绝、确认未发送、发送后未知在即时/结算后路径正确处理；旧退出回调不修改新绑定。
-- [ ] 同token新区、重连、Host/另一Guest及原恢复/呈现/引用判空/距离门回归保持。
-- [ ] 当前所有正式登记实际执行、完整结果/父子身份/exit闭合；必要runner维护纳入同候选。
-- [ ] 全新原生Luna/high独立双轴CLEAN、限定提交、有效net472 Release DLL和独立ZIP/指纹/说明齐备。
+- [x] 真实首次Observe→binder生产准入Red→同测Green；物理owner/transport/token及会话校验不弱化。
+- [x] 等待、过期拒绝、确认未发送、发送后未知在即时/结算后路径正确处理；旧退出回调不修改新绑定。
+- [x] 同token新区、重连、Host/另一Guest及原恢复/呈现/引用判空/距离门回归保持。
+- [x] 当前所有正式登记实际执行，完整结果/父子身份/exit闭合；必要runner维护纳入同候选。
+- [x] 全新原生Luna/high独立双轴CLEAN、限定提交、有效net472 Release DLL和独立ZIP/指纹/说明齐备。
 - [ ] 实机状态保持pending，由根安排R04；不自动部署、发布或给僵尸PASS。
 
 ## 实施候选证据

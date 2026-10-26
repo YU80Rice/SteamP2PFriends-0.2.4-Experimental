@@ -1,7 +1,7 @@
 # Item-GuestBindingAdmission：执行合同与最小实施蓝图
 
-- Label: ready-for-agent；Status: authorized-awaiting-claim（已授权待领取）；单票完整集成，不拆玩家可见阶段。
-- 基线/身份/证据见[issue.md](issue.md)；仅新唯一Luna/high构建者实施。规格当前无Red/Green/build/审查结果。
+- Label: ready-for-human；Status: implemented-pending-runtime。单票完整集成保持原验收范围，不拆玩家可见阶段。
+- 本规格原为实施前合同；其验收/执行假设已由[issue.md](issue.md)、当前审计及本票交付记录补充结果。当前代码/自动化和双轴已完成，R04 Runtime仍未执行。
 - 本票沿CONTEXT、ADR0019–0023/0026–0027及原R02合同；正常路径自动交付，合法等待不当故障，真正未知不盲重发。
 
 ## 1. 用户故事与完成边界
@@ -128,7 +128,9 @@ ledger用本次正式Main runId+连续ordinal；每项当前delegate身份、真
 
 NIL-D01在本票audit写“本次第二目标触发重评，抽离为单一职责执行模块/显式两路白名单”的实际处理及残留成本，不改上票audit、不继续沿用单目标延期理由。host只复用原声明依赖闭包；仅真实新首错才论证最小增量，需引擎/native服务或不能保持相同真实类型/断言时硬停回根。
 
-## 8. 验收矩阵（均待本票实际执行）
+## 8. 验收矩阵（合同保留；按当前证据标记完成边界）
+
+AC1–AC9的源码/自动化部分已按本表与audit通过；真实完整RPC、三端表现及AC10的Runtime仍须R04，不由632/632或双轴CLEAN替代。当前DLL/ZIP、版本身份、指纹及安装回滚说明已交付。
 
 | 编号/场景 | 必须观察的行为 | 自动化/实机边界 |
 |---|---|---|
@@ -147,7 +149,7 @@ NIL-D01在本票audit写“本次第二目标触发重评，抽离为单一职�
 
 ## 9. 当前构建与完整正式Main
 
-现存项目仍net472/C#10；测试引用bin/Release生产DLL而非ProjectReference，必须先生产再测试。现存真实命令，构建者获派后执行（本规格未执行）：
+现存项目仍net472/C#10；测试引用bin/Release生产DLL而非ProjectReference，必须先生产再测试。下列为立票时记录的真实命令模板；实施中按它构建，当前Main和每条命令/exit证据见本票正式审计及`.scratch/matt-orchestrate/item-guest-binding-admission-20261027/`：
 ```powershell
 & 'C:/Program Files/dotnet/dotnet.exe' msbuild SteamP2PFriends.csproj /t:Build /p:Configuration=Release /v:minimal
 if ($LASTEXITCODE -ne 0) { throw 'production build failed' }
@@ -176,8 +178,8 @@ if ($LASTEXITCODE -ne 0) { throw 'tests build failed' }
 
 ## 11. 实机留项与停止点
 
-根在新DLL/ZIP交付后统一安排R04的1 Host+2 Guest：Host独自初区可拾取无幽灵→Guest首次加入无本票九区误提示且能交互→Guest去远区/Host入新区→Guest退出、Host新区及另一Guest继续→当前Guest重连→结束世界/新开世界首次加入。记录区域/操作顺序，玩家只游戏操作和UMM诊断包，不读BepInEx。实际发送、接收、模型/拾取与提示分别判定，不能以loaded/networked或Prefix send作完整交付。真正异常分类仍需根审日志，不要求玩家故障注入。僵尸击杀/掉落单列记录，不随本票自动PASS；07距离及原其它Runtime门不抹除。
+本规格冻结时，R04由根在DLL/ZIP交付后安排。当前独立测试包已交付，R04 1 Host+2 Guest待玩家执行：Host初区拾取→Guest 1首次加入→Guest 2加入同区、双方拾取并丢下→Guest 1远区后退出而Guest 2留场→Host新区→Guest 1重连→Host新开世界、Guest 1首次加入。记录区域/操作顺序，玩家只游戏操作和UMM诊断包，不读BepInEx；包内README及R04票已有步骤。实际发送、接收、模型/拾取与提示分别判定，不能以loaded/networked或Prefix send作完整交付。真正异常分类仍需根审日志，不要求玩家故障注入。僵尸击杀/掉落单列记录，不随本票自动PASS；07距离及原其它Runtime门不抹除。
 
-未运行的前置包括transport继承成员/真实对象分配、真实Observe→binder首Red、reader活跃epoch接线、Waiting对旧失败预算影响和双目标宿主协议。都由获派构建者先以当前源码/依赖验证，不能预填PASS。若真实对象/正确seam需引擎服务、出现冻结ADR冲突、或旧请求会话来源无法在当前调用者证明，停在具体入口/证据交根；不猜字段、不扩大deps/全Core/no-op吞错、不催玩家补技术说明。
+下列事项是立票时标注的未运行前置，后续已在当前候选完成对应验证：transport真实成员/对象、真实Observe→binder首Red、reader epoch事实、旧失败预算等待语义及双目标宿主协议；Red/Green、G1和正式Main证据见audit及本票builder记录。它们不再是交付阻塞。若未来实机出现需引擎服务的新缺口、冻结ADR冲突或当前调用者无法证明旧请求会话来源，仍按本规格停在具体入口/证据交根；不猜字段、不扩大deps/全Core/no-op吞错、不催玩家补技术说明。
 
 无新的玩家玩法/预算选项需用户决定；本票技术路径已选。构建者可在上述职责/同一生产算法边界内作局部命名/签名调整并记实据，不需逐片问根；真实范围/授权/冻结决策冲突才回根。准备接缝、首Red、功能修复、runner整理都是同票内部顺序，不形成分阶段用户交付。最终一次vtell根交DLL/ZIP路径及SHA/MVID/来源提交、当前全部回归与原生双轴来源、指导历史、安装回滚及Runtime留项，保存正文/ID/回执；收到前不称已消费。
