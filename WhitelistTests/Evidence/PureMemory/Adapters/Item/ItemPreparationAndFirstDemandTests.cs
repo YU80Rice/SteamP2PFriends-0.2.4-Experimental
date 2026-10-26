@@ -12,6 +12,83 @@ namespace SteamP2PFriends.WhitelistTests
 {
     internal static class ItemPreparationAndFirstDemandTests
     {
+        internal static bool Test_NIL00_NativeFixturePreflight()
+        {
+            Console.WriteLine("NIL00 begin native SteamPlayerID construction");
+            var nativeId = new SteamPlayerID(
+                new Steamworks.CSteamID(76561198000000001UL), 0, "NIL", "NIL", "NIL",
+                new Steamworks.CSteamID(0UL));
+            Console.WriteLine("NIL00 SteamPlayerID constructed: " + nativeId.GetType().AssemblyQualifiedName);
+            Console.WriteLine("NIL00 begin native SteamPlayer allocation");
+            var nativePlayer = (SteamPlayer)System.Runtime.Serialization.FormatterServices
+                .GetUninitializedObject(typeof(SteamPlayer));
+            Console.WriteLine("NIL00 SteamPlayer allocated: " + nativePlayer.GetType().AssemblyQualifiedName);
+            return !object.ReferenceEquals(nativeId, null) && !object.ReferenceEquals(nativePlayer, null);
+        }
+
+        internal static bool Test_NIL04_RealIdentityValueAndReferenceSemantics()
+        {
+            const ulong id = 76561198000000001UL;
+            var first = new SteamPlayerID(new Steamworks.CSteamID(id), 0, "NIL", "NIL", "NIL",
+                new Steamworks.CSteamID(0UL));
+            var equalValue = new SteamPlayerID(new Steamworks.CSteamID(id), 0, "NIL2", "NIL2", "NIL2",
+                new Steamworks.CSteamID(0UL));
+            SteamPlayerID absent = null;
+            bool distinctReferences = !object.ReferenceEquals(first, equalValue);
+            bool sameSteamIdValue = first.steamID.m_SteamID == equalValue.steamID.m_SteamID;
+            bool equalityOverloadThrew = false;
+            bool inequalityOverloadThrew = false;
+            bool nullEqualityOverloadThrew = false;
+            bool nullInequalityOverloadThrew = false;
+            try { _ = first == absent; }
+            catch (NullReferenceException) { equalityOverloadThrew = true; }
+            try { _ = first != absent; }
+            catch (NullReferenceException) { inequalityOverloadThrew = true; }
+            try { _ = absent == null; }
+            catch (NullReferenceException) { nullEqualityOverloadThrew = true; }
+            try { _ = absent != null; }
+            catch (NullReferenceException) { nullInequalityOverloadThrew = true; }
+            Console.WriteLine($"NIL04 distinct references={distinctReferences}, same SteamID value={sameSteamIdValue}");
+            return distinctReferences && sameSteamIdValue
+                && !object.ReferenceEquals(first, null) && object.ReferenceEquals(null, null)
+                && equalityOverloadThrew && inequalityOverloadThrew
+                && nullEqualityOverloadThrew && nullInequalityOverloadThrew;
+        }
+
+        internal static bool Test_NIL01_RealNativeLookupContract()
+        {
+            const ulong targetId = 76561198000000001UL;
+            var clientsField = typeof(Provider).GetField("_clients", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var playerIdField = typeof(SteamPlayer).GetField("_playerID", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var find = typeof(DefaultNativeItemWarehouseBridge).GetMethod("FindClient", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (clientsField == null || playerIdField == null || find == null) throw new MissingMemberException("native FindClient fixture member missing");
+            var originalClients = Provider.clients;
+            SteamPlayer MakePlayer(SteamPlayerID id)
+            {
+                var player = (SteamPlayer)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(SteamPlayer));
+                playerIdField.SetValue(player, id);
+                return player;
+            }
+            object Lookup(ulong id) => find.Invoke(null, new object[] { id });
+            try
+            {
+                clientsField.SetValue(null, null);
+                if (!object.ReferenceEquals(Lookup(targetId), null)) return false;
+                clientsField.SetValue(null, new List<SteamPlayer>());
+                if (!object.ReferenceEquals(Lookup(targetId), null)) return false;
+                var firstId = new SteamPlayerID(new Steamworks.CSteamID(targetId), 0, "NIL", "NIL", "NIL", new Steamworks.CSteamID(0UL));
+                var duplicateId = new SteamPlayerID(new Steamworks.CSteamID(targetId), 0, "NIL2", "NIL2", "NIL2", new Steamworks.CSteamID(0UL));
+                var first = MakePlayer(firstId);
+                var duplicate = MakePlayer(duplicateId);
+                clientsField.SetValue(null, new List<SteamPlayer> { null, MakePlayer(null), first, duplicate });
+                if (!object.ReferenceEquals(Lookup(targetId), first)) return false;
+                var missing = new SteamPlayerID(new Steamworks.CSteamID(targetId + 1UL), 0, "NIL3", "NIL3", "NIL3", new Steamworks.CSteamID(0UL));
+                return object.ReferenceEquals(Lookup(targetId + 1UL), null)
+                    && object.ReferenceEquals(Lookup(missing.steamID.m_SteamID), null);
+            }
+            finally { clientsField.SetValue(null, originalClients); }
+        }
+
         private static LeaseTicket CreateTicket(
             RegionKey region, ulong epoch = 101UL, uint generation = 1U, int demand = 1)
         {

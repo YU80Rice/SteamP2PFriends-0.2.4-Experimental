@@ -512,7 +512,9 @@ namespace SteamP2PFriends.Adapters.Item
             for (int i = 0; i < Provider.clients.Count; i++)
             {
                 SteamPlayer sp = Provider.clients[i];
-                if (sp?.playerID != null && sp.playerID.steamID.m_SteamID == observerId) return sp;
+                SteamPlayerID id = sp?.playerID;
+                if (object.ReferenceEquals(id, null)) continue;
+                if (id.steamID.m_SteamID == observerId) return sp;
             }
             return null;
         }

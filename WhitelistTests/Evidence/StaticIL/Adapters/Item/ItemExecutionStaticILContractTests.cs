@@ -18,6 +18,33 @@ namespace SteamP2PFriends.WhitelistTests
         private const string StoreName = Namespace + ".ItemMetadataStore";
         private const string ReceiptName = Namespace + ".ItemAcquisitionReceipt";
 
+        internal static bool Test_NIL02_LookupDoesNotCallNativeNullOperators()
+        {
+            MethodInfo find = typeof(DefaultNativeItemWarehouseBridge).GetMethod(
+                "FindClient", BindingFlags.Static | BindingFlags.NonPublic);
+            if (find == null) return false;
+            int equality = IlContractProbe.CountMethodCalls(find, "SDG.Unturned.SteamPlayerID", "op_Equality");
+            int inequality = IlContractProbe.CountMethodCalls(find, "SDG.Unturned.SteamPlayerID", "op_Inequality");
+            Console.WriteLine($"NIL02 FindClient SteamPlayerID operators: == {equality}, != {inequality}");
+            return equality == 0 && inequality == 0;
+        }
+
+        internal static bool Test_NIL03_BindAndUnbindShareLookupWithoutCatch()
+        {
+            Type bridge = typeof(DefaultNativeItemWarehouseBridge);
+            MethodInfo find = bridge.GetMethod("FindClient", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo bind = bridge.GetMethod("BindGuestBaseline");
+            MethodInfo unbind = bridge.GetMethod("UnbindGuestBaseline");
+            if (find == null || bind == null || unbind == null) return false;
+            int bindLookups = IlContractProbe.CountMethodCalls(bind, bridge.FullName, "FindClient");
+            int unbindLookups = IlContractProbe.CountMethodCalls(unbind, bridge.FullName, "FindClient");
+            int handlers = find.GetMethodBody().ExceptionHandlingClauses.Count
+                + bind.GetMethodBody().ExceptionHandlingClauses.Count
+                + unbind.GetMethodBody().ExceptionHandlingClauses.Count;
+            Console.WriteLine($"NIL03 FindClient calls bind={bindLookups}, unbind={unbindLookups}; exception handlers={handlers}");
+            return bindLookups == 1 && unbindLookups == 1 && handlers == 0;
+        }
+
         internal static bool Test_All()
         {
             return Test_PortShapeAndIdentity()
