@@ -37,4 +37,4 @@ NIL00仅为原生fixture前置探测。若目标查找前初始化失败，预�
 
 ## 交付状态
 
-当前状态：**已实现 / 自动化验证通过 / 三轮历史完整保留 / 第3轮双轴CLEAN / 待限定提交与DLL身份门 / Runtime待用户实机验收**。phase15生产/测试MVID只标识已测候选。当前源码与测试未在phase15后变化；本轮只有记录性文档补齐，故复用phase15有效全量证据。下一步限定提交本票文件，再从真实Release输出创建独立测试DLL包、检查依赖/框架/架构/MVID/SHA-256并按原R04步骤交付。不得安装、发布或宣称Runtime/僵尸通过。
+当前状态：**已实现 / 自动化验证通过 / 三轮历史完整保留 / 第3轮双轴CLEAN / 本票限定提交与独立DLL包已交付 / Runtime待用户实机验收**。phase15生产/测试MVID只标识已测候选。源码与测试未在phase15后变化；仅补审查与交付记录，复用phase15有效全量证据。源码提交为 `bd451123f98626d9ea991b4de681dd1b826b9f2c`。产物、安装/回滚步骤与R04待测项见 [交付记录](../../.scratch/item-native-identity-lookup/delivery.md)；独立包目录 `artifacts/Item-NativeIdentityLookup/bd45112-20261026-1030/`，便携包 `artifacts/Item-NativeIdentityLookup/Item-NativeIdentityLookup-bd45112-final.zip`。DLL SHA-256 `15B55640134CD4B2F9195BB65C4C38D5FC4005F219E00BE85BAA7F0E9D23FF9F`，MVID `88f119d8-9167-42c4-8e44-f560636aeca5`，Case-ID `SPF-0.2.4.10-Experimental-ItemSlice-Cutover`，role `Cutover`。实际包内DLL经独立指纹验证PASS，IL检查确认目标引用null分支、SteamID值匹配与首项返回；DLL为net472/MSIL，私有引用仅游戏/BepInEx共享依赖，无额外插件文件。未执行部署、Runtime或僵尸验收，不得宣称其通过。

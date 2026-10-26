@@ -2,7 +2,7 @@
 
 - Label: ready-for-human
 - Type: Specification
-- Status: in-progress
+- Status: implemented-pending-runtime
 - Version: SteamP2PFriends 0.2.4.10 Experimental
 - Baseline: `fb2acbe31ceb786f3dd9e2dbebce185cc700ac9b`，`codex/structure-baseline-0.2.4`
 - Created: 2026-10-26
@@ -34,7 +34,7 @@
 
 ## 当前验证与审计
 
-- 当前阶段：实现与自动化验证完成；第3轮Standards/Spec均CLEAN。审查后仅补齐本票审计记录；phase15生产/测试候选未变。待限定提交及Release测试DLL身份核验/独立打包；Runtime仍待R04实机验收。
-- [实施审计/NIL-D01处置](../../audit/2026-10-26/Implementation-0.2.4.10-Item-NativeIdentityLookup.md)
+- 当前阶段：实现与自动化验证完成；第3轮Standards/Spec均CLEAN；本票已限定提交并制作独立Release测试DLL包。人工R04待执行，Runtime仍为PENDING。
+- [实施审计/NIL-D01处置及当前身份](../../audit/2026-10-26/Implementation-0.2.4.10-Item-NativeIdentityLookup.md)、[交付记录与安装/回滚说明](delivery.md)
 - [phase15 Red/Green、Release、完整Main与候选身份记录](evidence/candidate-validation-phase15.md)
 - [双轴轮次映射与原始final](evidence/review-round-1.md)、[第2轮](evidence/review-round-2.md)、[第3轮](evidence/review-round-3.md)、[原始报告](evidence/review-raw-finals.md)
