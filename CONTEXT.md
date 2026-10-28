@@ -44,6 +44,14 @@ _Avoid_: coverage owner, collision owner (when meaning demand), sole native writ
 Unturned native managers that hold entity state, saves, and native network protocol; a Migration Slice does not rebuild a second entity warehouse.
 _Avoid_: plugin world state, copied entity ledger
 
+**Native World Synchronization（原生世界同步）**:
+通过 Unturned 已有权威仓库和游戏网络协议同步世界状态；SPF 修复听主机观察者与执行资格时接续该链，不自动成为上层功能模组的自定义频道同步。
+_Avoid_: 强制以 LMN 重写全部原生 RPC、将协议存在视为 Runtime 验收
+
+**Gameplay Mod（功能性联机模组）**:
+在游戏和联机基础设施之上提供额外玩法功能、同步自身功能状态的模组；与 SPF 的原生世界联机基础设施职责区分。
+_Avoid_: 将 SPF 原生世界同步迁移自动视作功能模组频道接入
+
 **Demand Policy**:
 A domain-declared description of observer eligibility, spatial shape, radius or distance source, and DomainId; it is not an executable projector and does not scan clients or store observer positions.
 _Avoid_: shared radius, universal OBJECT_REGIONS, coverage radius (when meaning policy), per-domain projector
@@ -196,8 +204,46 @@ A functional capability ticket granted to a domain adapter when at least one obs
 _Avoid_: Chunk lock, region claim
 
 **Hysteresis Release**:
-A bounded delay (2 seconds) before destroying region state after the last observer leaves, preventing rapid recreation spikes.
+最后一个观察者的领域需求消失后延迟释放租约，期间重入可取消待释放，用于避免反复激活与释放；它本身不意味着删除原生世界业务数据。
 _Avoid_: Immediate unload, instant GC
+
+**Dormant Progress Reconciliation（无人进度补算）**:
+在无人区域恢复需求或世界保存等已批准的结算边界，按原生配置速率、状态条件和关键事件顺序结算休眠期间应发生的进度变化；不要求复刻逐帧检查或卡顿造成的计时偏差。
+_Avoid_: 无人即暂停、每帧补跑、仅凭离开时长推算所有事件
+
+**Dormant Key Event Processing（休眠关键事件处理）**:
+区域休眠期间对必要的原生事件进行有限的判定或记录，用于保留进度补算所需的事件结果与依赖顺序。
+_Avoid_: 区域每帧保活、统一按时长计算全部事件
+
+**Item Expiry（物品到期移除）**:
+房间运行期间，实际掉落物达到对应配置的消失时间后从权威世界状态移除，其清理不依赖玩家重新进入区域；已核实原生来源的到期分类对齐U3DS，实际掉落用掉落期限，地图自然物品用自然期限。自然物品的计时启动与休眠结算遵循Item领域已批准的周期政策。
+_Avoid_: 实际掉落物返区才删除、租约释放即删除、已启动周期离区暂停玩法时间
+
+**Natural Item（自然物品）**:
+地图物资点通过首次生成或周期刷新产生的物品，区别于玩家或生物等玩法动作产生的实际掉落物；生成来源不能仅凭原生 isDropped 标志判定。
+_Avoid_: 所有 isDropped=false 的物品、所有地面物品
+
+**Item Cycle Activation（物品周期启动）**:
+同一会话内，首次 Item 领域需求启用某区域自然物品计时的事件；区别于准备 ItemData、观察者接收基线或返区恢复执行。
+_Avoid_: 每次进区重新生成、每个玩家独立启动世界周期、重置物品寿命
+
+**Item Preparation Readiness（Item 数据准备就绪）**:
+当前地图全图 Item 数据已完成准备且合法空区可用的状态，是相应 Item 联机运行的前置；区别于房间已发布、首次周期启动或客户端全部模型显示。
+_Avoid_: Host 活动即数据就绪、全图模型常驻、在地图输入未建立时提前生成
+
+**Natural Item Reconciliation（自然物品结算）**:
+返区时依据当前权威物品、到期时间和原生刷新资格结算自然物资当前结果，省略无人期间的中间随机刷新批次；每次按区域共用一次结算，首个有效需求启动，后来者等待同次结果。有效会话/区域中已启动结算在需求消失后继续收尾，已执行变化不撤销或重做，无等待者不发清单，完成即休眠；下次需求从收尾后的状态重新判断。新补物品从本次生成时计时，存活旧物品不重置年龄；清单与呈现/拾取消费完成后的状态，正常分帧结算属于正常进度。
+_Avoid_: 进区无条件补货、逐批回放全部随机历史、保证补满
+
+**Item Recovery（Item 恢复）**:
+对物资结算或区域同步未就绪/失败进行有界恢复，按实际失败依赖局部处理；区别于正常进区自动加载或每次强制重同步。
+_Avoid_: 每次进区等待、全房间停用、失败当正常空区
+
+**Item Recovery Command（Item 恢复命令）**:
+候选 Item 路径在有效 Host 会话中登记的精确 `/spfitemretry <x> <y>` 入口；它只消费
+当前观察者、Core Connection Generation、Session Epoch、区域需求和耗尽资格，不替代普通聊天，
+也不发起隐藏传输协议。可能半包的观察者必须先完整离开 `ITEM_REGIONS` 加载范围再返区。
+_Avoid_: 管理员万能命令、普通聊天即控制协议、陈旧连接代次恢复、区内盲目重发
 
 ## State & Epoch Axes
 

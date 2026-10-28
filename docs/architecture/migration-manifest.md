@@ -1,5 +1,13 @@
 ﻿# 0.2.4-Experimental Migration Manifest
 
+## 当前阶段索引（2026-10-29）
+
+- 0.2.4.9 C-P1 Collision已由用户于2026-10-07裁定completed；Resource/Collision共用ObserverSpatialAuthority、DemandProjectionEngine及LifecycleOrchestrationEngine，正式Collision执行端口已接线。
+- 0.2.4.9本地阶段归档保存版本推进前886文件及已有DLL；旧版记录不改号，见[归档索引](../../Develop-Stage/README.md)。
+- 0.2.4.10已完成Item共享控制面与相关返修，当前实现`6526b7e`、自动化635/635；2026-10-29用户通过当前DLL的1H+2G目标体验验收，见[运行报告](../../audit/2026-10-29/RuntimeAcceptance-0.2.4.10-R04.md)。原06边界与07安全专项分别保留。
+- 发布物为`publishi/0.2.4.10/SteamP2PFriends-0.2.4.10.zip`，包含已验收DLL；不改变其代码或指纹。
+- [10月8日交互架构规划图](spf-0.2.4-current.html)保留当时的领域迁移视图，Item当前状态以上述实施/运行报告为准；下文批次是历史记录，不覆盖此索引。
+
 ## Batch 1：Structure Baseline and Metadata Source
 
 状态：第一批完成，Runtime 未执行

@@ -1,0 +1,25 @@
+{
+  "plugin": "SteamP2PFriends",
+  "version": "0.2.4.10",
+  "channel": "Experimental",
+  "tag": "0.2.4.10",
+  "implementationCommit": "6526b7e",
+  "acceptanceRecordCommit": "cec92ab",
+  "sourceDll": "artifacts/Item-SessionReadinessAndFrameProgress/6526b7e-20261028-0035/SteamP2PFriends.dll",
+  "dllBytes": 1387008,
+  "dllSha256": "02FA2AFD442D074FF584B01503AE8A1AC6FB33DE9CD55CC698CB8916924AC6C7",
+  "dllMvid": "58277318-8897-4147-b9a2-9bb6fd3e9f49",
+  "targetFramework": "net472",
+  "architecture": "AnyCPU (ILOnly)",
+  "archive": "SteamP2PFriends-0.2.4.10.zip",
+  "archiveBytes": 442236,
+  "archiveSha256": "146203BD945A040E915AE69EC570D70A1EE969038F3F89CA9CC0BDF2E96AD7C2",
+  "entries": [
+    "BepInEx/",
+    "BepInEx/plugins/",
+    "BepInEx/plugins/SteamP2PFriends.dll"
+  ],
+  "createdUtc": "2026-10-28T17:27:24.266041+00:00",
+  "validation": "exact source bytes; ZIP CRC; expected DLL SHA-256; only required plugin entry",
+  "runtimeAcceptance": "P2P listen-host 1 Host + 2 Guest accepted by user on 2026-10-29"
+}

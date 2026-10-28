@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.4.10 Experimental — 2026-10-29
+
+- Item接入共享多观察者生命周期，保留原生仓库、复制与拾取事务。
+- 修复Host刷新物资的幽灵副本、Guest首次物资交付及错误的半包提示。
+- 修复原生身份对象重载判空异常，避免绑定／补偿解绑失败导致持续停写。
+- 退出和重连按实际owner/transport/token精确清理，保留其他玩家与新连接。
+- 每个新世界重建Item准备与准入，返区结算按原预算逐帧推进，不再受一秒采样门限制。
+- 当前自动化635/635通过；2026-10-29完成1 Host＋2 Guest目标体验验收，物品刷新、僵尸AI及掉落正常，无幽灵或不刷新。
+- 发布包：`publishi/0.2.4.10/SteamP2PFriends-0.2.4.10.zip`，只含`BepInEx/plugins/SteamP2PFriends.dll`。
+- [完整发布说明](./publishi/0.2.4.10/RELEASE_NOTES.zh-CN.md) · [运行验收](./audit/2026-10-29/RuntimeAcceptance-0.2.4.10-R04.md)。
+
 ## v0.2.4.4-experimental - 2026-08-25 (PASS - 已冻结归档)
 
 - M4 运行验收：基于房主（234906）、虚拟机客机（234908）、用户客机（235308）三端 UMM 诊断包完成全量证据审计，100% PASS。

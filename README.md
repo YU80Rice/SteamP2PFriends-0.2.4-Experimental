@@ -3,12 +3,12 @@
 > Unturned listen-host 联机插件的实验线：无 U3DS 开房，并正在把世界状态从旧补丁切到 Multi-Observer 区域租约架构。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.4.9--experimental-blue.svg)](./Build/Version.props)
-[![Status](https://img.shields.io/badge/status-experimental--no--release-orange.svg)](./ARCHITECTURE-REVIEW-0.2.4-Experimental.md)
+[![Version](https://img.shields.io/badge/version-0.2.4.10--experimental-blue.svg)](./Build/Version.props)
+[![Status](https://img.shields.io/badge/status-experimental--prerelease-orange.svg)](https://github.com/YU80Rice/SteamP2PFriends-0.2.4-Experimental/releases)
 
 > **版本来源**：徽章与「当前版本」表中的版本号以 [`Build/Version.props`](./Build/Version.props) 为唯一来源；展示值须与其一致。
 >
-> **不是稳定版，也没有 GitHub Release。** 本仓库默认分支是 `codex/structure-baseline-0.2.4`。玩家若只想用已归档的旧实现，请看 [YU80Rice/SteamP2PFriends](https://github.com/YU80Rice/SteamP2PFriends)（0.2.3，只读、已停止开发）。两个 DLL 不得同时部署。
+> **当前提供实验预发布包。** 默认分支为 `codex/structure-baseline-0.2.4`；下载见[GitHub Releases](https://github.com/YU80Rice/SteamP2PFriends-0.2.4-Experimental/releases)。[0.2.3旧实现](https://github.com/YU80Rice/SteamP2PFriends)已归档，两个版本的DLL不得同时部署。
 
 ## 这是什么
 
@@ -21,27 +21,27 @@
 
 IP 只负责寻址。玩家身份、审批与白名单始终使用 Steam Networking Sockets 握手得到的 SteamID。
 
-0.2.4 相对 0.2.3 的目标不是再堆一层补丁，而是把观察者需求并集、区域租约和单一权威写入真正接到生产路径上。2026-08-26 的 [架构评审](./ARCHITECTURE-REVIEW-0.2.4-Experimental.md) 判定当时的控制面是死代码空壳；Resource 域已按该评审第 8 项纲领走通 Acquire → Release，其余域仍在旧路径上。逐条进度见 [ReviewRecheck](./audit/2026-09-04/ReviewRecheck-0.2.4.8-0933.md)。
+0.2.4将观察者需求并集、区域租约和单一权威写入接到生产路径上。Resource与Collision已有共享控制面；0.2.4.10进一步接入Item，并修复物资呈现、连接身份、世界准备与逐帧结算。当前目标已完成1 Host＋2 Guest人工验收，见[运行验收记录](./audit/2026-10-29/RuntimeAcceptance-0.2.4.10-R04.md)及[更新日志](./CHANGELOG.md)。
 
 ## 当前状态（请按这里判断能不能玩）
 
 | 项目 | 值 |
 |---|---|
-| BepInPlugin / AssemblyVersion | `0.2.4.9` |
-| 通道 | Experimental，无发布标识 |
-| 当前阶段 | Collision Migration Slice 基线（0.2.4.9：版本身份 + Resource 表征门）；Collision 尚未接线，生产 Writer 未变 |
-| 已验证（属 0.2.4.8 已验收构建，本版不重新背书） | Resource 域 Multi-Observer 三端 Runtime（区域租约、采伐、滞回释放）；SteamID P2P 与 IPv4 直连开房/审批隔离 |
-| 已知未修（玩家会碰到） | 僵尸被打死后不重生（ticket01 已实现，待 Runtime 验收）；地面掉落物不按专用服节奏消失/再生（ticket02 已实现，待 Runtime 验收）；SteamID 路线密码传递（ticket04 已实现，待 Runtime 验收）；`SteamID:端口` 粘贴（ticket03 已实现，待 Runtime 验收） |
-| 分发 | **只从源码构建**；本仓库不提供 Release zip |
+| BepInPlugin / AssemblyVersion | `0.2.4.10` |
+| 通道 | Experimental，GitHub实验预发布 |
+| 当前阶段 | 本阶段物品修复与DLL交付完成，2026-10-29用户通过1H＋2G目标体验验收 |
+| 本轮已确认 | 物品刷新、僵尸AI及掉落正常，无幽灵或不刷新；日志支持双Guest在线、退出重连和同进程再开世界 |
+| 后续独立事项 | 原06未覆盖边界与07受控超距安全专项另行留档；残余Resource观测与Zombie需求保护记录见运行审计 |
+| 分发 | Release附件`SteamP2PFriends-0.2.4.10.zip`；仓库归档在`publishi/0.2.4.10/` |
 | 旧实现 | 0.2.3 已归档，只作来时路，不再开发 |
 
-静态测试全绿不等于运行时可用。本仓库把证据分成 PureMemory / StaticIL / BuildArtifact / Runtime 四类，互不升级替代；没有真实多机日志，不得宣称 Runtime PASS。`0.2.4.9` 本轮只闭版本身份与 Resource 表征门，自身尚未取得三端运行日志，不重新宣称 Resource Runtime PASS；表中「已验证」一栏指的是 0.2.4.8 已验收构建的既有结论。本轮 Listen-Host Dedicated Gate / Join Routing 的静态证据闭环后，其 Runtime 状态仍为 `PENDING`（共享验收票：`.scratch/listen-host-join-routing-runtime-acceptance/issues/05-shared-1h2g-runtime-acceptance.md`）；`Develop-Stage/` 与 `Archive/` 内的旧版本运行记录属历史运行证据（不属于 0.2.4.9 当前验收）。
+当前候选自动化635/635通过，实现与交付已完成独立双轴审查；本次P2P listen-host实机结论单独记录。实验预发布范围及文件身份见[0.2.4.10发布说明](./publishi/0.2.4.10/RELEASE_NOTES.zh-CN.md)，历史证据见[audit索引](./audit/README.md)。
 
-## 安装（从源码）
+## 安装（发布包）
 
-1. 房主和所有客机安装**同一构建**的 BepInEx 与本插件。
-2. 按下方「从源码构建」得到 `SteamP2PFriends.dll`。
-3. 放到：
+1. 所有端退出游戏，备份原插件；确认已安装适用的BepInEx。
+2. 从[Releases](https://github.com/YU80Rice/SteamP2PFriends-0.2.4-Experimental/releases)下载`SteamP2PFriends-0.2.4.10.zip`，解压到Unturned根目录，合并`BepInEx`目录。
+3. 最终文件位置如下；本包只含插件，房主与所有客机必须使用同一份DLL：
 
 ```text
 Unturned/
@@ -50,7 +50,7 @@ Unturned/
         └── SteamP2PFriends.dll
 ```
 
-4. 用 `certutil -hashfile SteamP2PFriends.dll SHA256` 核对三端哈希一致后再进世界。
+4. 用`Get-FileHash .\BepInEx\plugins\SteamP2PFriends.dll -Algorithm SHA256`核对各端一致，并与发布说明比对。不要让多个版本同时加载；回滚时退出游戏后恢复备份。
 
 ## 使用方法
 
@@ -107,10 +107,9 @@ Windows 防火墙必须允许 Unturned 在相应网络上使用 UDP `27016`。
 ```powershell
 dotnet msbuild SteamP2PFriends.csproj -t:Rebuild -p:Configuration=Release
 dotnet msbuild WhitelistTests/SteamP2PFriends.WhitelistTests.csproj -t:Rebuild -p:Configuration=Release
-./WhitelistTests/bin/Release/SteamP2PFriends.WhitelistTests.exe
 ```
 
-产物：`bin/Release/SteamP2PFriends.dll`。
+产物：`bin/Release/SteamP2PFriends.dll`。正式全量验证请按[贡献指南](./CONTRIBUTING.md#构建与静态门禁)配置隔离宿主并使用`run-integrated.ps1`；原生类型初始化失败不能跳过或记PASS。
 
 ## 文档
 

@@ -1,0 +1,320 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SPF 0.2.4 · 当前架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1380,
+      600
+    ]
+  },
+  "components": [
+    {
+      "id": "player_entry",
+      "type": "frontend",
+      "label": "开房与加入",
+      "sublabel": "listen-host · SteamID / IPv4",
+      "pos": [
+        50,
+        40
+      ],
+      "size": [
+        250,
+        80
+      ]
+    },
+    {
+      "id": "p2p_transport",
+      "type": "messagebus",
+      "label": "联机传输",
+      "sublabel": "Steam Networking Sockets",
+      "pos": [
+        540,
+        40
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "session_admission",
+      "type": "security",
+      "label": "会话与审批",
+      "sublabel": "SteamID 身份 · 白名单 · 隔离",
+      "pos": [
+        1030,
+        40
+      ],
+      "size": [
+        270,
+        80
+      ]
+    },
+    {
+      "id": "world_observers",
+      "type": "backend",
+      "label": "观察者事实",
+      "sublabel": "Host / Guest · 位置与连接代次",
+      "pos": [
+        1030,
+        180
+      ],
+      "size": [
+        270,
+        80
+      ]
+    },
+    {
+      "id": "domain_projection",
+      "type": "backend",
+      "label": "共享需求投影",
+      "sublabel": "各域 Policy → 各域需求并集",
+      "pos": [
+        540,
+        180
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "lease_engine",
+      "type": "backend",
+      "label": "共享生命周期编排",
+      "sublabel": "Acquire / Release · 滞回与补偿",
+      "pos": [
+        50,
+        180
+      ],
+      "size": [
+        250,
+        80
+      ]
+    },
+    {
+      "id": "resource_port",
+      "type": "backend",
+      "label": "Resource 执行端口",
+      "sublabel": "资源激活与树状态同步",
+      "tag": "已迁入共享引擎",
+      "pos": [
+        50,
+        320
+      ],
+      "size": [
+        250,
+        80
+      ]
+    },
+    {
+      "id": "collision_port",
+      "type": "backend",
+      "label": "Collision 执行端口",
+      "sublabel": "碰撞覆盖 · Receipt 安全释放",
+      "tag": "0.2.4.9 已完成",
+      "pos": [
+        540,
+        320
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "legacy_domains",
+      "type": "backend",
+      "label": "其他域既有路径",
+      "sublabel": "Item / Zombie / Animal / 工事",
+      "tag": "不等于已共享租约化",
+      "pos": [
+        1030,
+        320
+      ],
+      "size": [
+        270,
+        80
+      ]
+    },
+    {
+      "id": "native_world",
+      "type": "database",
+      "label": "Unturned 原生世界",
+      "sublabel": "Manager 仓库 · 原生权威与存档",
+      "pos": [
+        540,
+        460
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "native_replication",
+      "type": "frontend",
+      "label": "原生复制与本地呈现",
+      "sublabel": "Guest RPC · Host 模型 / 音画",
+      "pos": [
+        1030,
+        460
+      ],
+      "size": [
+        270,
+        80
+      ]
+    },
+    {
+      "id": "item_next",
+      "type": "backend",
+      "label": "Item 下一迁移切片",
+      "sublabel": "准备 → 按需求运行 → 返区结算",
+      "tag": "0.2.4.10 · 已拆票未构建",
+      "pos": [
+        50,
+        460
+      ],
+      "size": [
+        250,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "join_wire",
+      "from": "player_entry",
+      "to": "p2p_transport",
+      "label": "连接",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wire_identity",
+      "from": "p2p_transport",
+      "to": "session_admission",
+      "label": "握手身份",
+      "variant": "security"
+    },
+    {
+      "id": "presence_sample",
+      "from": "session_admission",
+      "to": "world_observers",
+      "label": "世界在场事实",
+      "labelAt": [
+        1165,
+        150
+      ]
+    },
+    {
+      "id": "project_demand",
+      "from": "world_observers",
+      "to": "domain_projection",
+      "label": "同一份空间事实",
+      "variant": "emphasis"
+    },
+    {
+      "id": "schedule_leases",
+      "from": "domain_projection",
+      "to": "lease_engine",
+      "label": "类型化领域需求",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lease_resource",
+      "from": "lease_engine",
+      "to": "resource_port",
+      "label": "资源租约",
+      "labelAt": [
+        175,
+        290
+      ]
+    },
+    {
+      "id": "lease_collision",
+      "from": "lease_engine",
+      "to": "collision_port",
+      "label": "碰撞租约"
+    },
+    {
+      "id": "resource_native",
+      "from": "resource_port",
+      "to": "native_world",
+      "label": "资源执行",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          175,
+          430
+        ],
+        [
+          485,
+          430
+        ],
+        [
+          485,
+          500
+        ]
+      ]
+    },
+    {
+      "id": "collision_native",
+      "from": "collision_port",
+      "to": "native_world",
+      "label": "碰撞覆盖",
+      "labelAt": [
+        670,
+        430
+      ]
+    },
+    {
+      "id": "legacy_native",
+      "from": "legacy_domains",
+      "to": "native_world",
+      "label": "既有补丁与适配器"
+    },
+    {
+      "id": "native_present",
+      "from": "native_world",
+      "to": "native_replication",
+      "label": "原生状态与包",
+      "variant": "emphasis",
+      "labelDy": 40
+    },
+    {
+      "id": "item_migration",
+      "from": "item_next",
+      "to": "native_world",
+      "label": "拟复用仓库",
+      "variant": "dashed",
+      "labelDy": 40
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "已完成的共享控制面",
+      "items": [
+        "Resource 与 Collision 共用观察者、投影和编排；各域需求不互相授权。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "0.2.4.10 下一阶段",
+      "items": [
+        "Item 七张票已批准，尚未构建；20米拾取校验独立验收。"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "保留 listen-host 形态",
+      "items": [
+        "权威状态保留在原生 Manager；不全局伪造 dedicated，不强制用 LMN 重写原生 RPC。"
+      ]
+    }
+  ]
+}

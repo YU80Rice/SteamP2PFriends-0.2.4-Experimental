@@ -1,6 +1,6 @@
 # 贡献指南
 
-本仓库是 0.2.4 实验线，不是 0.2.3 稳定插件的续写。默认语言为简体中文。默认分支为 `codex/structure-baseline-0.2.4`。当前**不发 GitHub Release**，改动以源码和审计文档为准。
+本仓库是0.2.4实验线，不是0.2.3稳定插件的续写。默认语言为简体中文，默认分支为`codex/structure-baseline-0.2.4`。经维护者授权后发布实验预发布包；当前版本与安装入口见README。
 
 ## 先读
 
@@ -28,7 +28,7 @@
 - **单一权威写入**：同一领域同一时刻只允许一条生产写入路径。Resource 域的模板是 `ResourceProductionControlSeam`；不要在迁移中途保留旧 Writer。
 - **证据分类**：PureMemory / StaticIL / BuildArtifact / Runtime 四类不可互相替代。没有真实多机日志，不得在 PR 或文档里写 Runtime PASS。
 - **实验区隔离**：不要把未验收改动写进已归档的 0.2.3 仓库。
-- **提交**：Conventional Commit。禁止创建 git tag。
+- **提交**：Conventional Commit。发布标签仅由维护者明确授权的发布流程创建；日常实现、测试或审查不得自行打标签或发布。
 - **敏感信息**：新的真实 SteamID、token、邮箱、公网 IP 不得写入仓库文件。测试夹具使用假号。
 - **分批改动**：实现与测试每次一个小 Edit；不要整文件重写生产代码。文档与审计报告不受这条限制，但仍应单一职责。
 
@@ -37,10 +37,10 @@
 ```powershell
 dotnet msbuild SteamP2PFriends.csproj -t:Rebuild -p:Configuration=Release
 dotnet msbuild WhitelistTests/SteamP2PFriends.WhitelistTests.csproj -t:Rebuild -p:Configuration=Release
-./WhitelistTests/bin/Release/SteamP2PFriends.WhitelistTests.exe
+# 完整验证需先配置真实原生类型的隔离宿主，再使用下述统一入口。
 ```
 
-Git Bash 下使用 `-t:Rebuild`，不要写 `/t:Rebuild`。贡献前至少保证 Release 0 error / 0 warning，以及测试入口全绿。指纹与布局门禁脚本见 `Tools/` 与 `docs/architecture/`。
+Git Bash下使用`-t:Rebuild`，不要写`/t:Rebuild`。正式全量入口为`WhitelistTests/run-integrated.ps1 -EvidenceDir <绝对证据目录> -HostDll <已配置的IdentityProbe.dll绝对路径>`。NIL01/GBA01需真实原生类型及CoreCLR x86隔离环境，其余断言在Framework执行；宿主缺失不能跳过测试或记PASS。当前运行证据见本版实施审计。指纹与布局门禁脚本见`Tools/`及`docs/architecture/`。
 
 ## 架构方向（避免做反）
 

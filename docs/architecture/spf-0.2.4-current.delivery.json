@@ -1,0 +1,21 @@
+{
+  "diagram_type": "architecture",
+  "output": "D:\\Agent-工作目录\\DevelopMyUNMultiplayerModAndModloader\\SteamP2PFriends-0.2.4-Experimental\\docs\\architecture\\spf-0.2.4-current.html",
+  "specification_sha256": "f60c7739a33fca432da34fe99cf1d4ef4cb48522a6c73103b2df4595393731fb",
+  "specification_bytes": 6742,
+  "artifact_sha256": "ef3e88405379cc1ae8e7b9b9f0cfe527e51105eee7493f3d9130434729121cbc",
+  "artifact_bytes": 817201,
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "browser_evidence": "passed",
+  "visual_review": "passed",
+  "correction_rounds": 2,
+  "visual_review_scope": "Inspected final 2048x1320 dark and 1440x900 light screenshots; reviewed node/label fit, separate domain routes and desktop composition.",
+  "date": "2026-10-08"
+}
