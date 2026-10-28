@@ -30,11 +30,11 @@
 - [x] AC5 空间采样/自然周期不搬成逐帧全仓工作；共享时钟每帧只加一次delta，无跨域重复推进。
 - [x] AC6 物理绑定、精确旧退出、单Writer/原生协议、R01 pending、R02故障预算、NIL引用比较与07距离均保持。
 - [x] AC7 原632及必要新增正式登记在当前完整候选全部执行，NIL01/GBA01双runtime路由、身份与失败协议不变。
-- [ ] AC8 每轮新鲜原生Luna/high Standards/Spec同候选双CLEAN；限定提交、实际Release与独立身份门通过，单DLL及简短安装/回滚/R04说明齐备。
+- [x] AC8 每轮新鲜原生Luna/high Standards/Spec同候选双CLEAN；限定提交、实际Release与独立身份门通过，单DLL及简短安装/回滚/R04说明齐备。双轴为本票第3/3轮；提交`6526b7e`；单DLL身份门PASS，细节见[`delivery.md`](delivery.md)。
 - [ ] AC9 实机延迟另待R04验证；不把当前控制流Red/静态CLEAN当视觉PASS，不关闭1H2G/原06/07/僵尸留项。
 
 ## 范围与停止点
 
 实施合同为[spec.md](spec.md)。仅修A/B及其必要直接调用者/测试/产物记录；模型消费候选C、Resource观测NRE、僵尸/掉落概率、LMN/ACK、故障清零/放宽恢复均不附带修。正确seam不可达、需引擎/native服务或冻结合同冲突时，保留候选和真实失败，带具体入口求助根/原指导，不用假Red或换依赖绕过。
 
-本票完整审查轮从0起；两完整非CLEAN才冻结直连指导并同步根，旧票历史保留不混计。当前只有规格，所有Red/Green/build/review/产物项均待实施，不填PASS。
+审查历史保留三轮及G1恢复窗口，不与旧GBA/NIL/R01–03票混计。AC1–8自动化、独立审查及DLL交付完成；AC9 R04 Runtime待后续实测，不能以自动化或静态结果代替。交付工件只有单DLL，不含ZIP，也未部署或发布。

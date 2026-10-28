@@ -1,0 +1,25 @@
+﻿startUtc=2026-10-28T00:35:45.7550417+00:00
+
+
+Evidence              : independent-artifact-verification
+Path                  : D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\artifact
+                        s\Item-SessionReadinessAndFrameProgress\6526b7e-20261028-0035\SteamP2PFriends.dll
+Version               : 0.2.4.10
+AssemblyVersion       : 0.2.4.10
+FileVersion           : 0.2.4.10
+MVID                  : 58277318-8897-4147-b9a2-9bb6fd3e9f49
+DLL_SHA256            : 02FA2AFD442D074FF584B01503AE8A1AC6FB33DE9CD55CC698CB8916924AC6C7
+PluginGuid            : com.yu80rice.steamp2pfriends
+CaseId                : SPF-0.2.4.10-Experimental-ItemSlice-Cutover
+CaseIdSource          : artifact-metadata
+CaseIdAssociation     : artifact-metadata
+ArtifactDefaultCaseId : SPF-0.2.4.10-Experimental-ItemSlice-Cutover
+CandidateRole         : Cutover
+MetadataSource        : Build/Version.props
+Result                : PASS
+
+
+
+INDEPENDENT_ARTIFACT_VERIFICATION_PASS
+exit=0
+endUtc=2026-10-28T00:35:48.3582342+00:00

@@ -8,13 +8,32 @@
 **Status:** Open — 本票源码候选已交付，等待用户执行R04实机验收；旧1H1G失败和僵尸掉落未确认状态保留。
 **Version:** SPF 0.2.4.10 Experimental / 实机复测 R04
 
-## 2026-10-27 当前GuestBindingAdmission候选（R04待测）
+## 2026-10-28 当前合并候选（R04待测）
+
+- 实现提交：`6526b7e`（含GBA前置修复与本票每世界Item准备/逐帧进度修复）。唯一测试DLL：`artifacts/Item-SessionReadinessAndFrameProgress/6526b7e-20261028-0035/SteamP2PFriends.dll`；本票交付说明见`.scratch/item-session-readiness-and-frame-progress/delivery.md`。
+- DLL身份：`0.2.4.10`、net472/IL-only AnyCPU、MVID `58277318-8897-4147-b9a2-9bb6fd3e9f49`、SHA-256 `02FA2AFD442D074FF584B01503AE8A1AC6FB33DE9CD55CC698CB8916924AC6C7`、Case-ID `SPF-0.2.4.10-Experimental-ItemSlice-Cutover`、Cutover；独立指纹门PASS。
+- 当前自动化635/635 PASS（Framework 633 + CoreCLR x86 NIL01/GBA01各1）；本票第3轮Standards/Spec双CLEAN。自动化不是实机或视觉PASS。
+- 安装前所有测试端关闭游戏并备份旧DLL，只替换上述DLL；UMM启动新会话/新世界。逐端核实版本/MVID；异常正常退出后恢复备份。无需看BepInEx窗口或手工注入失败。
+
+### 首轮最小1 Host + 1 Guest
+
+1. Host在初区观察物资可见、拾取后模型消失且无重复幽灵。
+2. Guest首次加入，检查无半包提示；同区观察、交互/拾取，再进入新区观察并交互。
+3. Guest退出后，Host继续进入新区并验证可交互。
+4. 同一进程内Host结束并新开世界，Guest再次首次加入，确认新世界物资准备与交互。
+5. 记录每一步的数据就绪、队列/模型和拾取；bound、无异常或已有仓库项都不能单独证明交付。异常后正常退出，再按角色导出UMM包并附区域/操作顺序。
+
+### 后续原06的1 Host + 2 Guest与独立留项
+
+完成最小1H1G证据后，再安排Guest 2加入；覆盖同区共用、双Guest分别拾取/丢下、一名Guest独立离开/退出时另一名仍可活动、分帧/多包、恢复/到期。07正常及受控超距权威请求单独记录，僵尸击杀掉落继续独立取证；均不被本票源码或1H1G结果关闭。
+
+## 历史：2026-10-27 GuestBindingAdmission候选（已被当前合并候选替代）
 
 - 来源提交：`0f94e1333b755bc2fe07d81e1cc2dbe32c74a0ba`；唯一测试包：`artifacts/Item-GuestBindingAdmission/Item-GuestBindingAdmission-0f94e13-final.zip`；DLL：`artifacts/Item-GuestBindingAdmission/0f94e13-20261027-0259/SteamP2PFriends.dll`。
 - DLL身份：版本`0.2.4.10`、net472/MSIL(AnyCPU)、MVID `2ec64d10-dc14-4c9c-afe2-6c22276e6d14`、SHA-256 `133BBC899B4B0A032769715E2231F3F7940D8F4DE8C19ED29D81CB6C243C8826`、Case-ID `SPF-0.2.4.10-Experimental-ItemSlice-Cutover`、Cutover；独立指纹核验PASS。
 - 当前候选自动化632/632 PASS（Framework 630 + CoreCLR x86 NIL01/GBA01各1）；Round 3 Standards/Spec CLEAN。此为源码/自动化证据，不是Runtime PASS。
 - 安装前关闭三端游戏、逐端备份旧DLL，只替换此DLL并核对版本/MVID；步骤及回滚说明见[包内README](../../../artifacts/Item-GuestBindingAdmission/0f94e13-20261027-0259/README.zh-CN.md)。
-- **当前最小1 Host + 2 Guest流程：** Host初区确认物品可见/可拾取；Guest 1首次加入确认无九区“可能半包”提示并检查交互；Guest 2加入同区，两位Guest各拾取并丢下；Guest 1去远区后退出、Guest 2留房，Host进入新区，确认两端仍能活动；Guest 1重连检查物资；Host结束并新开世界，Guest 1首次加入再检查交付。
+- **当时计划的1 Host + 2 Guest流程（保留作历史）：** Host初区确认物品可见/可拾取；Guest 1首次加入确认无九区“可能半包”提示并检查交互；Guest 2加入同区，两位Guest各拾取并丢下；Guest 1去远区后退出、Guest 2留房，Host进入新区，确认两端仍能活动；Guest 1重连检查物资；Host结束并新开世界，Guest 1首次加入再检查交付。当前先按上方最小1H1G顺序测试，再安排原06的1H2G。
 - 玩家只观察/操作游戏，通过UMM启动新会话并导出三端诊断包；不查看BepInEx窗口、不手工注入发送失败。异常后正常退出，再按角色回传UMM包并标明区域/操作顺序。
 - 原06的其他双Guest独立离开、分帧/多包、恢复与到期项以及07正常/受控超距请求仍分别OPEN；僵尸掉落仍未确认。R04将按本流程回传证据后再逐项判定，不关闭原06/07或僵尸事项。
 

@@ -1,0 +1,4 @@
+﻿source=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\bin\Release\SteamP2PFriends.dll
+destination=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\artifacts\Item-SessionReadinessAndFrameProgress\6526b7e-20261028-0035\SteamP2PFriends.dll
+bytes=1387008
+lastWriteUtc=2026-10-28T00:35:28.3907695Z

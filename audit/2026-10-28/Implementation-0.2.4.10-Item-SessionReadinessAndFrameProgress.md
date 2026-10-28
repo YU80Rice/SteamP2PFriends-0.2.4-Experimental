@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 候选状态：隔离SFP-R2-G1严格fixture Red→Green已闭合；第3/3轮双轴均CLEAN。下文补录限定提交、Release DLL及身份门实际结果。
+- 候选状态：已限定提交 `6526b7e`；提交后Release构建成功，单DLL身份门PASS。源码状态 `implemented-pending-runtime`。
 - 范围：Resource 先启动共享 engine 后 Item 的本地 session/preparation/admission 初始化；返区结算的逐帧有界消费；不含 C/Resource 观测 NRE、僵尸/掉落概率、ACK/LMN、故障清除或部署。
 - 基线：`5c496c0b3c8aa61ba825348bec637071759223c0`，分支 `codex/structure-baseline-0.2.4`。
 - 构建 owner：Vela `426e9bf4-3888-4a06-b04c-3ed8fac35264`，native `01a17e32-c56c-7de2-85b9-33010a59d147`，`gpt-6-luna/high`；领取记录在 `.scratch/matt-orchestrate/item-session-readiness-and-frame-progress-20261028/builder-claim.md`。
@@ -32,7 +32,7 @@
 ## 运行时与下一步
 
 - 本票没有新的实机证据；旧 1H1G 的旧症状本场未复现仍只代表该场。进入物资区延迟的用户体验结果待 R04；1H2G、原06/07、僵尸项保持 OPEN。
-- 当前独立 DLL、审查报告、限定提交、指纹及安装回滚说明尚未产生；双轴 CLEAN 后继续按票规格完成。Runtime 尚不执行；不安装/部署/发布、不生成 ZIP。
+- 运行时：本票没有新的实机证据；旧1H1G本场未复现仍只代表该场。视觉延迟由R04继续验证；1H2G、原06/07、僵尸项保持OPEN。DLL未安装/部署/发布；不生成ZIP。
 
 ## 审查轮次 1 记录
 
@@ -53,3 +53,10 @@
 - Spec：CLEAN；native `01a17fe9-c114-7f33-9a45-8a59614680b3`，`gpt-6-luna/high`。AC1–7由当前生产/测试、严格SFP-R2-G1对照和完整Main支持；AC8为双轴后续限定提交/产物动作；AC9 Runtime/R04仍待测，不宣称通过。
 - 两名审查者均为父native `SubAgentActivity.started`实际启动的并行独立原生实例。完整session_meta、turn_context、final及来源证据见本run `root-round3-native-provenance.json`、`review-round-3-results.md`。
 - 本票累计第3/3完整轮，两轴同一候选均CLEAN；不拼接前轮裁定。隔离对照和完整Main证据均引用原日志，本轮未改生产或测试代码。
+
+## 提交与单DLL
+
+- 限定提交：`6526b7e`（`Fix item session readiness and frame progress`），仅包含本票生产/测试、issue/spec/audit、审查与本票必要实验/Main证据；五个预存tracked保护文件未纳入。
+- 提交后Release：2026-10-28T00:35:26Z起使用仓库约定的Release命令构建成功，exit 0，输出 `bin/Release/SteamP2PFriends.dll`；完整实际日志在本run `postcommit-production-release.log`。代码与已跑635/635候选相同，提交/记录只改变工件交付状态，不改变生产/测试输入。
+- 独立交付：`artifacts/Item-SessionReadinessAndFrameProgress/6526b7e-20261028-0035/SteamP2PFriends.dll`。文件非空1,387,008 bytes；Mono.Cecil元数据为net472 CLR v4.0.30319、I386/ILOnly AnyCPU、Assembly/File version `0.2.4.10`。独立 `Verify-BuildFingerprintArtifact.ps1` Cutover门PASS；Case `SPF-0.2.4.10-Experimental-ItemSlice-Cutover`，MVID `58277318-8897-4147-b9a2-9bb6fd3e9f49`，SHA-256 `02FA2AFD442D074FF584B01503AE8A1AC6FB33DE9CD55CC698CB8916924AC6C7`。详细身份在DLL同目录。
+- 本票`delivery.md`与DLL同目录README给出各端关闭游戏、备份旧DLL、只替换本插件、UMM新会话及正常退出回滚步骤；R04测试路线保持开放，不宣称玩家可见延迟已消除。

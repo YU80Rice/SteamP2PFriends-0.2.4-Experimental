@@ -1,0 +1,7 @@
+﻿startUtc=2026-10-28T00:35:26.6191697+00:00
+command=& 'C:/Program Files/dotnet/dotnet.exe' msbuild SteamP2PFriends.csproj /t:Build /p:Configuration=Release /v:minimal
+stdout+stderr:
+适用于 .NET MSBuild 版本 18.9.0-preview-26322-102+0cf89a94a
+  SteamP2PFriends -> D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\bin\Release\SteamP2PFriends.dll
+exit=0
+endUtc=2026-10-28T00:35:28.5957273+00:00
