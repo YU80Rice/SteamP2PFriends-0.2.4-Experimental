@@ -12,5 +12,5 @@
 
 - 主候选当前正式 Main：635/635 PASS，exit 0；同 runId 连续 ledger、633 Framework-local + 2 CoreCLR-x86，并保留 NIL01/GBA01 两条真实runtime路由，见本run `full-suite-round2/`。
 - SFP-R2-G1严格fixture隔离同测：RED首due后11项/0交付，GREEN 21帧内0项/1交付；完整运行记录见`experiments/b-final-fixture/`。第三轮 Standards 与 Spec 均原生独立 CLEAN，见`review-round-3-results.md`及来源JSON。
-- Runtime仍未执行，R04视觉延迟未验收。主调度后续安排最小1H1G：Host初区→Guest首次加入→同区与新区观察/交互→Guest退出后Host继续新区→同进程再开世界Guest加入；分别记录数据就绪、队列/模型与拾取，bound不算完成。
-- 后续1H2G及原06/07、僵尸留项保持OPEN；不随本票结案关闭。本DLL未安装、部署或发布。
+- 2026-10-29用户完成当前DLL的1H+2G测试并明确人工验收通过：物品刷新、僵尸AI及掉落正常，无幽灵或不刷新。三端L15指纹一致，日志支持同进程两世界及双Guest退出/重连；本票目标Runtime通过。详见`audit/2026-10-29/RuntimeAcceptance-0.2.4.10-R04.md`。
+- 原06未覆盖边界与07受控超距安全专项独立保留，不阻塞本轮体验验收。DLL由用户自行安装测试，Agent没有自动部署或发布；无需为本轮目标重复测试。

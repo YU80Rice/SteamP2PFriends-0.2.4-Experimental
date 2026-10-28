@@ -2,7 +2,7 @@
 
 - Label: ready-for-human
 - Type: AFK
-- Status: implemented-pending-runtime
+- Status: completed — 2026-10-29用户通过当前候选1H+2G目标体验验收
 - Version: SteamP2PFriends 0.2.4.10 Experimental
 - Baseline: `5c496c0b3c8aa61ba825348bec637071759223c0` / `codex/structure-baseline-0.2.4`
 - Created: 2026-10-28
@@ -31,10 +31,10 @@
 - [x] AC6 物理绑定、精确旧退出、单Writer/原生协议、R01 pending、R02故障预算、NIL引用比较与07距离均保持。
 - [x] AC7 原632及必要新增正式登记在当前完整候选全部执行，NIL01/GBA01双runtime路由、身份与失败协议不变。
 - [x] AC8 每轮新鲜原生Luna/high Standards/Spec同候选双CLEAN；限定提交、实际Release与独立身份门通过，单DLL及简短安装/回滚/R04说明齐备。双轴为本票第3/3轮；提交`6526b7e`；单DLL身份门PASS，细节见[`delivery.md`](delivery.md)。
-- [ ] AC9 实机延迟另待R04验证；不把当前控制流Red/静态CLEAN当视觉PASS，不关闭1H2G/原06/07/僵尸留项。
+- [x] AC9 当前候选经用户1H+2G实机目标体验验收通过：正常刷新，无幽灵或不刷新，僵尸AI/掉落正常；三端指纹一致、两世界及退出重连日志支持。依据见`audit/2026-10-29/RuntimeAcceptance-0.2.4.10-R04.md`。不由此关闭原06/07未覆盖专项或授予毫秒级呈现结论。
 
 ## 范围与停止点
 
 实施合同为[spec.md](spec.md)。仅修A/B及其必要直接调用者/测试/产物记录；模型消费候选C、Resource观测NRE、僵尸/掉落概率、LMN/ACK、故障清零/放宽恢复均不附带修。正确seam不可达、需引擎/native服务或冻结合同冲突时，保留候选和真实失败，带具体入口求助根/原指导，不用假Red或换依赖绕过。
 
-审查历史保留三轮及G1恢复窗口，不与旧GBA/NIL/R01–03票混计。AC1–8自动化、独立审查及DLL交付完成；AC9 R04 Runtime待后续实测，不能以自动化或静态结果代替。交付工件只有单DLL，不含ZIP，也未部署或发布。
+审查历史保留三轮及G1恢复窗口，不与旧GBA/NIL/R01–03票混计。AC1–8源码交付完成；AC9已由2026-10-29用户实际验收及三端日志核证，不以自动化代替。交付为单DLL，用户已自行部署本轮测试；Agent未自动安装或发布。
