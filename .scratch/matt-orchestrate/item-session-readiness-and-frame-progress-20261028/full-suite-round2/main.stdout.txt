@@ -1,0 +1,982 @@
+RUN_CANDIDATE production=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\WhitelistTests\bin\Release\SteamP2PFriends.dll; productionMvid=58277318-8897-4147-b9a2-9bb6fd3e9f49; tests=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\WhitelistTests\bin\Release\SteamP2PFriends.WhitelistTests.exe; testsMvid=73e99468-b8a0-4096-811b-a0e2c4e11cfd
+===============================================================
+=== SteamP2PFriends Modular TestRunner ===
+===============================================================
+
+=== Evidence Class: PureMemory ===
+  PASS [PureMemory] EvidenceClass Catalog + Registration Closure
+  PASS [PureMemory] REG04 ProductionRequirements
+
+--- [PureMemory / Domain 1/8: Core & Diagnostics Policy] ---
+  PASS [PureMemory] LOG1 Markers
+  PASS [PureMemory] LOG2 Defaults
+  PASS [PureMemory] LOG3 Labels
+  PASS [PureMemory] LOG4 Tags
+  PASS [PureMemory] ID Contract
+
+--- [PureMemory / Domain 2/8: MultiObserver Control Plane & Spatial Index] ---
+  PASS [PureMemory] SPI01 Grid2DDiff
+  PASS [PureMemory] SPI02 Bound1DDiff
+  PASS [PureMemory] SPI03 DisconnectReleasesAll
+  PASS [PureMemory] SPI04 ReconnectInvalidation
+  PASS [PureMemory] SPI05 Grid2DShapeClipping
+  PASS [PureMemory] M01 PendingIsObserver
+  PASS [PureMemory] M02 DemandRefCount
+  PASS [PureMemory] M03 ConnectionGeneration
+  PASS [PureMemory] M04 DisconnectEpoch
+  PASS [PureMemory] M05 EdgeRelevance
+  PASS [PureMemory] M06 DuplicateObserver
+  PASS [PureMemory] M07 MovementDemand
+  PASS [PureMemory] M08 SessionIdentity
+  PASS [PureMemory] M09 IncompleteCapture
+  PASS [PureMemory] M10 LifecycleSequence
+  PASS [PureMemory] M11 FaultBackoff
+  PASS [PureMemory] M12 StaleLoaded
+  PASS [PureMemory] M13 ObserverCapacity
+  PASS [PureMemory] M14 InvalidZombieBound
+  PASS [PureMemory] M15 ConnectionGenerationOverflow
+  PASS [PureMemory] DPE01 SharedFactSingle
+  PASS [PureMemory] DPE02 ChebyshevClipping
+  PASS [PureMemory] DPE03 OverlapCount
+  PASS [PureMemory] DPE04 EnterExitDiff
+  PASS [PureMemory] DPE05 ConnectionInvalidation
+  PASS [PureMemory] DPE06 DomainIsolation
+  PASS [PureMemory] DPE07 EligibilityDeferral
+  PASS [PureMemory] DPE08 DeclarationsFailClosed
+  PASS [PureMemory] DPE09 RemovalReleases
+  PASS [PureMemory] DPE10 RestoreProjection
+  PASS [PureMemory] DPE11 DeferredGenerationChange
+  PASS [PureMemory] LOE01 TypedDemandSharedProjection
+  PASS [PureMemory] LOE02 DemandAggregationAcquireOnce
+  PASS [PureMemory] LOE03 HysteresisSchedulesRelease
+  PASS [PureMemory] LOE04 ReentryCancelsRelease
+  PASS [PureMemory] LOE05 RegionGenerationIdentity
+  PASS [PureMemory] LOE06 SessionEpochIdentity
+  PASS [PureMemory] LOE07 RetryFollowsDomainPolicy
+  PASS [PureMemory] LOE08 SingleRegionIsolation
+  PASS [PureMemory] LOE09 CrossDomainIsolation
+  PASS [PureMemory] LOE10 ObserverReplicationIsolation
+  PASS [PureMemory] LOE11 ReleaseIdempotence
+  PASS [PureMemory] LOE12 DiagnosticsCorrelation
+  PASS [PureMemory] LOE13 RegistrationClosure
+  PASS [PureMemory] LOE14 AcquireObservable
+  PASS [PureMemory] LOE15 FaultedDomainIsolation
+  PASS [PureMemory] LIR01 BridgeRejectsForeignDomain
+  PASS [PureMemory] LIR02 RoutingSinkPreservesDomain
+  PASS [PureMemory] LIR03 DefaultLineReentryContract
+  PASS [PureMemory] LIR04 DefaultSinkOnceKeyDedup
+  PASS [PureMemory] LOE16 ReentryAuthorityAndDomain
+  PASS [PureMemory] LOE17 NativeStepFiveDemandOnly
+  PASS [PureMemory] LOE18 NativeStepFiveKeepsEngineIdentity
+  PASS [PureMemory] ARI01 DeferredSampleDoesNotFreeze
+  PASS [PureMemory] ARI02 DeferredNeverReleases
+  PASS [PureMemory] ARI03 DeferredHeartbeatBounded
+  PASS [PureMemory] ARI04 DeferredStillCountsDemand
+  PASS [PureMemory] ARI05 RetryTransactionScope
+  PASS [PureMemory] ARI06 StaleRetryNoEligibility
+  PASS [PureMemory] ARI07 IdentityGatesWrites
+  PASS [PureMemory] ARI08 IdentityCircuitBreak
+  PASS [PureMemory] ARI09 FaultUnitDomainRegionTransition
+  PASS [PureMemory] ARI10 FaultHeartbeatBounded
+  PASS [PureMemory] ARI11 BoundedFailedRetry
+  PASS [PureMemory] ARI12 ManualRecoveryIdentity
+  PASS [PureMemory] SAM01 PerRecordAdmission
+  PASS [PureMemory] SAM02 BatchRejection
+  PASS [PureMemory] SAM03 UnknownIdentityAndDuplicates
+  PASS [PureMemory] SIG01 IdentityRecoversInWindow
+  PASS [PureMemory] SIG02 IdentityCircuitBreak
+  PASS [PureMemory] SIG03 CircuitRecoveryResync
+
+--- [PureMemory / Domain 3/8: Adapters / Item Domain (M1 + M2)] ---
+  PASS [PureMemory] G1 FirstCommit
+  PASS [PureMemory] G2 Abort
+  PASS [PureMemory] G3 Reset
+  PASS [PureMemory] G4 Preparing
+  PASS [PureMemory] M1I01 LocalVanilla
+  PASS [PureMemory] M1I02 DedicatedAuthority
+  PASS [PureMemory] M1I03 RegistrationGate
+  PASS [PureMemory] M1I04 RemoteEligibility
+  PASS [PureMemory] M1I05 PendingObserver
+  PASS [PureMemory] M2I01 ReliableCommit
+  PASS [PureMemory] M2I02 AbortRetry
+  PASS [PureMemory] M2I03 RelevanceReentry
+  PASS [PureMemory] M2I04 Reconnect
+  PASS [PureMemory] M2I05 OverlappingObservers
+  PASS [PureMemory] M2I06 DifferentRegions
+  PASS [PureMemory] M2I07 NewWorldGeneration
+  PASS [PureMemory] M2I08 ExplicitCapability
+  PASS [PureMemory] M2I10 LoadedRollback
+  PASS [PureMemory] M2I11 ExactDisconnect
+  PASS [PureMemory] IT146 LateDisconnectKeepsReconnectedBinding
+  PASS [PureMemory] IT147 DisconnectRequiresExactCoreOwnerAndTransport
+  PASS [PureMemory] IT149 ProductionDisconnectKeepsReconnectedOwner
+  PASS [PureMemory] GBA02 Admission Physical Identity
+  PASS [PureMemory] GBA03 Wait Preserves Failure Budget
+  PASS [PureMemory] GBA04 Admission Failure Classification
+GBA01 child stdout=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\full-suite-round2\registered-tests.tsv.gba01-child.stdout.txt
+RUNTIME=10.0.9; ARCH=x86; BASE=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\
+GBA01_TARGET production=58277318-8897-4147-b9a2-9bb6fd3e9f49 method=SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaselineCore token=0x06000865
+GBA01_TARGET tests=73e99468-b8a0-4096-811b-a0e2c4e11cfd method=SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.Test_GBA01_NativeFirstObserveBindingAdmission token=0x060000FE
+RESOLVE Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\Assembly-CSharp.dll
+RESOLVE UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.CoreModule.dll
+RESOLVE com.rlabrecque.steamworks.net, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\com.rlabrecque.steamworks.net.dll
+RESOLVE SDG.NetPak.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.NetPak.Runtime.dll
+RESOLVE SDG.NetTransport, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.NetTransport.dll
+RESOLVE BattlEye, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\BattlEye.dll
+GBA01 begin real SteamPlayer and transport fixture
+RESOLVE SystemEx, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SystemEx.dll
+RESOLVE UnturnedDat, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnturnedDat.dll
+RESOLVE Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\Newtonsoft.Json.dll
+RESOLVE Unity.Postprocessing.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\Unity.Postprocessing.Runtime.dll
+RESOLVE SDG.Glazier.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.Glazier.Runtime.dll
+RESOLVE UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.TextRenderingModule.dll
+RESOLVE UnityEngine.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.UI.dll
+RESOLVE UnityEngine.UIElementsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.UIElementsModule.dll
+RESOLVE UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.AudioModule.dll
+RESOLVE UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.PhysicsModule.dll
+RESOLVE UnityEngine.VehiclesModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.VehiclesModule.dll
+RESOLVE SDG.HostBans.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.HostBans.Runtime.dll
+RESOLVE UnityEngine.SharedInternalsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.SharedInternalsModule.dll
+GBA01 transport type=SDG.NetTransport.SteamNetworkingSockets.TransportConnection_SteamNetworkingSockets, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+GBA01 result sends=4 loaded=3 isolated=False accepted=True faultWaiting=True noticesWhileWaiting=0 confirmedNotSent=True realWaiting=True retained=True budgetPreserved=True retryKey=item-delivery:1:0:0:1:76561198000000001:2 firstFaultAt=1.5 retriesStarted=0 attemptId=1 restored=True acceptedNotice=True manual=True demand=0 leases=1 acquire=domain=Item region=(0,0) sessionEpoch=1 acquireGeneration=1 outcome=success replication=domain=Item observer=76561198000000001 region=(0,0) role=guest outcome=bound diagnostics=domain=Item region=(0,0) sessionEpoch=1 acquireGeneration=1 outcome=success || domain=Item observer=76561198000000001 region=(0,0) role=guest outcome=bound || domain=Item observer=76561198000000001 region=(0,0) role=guest outcome=bound || [ItemRecovery] event=delivery-confirmed-not-sent region=(0,0) job=1:1:0 target=76561198000000001/2 sourceAttempt=1 attempt=1 budget=3/10s exception=SteamP2PFriends.Adapters.Item.ItemObserverReplicationFailureException: Guest baseline askItems did not execute.
+   at SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(Action invokeNativeAskItems, Action markLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaselineCore(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y, Func`4 prepareSend, Action`3 commitLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaseline(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y)
+   at SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.<>c__DisplayClass1_0.<Test_GBA01_NativeFirstObserveBindingAdmission>b__4(UInt64 id, UInt64 token, RegionKey key)
+   at SteamP2PFriends.Adapters.Item.ItemExecutionPort.DeliverSettlementBaseline(UInt64 observerId, UInt64 connectionToken, RegionKey regionKey, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemProductionControlSeam.<.ctor>b__12_15(UInt64 observer, UInt64 token, RegionKey region, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemReturnSettlement.Finish(RegionKey region, Job job, Boolean deliver) stack=   at SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(Action invokeNativeAskItems, Action markLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaselineCore(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y, Func`4 prepareSend, Action`3 commitLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaseline(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y)
+   at SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.<>c__DisplayClass1_0.<Test_GBA01_NativeFirstObserveBindingAdmission>b__4(UInt64 id, UInt64 token, RegionKey key)
+   at SteamP2PFriends.Adapters.Item.ItemExecutionPort.DeliverSettlementBaseline(UInt64 observerId, UInt64 connectionToken, RegionKey regionKey, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemProductionControlSeam.<.ctor>b__12_15(UInt64 observer, UInt64 token, RegionKey region, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemReturnSettlement.Finish(RegionKey region, Job job, Boolean deliver) || [ItemRecovery] event=first-observer-failure region=(0,0) observer=76561198000000001 connection=2 attempt=1 budget=3/10s disposition=retry notifyType=none exception=SteamP2PFriends.Adapters.Item.ItemObserverReplicationFailureException: Guest baseline askItems did not execute.
+   at SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(Action invokeNativeAskItems, Action markLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaselineCore(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y, Func`4 prepareSend, Action`3 commitLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaseline(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y)
+   at SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.<>c__DisplayClass1_0.<Test_GBA01_NativeFirstObserveBindingAdmission>b__4(UInt64 id, UInt64 token, RegionKey key)
+   at SteamP2PFriends.Adapters.Item.ItemExecutionPort.DeliverSettlementBaseline(UInt64 observerId, UInt64 connectionToken, RegionKey regionKey, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemProductionControlSeam.<.ctor>b__12_15(UInt64 observer, UInt64 token, RegionKey region, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemReturnSettlement.Finish(RegionKey region, Job job, Boolean deliver) stack=   at SteamP2PFriends.Adapters.Item.ItemObserverReplicationAdapter.DispatchCandidateGuestAskItems(Action invokeNativeAskItems, Action markLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaselineCore(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y, Func`4 prepareSend, Action`3 commitLoaded)
+   at SteamP2PFriends.Adapters.Item.DefaultNativeItemWarehouseBridge.BindGuestBaseline(UInt64 observerId, UInt64 connectionToken, Byte x, Byte y)
+   at SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.<>c__DisplayClass1_0.<Test_GBA01_NativeFirstObserveBindingAdmission>b__4(UInt64 id, UInt64 token, RegionKey key)
+   at SteamP2PFriends.Adapters.Item.ItemExecutionPort.DeliverSettlementBaseline(UInt64 observerId, UInt64 connectionToken, RegionKey regionKey, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemProductionControlSeam.<.ctor>b__12_15(UInt64 observer, UInt64 token, RegionKey region, Boolean host)
+   at SteamP2PFriends.Adapters.Item.ItemReturnSettlement.Finish(RegionKey region, Job job, Boolean deliver) || [ItemRecovery] event=delivery-recovery-exhausted target=76561198000000001/2 region=(0,0) job=1:1:0 attempt=1 budget=3/10s
+GBA01_RESULT=true
+GBA01_CHILD_PROTOCOL=1; RESULT=True; RUNTIME=10.0.9; ARCH=x86; PRODUCTION_MVID=58277318-8897-4147-b9a2-9bb6fd3e9f49; TESTS_MVID=73e99468-b8a0-4096-811b-a0e2c4e11cfd; METHOD=SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.Test_GBA01_NativeFirstObserveBindingAdmission; METHOD_TOKEN=0x060000FE; TARGET_TOKEN=0x06000865
+  PASS [PureMemory] GBA01 Native First Observe Binding
+NIL00 begin native SteamPlayerID construction
+NIL00 SteamPlayerID constructed: SDG.Unturned.SteamPlayerID, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+NIL00 begin native SteamPlayer allocation
+NIL00 SteamPlayer allocated: SDG.Unturned.SteamPlayer, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  PASS [PureMemory] NIL00 Native Fixture Preflight
+NIL04 distinct references=True, same SteamID value=True
+  PASS [PureMemory] NIL04 Real Identity Value and Reference
+NIL01 child stdout=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\full-suite-round2\registered-tests.tsv.nil01-child.stdout.txt
+RUNTIME=10.0.9; ARCH=x86; BASE=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\
+TARGET FindClient token=0x06000875 MVID=58277318-8897-4147-b9a2-9bb6fd3e9f49; TEST token=0x06000106 MVID=73e99468-b8a0-4096-811b-a0e2c4e11cfd
+ASSEMBLY production=SteamP2PFriends, Version=0.2.4.10, Culture=neutral, PublicKeyToken=null; MVID=58277318-8897-4147-b9a2-9bb6fd3e9f49; PATH=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SteamP2PFriends.dll
+ASSEMBLY tests=SteamP2PFriends.WhitelistTests, Version=0.2.4.10, Culture=neutral, PublicKeyToken=null; MVID=73e99468-b8a0-4096-811b-a0e2c4e11cfd; PATH=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SteamP2PFriends.WhitelistTests.exe
+INPUT stage=existing-Test_NIL01_RealNativeLookupContract; invoking without Program.Main
+RESOLVE Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\Assembly-CSharp.dll
+RESOLVE UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.CoreModule.dll
+RESOLVE com.rlabrecque.steamworks.net, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\com.rlabrecque.steamworks.net.dll
+RESOLVE SDG.NetPak.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.NetPak.Runtime.dll
+RESOLVE SDG.NetTransport, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.NetTransport.dll
+RESOLVE BattlEye, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\BattlEye.dll
+RESOLVE SystemEx, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SystemEx.dll
+RESOLVE UnturnedDat, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnturnedDat.dll
+RESOLVE Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\Newtonsoft.Json.dll
+RESOLVE Unity.Postprocessing.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\Unity.Postprocessing.Runtime.dll
+RESOLVE SDG.Glazier.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.Glazier.Runtime.dll
+RESOLVE UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.TextRenderingModule.dll
+RESOLVE UnityEngine.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.UI.dll
+RESOLVE UnityEngine.UIElementsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.UIElementsModule.dll
+RESOLVE UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.AudioModule.dll
+RESOLVE UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.PhysicsModule.dll
+RESOLVE UnityEngine.VehiclesModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.VehiclesModule.dll
+RESOLVE SDG.HostBans.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\SDG.HostBans.Runtime.dll
+RESOLVE UnityEngine.SharedInternalsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null => D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\.scratch\matt-orchestrate\item-session-readiness-and-frame-progress-20261028\native-host\bin\Release\net10.0\input\UnityEngine.SharedInternalsModule.dll
+TEST_RESULT=True
+NIL01_CHILD_PROTOCOL=1; RESULT=True; RUNTIME=10.0.9; ARCH=x86; PRODUCTION_MVID=58277318-8897-4147-b9a2-9bb6fd3e9f49; TESTS_MVID=73e99468-b8a0-4096-811b-a0e2c4e11cfd; METHOD=SteamP2PFriends.WhitelistTests.ItemPreparationAndFirstDemandTests.Test_NIL01_RealNativeLookupContract; METHOD_TOKEN=0x06000106; TARGET_TOKEN=0x06000875
+  PASS [PureMemory] NIL01 Real Native Lookup Contract
+  PASS [PureMemory] IT01 EarlyUnpreparedDeferred
+  PASS [PureMemory] IT02 FullMapPreparationOnce
+  PASS [PureMemory] IT03 FirstDemandActivatesTiming
+  PASS [PureMemory] IT04 SecondObserverBaseline
+  PASS [PureMemory] IT05 CoreBindingRetainsData
+  PASS [PureMemory] IT06 NestedDroppedPreserved
+  PASS [PureMemory] IT07 ExpiryAlignsWithU3DS
+  PASS [PureMemory] IT08 FailedPrepNotReady
+  PASS [PureMemory] IT09 DemandPolicyDeclaration
+  PASS [PureMemory] IT10 PortAndSharedEngine
+  PASS [PureMemory] IT11 StaleSessionAcquireRejected
+  PASS [PureMemory] IT12 StaleReleaseRejected
+  PASS [PureMemory] IT13 PrepBoundaryAndEpoch
+  PASS [PureMemory] IT14 ReceiptIdentityInvariants
+  PASS [PureMemory] IT15 MetadataStoreCleanup
+  PASS [PureMemory] IT16 WarehouseBridgePreparation
+  PASS [PureMemory] IT17 FirstDemandAgePreservation
+  PASS [PureMemory] IT18 IndependentObserverBaselines
+  PASS [PureMemory] IT19 UnpreparedGateRejection
+  PASS [PureMemory] IT20 BridgeExceptionAndIdentity
+  PASS [PureMemory] IT21 CreationPathAndNestedDrops
+  PASS [PureMemory] IT22 MutualExclusionAndGates
+  PASS [PureMemory] IT23 NativeBridgeAndListSafety
+  PASS [PureMemory] IT24 OriginTrackingAndTimingBinding
+  PASS [PureMemory] IT25 ActivateRegionTimingValidation
+  PASS [PureMemory] IT26 TimingRollbackAndAcquireClassification
+  PASS [PureMemory] IT27 CandidateAskItemsSend
+  PASS [PureMemory] IT28 CoDemandNaturalCycle
+  PASS [PureMemory] IT30 UnvisitedDroppedExpiry
+  PASS [PureMemory] IT31 DemandRespawnEffect
+  PASS [PureMemory] IT32 NestedRespawnDrop
+  PASS [PureMemory] IT33 HysteresisNotDemand
+  PASS [PureMemory] IT34 DistinctExpiryLimits
+  PASS [PureMemory] IT36 BoundedDroppedExpiry
+  PASS [PureMemory] IT37 DeclineAndModeException
+  PASS [PureMemory] IT38 ReentryKeepsTiming
+  PASS [PureMemory] IT39 ReturnClearsBeforeRestock
+  PASS [PureMemory] IT40 SurvivorAgeAndFailedRestock
+  PASS [PureMemory] IT41 ReturnWaitAndDeliver
+SFP03 latePrepared=True duplicateBegin=True callback=1 items=0 deliveries=1 held=True bounded=True partial=True fault=none
+  PASS [PureMemory] SFP03 RealFrameGateProgressesBoundedSettlement
+  PASS [PureMemory] SFP05 FrameClockUsesOneDeltaPerFrame
+  PASS [PureMemory] IT42 HysteresisReentrySettles
+  PASS [PureMemory] IT43 LastDemandFinishesQuiet
+  PASS [PureMemory] IT44 UnreadyPickupRejected
+  PASS [PureMemory] IT45 SharedSettlementBudget
+  PASS [PureMemory] IT46 LaterGuestSameResult
+  PASS [PureMemory] IT47 StaleIdentityIsolates
+  PASS [PureMemory] IT48 DropDuringSettlement
+  PASS [PureMemory] IT49 WrapUpReentryAndNextReturn
+  PASS [PureMemory] IT50 StepFivePendingCommit
+  PASS [PureMemory] IT51 NaturalCreationExceptionIsolated
+  PASS [PureMemory] IT52 CompletedRegionDoesNotHoldNextBaseline
+  PASS [PureMemory] IT53 StepFiveAdmissionUsesDeliveredSuppression
+  PASS [PureMemory] IT54 StepFiveAdmissionKeepsNeighborIndependent
+  PASS [PureMemory] IT55 StepFiveAdmissionPreparesSettlementBeforeDemand
+  PASS [PureMemory] IT56 MissingInputsDoNotFinishSettlement
+  PASS [PureMemory] IT59 MissingInputsDoNotFinishSettlement
+  PASS [PureMemory] IT57 NetworkedDeletionStillBroadcastsWhenGateClosed
+  PASS [PureMemory] IT58 UnpresentedDeletionKeepsNativeDestroyAction
+  PASS [PureMemory] IT60 MissingAssetDoesNotFinishSettlement
+  PASS [PureMemory] IT133 ProductionNaturalInputsDistinguishEmptyFromMissing
+  PASS [PureMemory] IT134 ZeroSpawnPointRegionSettlesAndDelivers
+  PASS [PureMemory] IT135 UncertainReplicationFailureNotifiesOnceWithTrace
+  PASS [PureMemory] IT136 UnconfirmedNoticeDeduplicatesPerObserverRegion
+  PASS [PureMemory] IT137 HalfPacketExitReturnDeliversFreshBaseline
+  PASS [PureMemory] IT138 SettlementConfirmedNotSentRetriesOnlyGuestDelivery
+  PASS [PureMemory] IT139 ConfirmedNotSentExhaustionAndManualRestart
+  PASS [PureMemory] IT140 ConfirmedNotSentRetryDeadlineStopsDelivery
+  PASS [PureMemory] IT141 UnknownDuringDeliveryRetryQuarantinesOnce
+  PASS [PureMemory] IT142 FailureTraceReopensOnlyAfterRealObserverExit
+  PASS [PureMemory] IT143 ExitedDeliveryIsRevokedWithoutAffectingOtherGuest
+  PASS [PureMemory] IT144 ConnectionFailureCleanupUsesExactIdentity
+  PASS [PureMemory] IT145 ObserverExitFailureReportsIdentityAndStack
+  PASS [PureMemory] IT148 StaleExitPreservesCurrentAndOtherGuestDemand
+  PASS [PureMemory] IT61 ItemFailureRecoveryPolicy
+  PASS [PureMemory] IT62 ExceptionRecoveryLocalRetry
+  PASS [PureMemory] IT63 RecoveryCommandFailClosed
+  PASS [PureMemory] IT64 RecoveryCommandRemoteGate
+  PASS [PureMemory] IT65 RecoveryCommandSessionIsolation
+  PASS [PureMemory] IT66 RecoveryManualRateLimit
+  PASS [PureMemory] IT67 IsolatedRegionReentry
+  PASS [PureMemory] IT68 RecoveryTokenNormalization
+  PASS [PureMemory] IT69 HalfPacketObserverGate
+  PASS [PureMemory] IT70 RecoveryCommandFailClosed
+  PASS [PureMemory] IT71 RecoveryCommandExceptionClosed
+  PASS [PureMemory] IT72 RecoveryCommandRegistrationGate
+  PASS [PureMemory] IT73 IdentityInvalidationRecovery
+  PASS [PureMemory] IT74 RecoveryExactDisconnectToken
+  PASS [PureMemory] IT75 CoreGenerationIdentity
+  PASS [PureMemory] IT76 RegionReleaseIsolation
+  PASS [PureMemory] IT77 UnknownRegionItems
+  PASS [PureMemory] IT78 GuestReplicationIsolation
+  PASS [PureMemory] IT79 UncertainGuestSendQuarantine
+  PASS [PureMemory] IT80 UnknownItemsNoRestart
+  PASS [PureMemory] IT81 UnobservedAskItemsNotSafe
+  PASS [PureMemory] IT82 AppliedCreateNotRedrawn
+  PASS [PureMemory] IT83 ExhaustedSettlementNotice
+  PASS [PureMemory] IT84 ManualRejectsOutsideProjection
+  PASS [PureMemory] IT85 CoveringCallerManualRecovery
+  PASS [PureMemory] IT86 UnconfirmedNativeNotice
+  PASS [PureMemory] IT87 SeamCooldownPerCaller
+  PASS [PureMemory] IT88 SessionWriterCutover
+  PASS [PureMemory] IT89 FullMapCycleRetired
+  PASS [PureMemory] IT90 LegacyEligibilityRetired
+  PASS [PureMemory] IT91 SessionSwitchIsolation
+  PASS [PureMemory] SFP01 ResourceStartedEngineInitializesItemPerWorld
+  PASS [PureMemory] IT92 LegacyCycleStaysRetired
+  PASS [PureMemory] IT93 WorldChangeIsolation
+  PASS [PureMemory] IT94 EligibilityStaysRetired
+  PASS [PureMemory] IT95 OverDistancePickupRejected
+  PASS [PureMemory] IT96 DistanceSquared400Allowed
+  PASS [PureMemory] IT97 NonAuthorityOriginalPath
+  PASS [PureMemory] IT98 UnreadyRegionPickupRejected
+  PASS [PureMemory] IT99 GuestLeaseCannotBypass
+  PASS [PureMemory] IT100 NativeRejectionAfterDistance
+  PASS [PureMemory] IT101 MissingInstanceIgnoresClientPoint
+  PASS [PureMemory] IT102 HostPresentThenStepFivePending
+  PASS [PureMemory] IT103 StepFiveThenHostPresentPending
+  PASS [PureMemory] IT105 ReentryPresentPending
+  PASS [PureMemory] IT121c NotifyFailureCancelsPending
+  PASS [PureMemory] IT121a NotStartedKeepsPending
+  PASS [PureMemory] IT121b UncertainKeepsPending
+  PASS [PureMemory] IT121d BlockedRegionKeepsPending
+  PASS [PureMemory] IT123 UnconfirmedSurvivesRegionExit
+  PASS [PureMemory] IT124 ProductionClassifierBoundary
+  PASS [PureMemory] IT125 IncrementDestroyPolicy
+  PASS [PureMemory] IT126 NonRetiredStepFivePassthrough
+  PASS [PureMemory] IT129 ClientPendingBatchContractPlural
+  PASS [PureMemory] IT130 OwnedBatchDefersOnStaleGeneration
+  PASS [PureMemory] IT131 ClassifierPrecheckAndPostEntryFailure
+  PASS [PureMemory] IT132 PresentSharedSortOrderBeforeSideEffects
+  PASS [PureMemory] E02A1 StepFiveFirstPresentsTargetB
+  PASS [PureMemory] E02A2 SharedFirstStepFiveIdempotent
+  PASS [PureMemory] E02A3 IdentityGuardsRejectAndWait
+E02AC2 current wrapper/core=ItemLocalPresentationPipeline.PresentSharedRegion warehouse=2
+E02AC2 after-shared pending=2 ids=1/1 loaded=True
+E02AC2 owned=Accepted prefix-run-original=False
+E02AC2 after-step5 pending=2 id1001=1 id1002=1 loaded=True
+E02AC2 uniqueness=True
+  PASS [PureMemory] E02AC2 ProductionCombination
+E02PROBE window=0163..0334
+E02PROBE skipped=23
+E02PROBE skipped-window-indexes=9,10,11,12,13,14,15,16,17,31,32,33,34,35,36,37,38,39,40,41,42,43,44
+E02PROBE reloc:player-nop@IL_0163
+E02PROBE reloc:player-chain-nop@IL_0164
+E02PROBE reloc:player-chain-nop@IL_0169
+E02PROBE reloc:loaded-arg6@IL_0171
+E02PROBE emit:ldfld.isItemsLoaded@IL_0176
+E02PROBE emit:brtrue@IL_017B
+E02PROBE reloc:player-nop@IL_0180
+E02PROBE skip:callvirt@IL_0181
+E02PROBE skip:callvirt@IL_0186
+E02PROBE skip:brfalse.s@IL_018B
+E02PROBE skip:ldarg.0@IL_018D
+E02PROBE skip:ldloc.3@IL_018E
+E02PROBE skip:conv.u1@IL_018F
+E02PROBE skip:ldloc.s@IL_0190
+E02PROBE skip:conv.u1@IL_0192
+E02PROBE skip:call@IL_0193
+E02PROBE reloc:player-nop@IL_0198
+E02PROBE reloc:player-chain-nop@IL_0199
+E02PROBE reloc:player-chain-nop@IL_019E
+E02PROBE reloc:loaded-arg6@IL_01A6
+E02PROBE emit:stfld.isItemsLoaded@IL_01AC
+E02PROBE reloc:sort-arg5@IL_01B5
+E02PROBE skip:call@IL_01BC
+E02PROBE skip:brfalse.s@IL_01C1
+E02PROBE skip:ldarg.0@IL_01C3
+E02PROBE skip:ldarg.1@IL_01C4
+E02PROBE skip:callvirt@IL_01C5
+E02PROBE skip:ldfld@IL_01CA
+E02PROBE skip:callvirt@IL_01CF
+E02PROBE skip:ldloc.3@IL_01D4
+E02PROBE skip:conv.u1@IL_01D5
+E02PROBE skip:ldloc.s@IL_01D6
+E02PROBE skip:conv.u1@IL_01D8
+E02PROBE skip:ldloc.s@IL_01D9
+E02PROBE skip:call@IL_01DB
+E02PROBE skip:br@IL_01E0
+E02PROBE reloc:regions-nop@IL_01E5
+E02PROBE reloc:region-arg0@IL_01ED
+E02PROBE reloc:destroy-arg7@IL_01F2
+E02PROBE reloc:regions-nop@IL_01F7
+E02PROBE reloc:region-arg0@IL_01FF
+E02PROBE emit:stfld.isNetworked@IL_0205
+E02PROBE reloc:regions-nop@IL_020A
+E02PROBE reloc:region-arg0@IL_0212
+E02PROBE emit:ldfld.items@IL_0217
+E02PROBE emit:get_Count@IL_021C
+E02PROBE emit:ble@IL_0222
+E02PROBE reloc:scratch-arg2@IL_0227
+E02PROBE emit:Clear@IL_022C
+E02PROBE reloc:regions-nop@IL_0231
+E02PROBE reloc:region-arg0@IL_0239
+E02PROBE emit:ldfld.items@IL_023E
+E02PROBE emit:GetEnumerator@IL_0243
+E02PROBE emit:br@IL_024A
+E02PROBE step:ldloca@IL_024F operand=VariableDefinition
+E02PROBE emit:get_Current@IL_0251
+E02PROBE step:ldloca@IL_0258 operand=VariableDefinition
+E02PROBE emit:initobj@IL_025A
+E02PROBE step:ldloca@IL_0260 operand=VariableDefinition
+E02PROBE emit:stfld.region_x@IL_0264
+E02PROBE step:ldloca@IL_0269 operand=VariableDefinition
+E02PROBE emit:stfld.region_y@IL_026E
+E02PROBE step:ldloca@IL_0273 operand=VariableDefinition
+E02PROBE emit:stfld.sortOrder@IL_0277
+E02PROBE step:ldloca@IL_027C operand=VariableDefinition
+E02PROBE emit:get_item@IL_0280
+E02PROBE emit:get_id@IL_0285
+E02PROBE emit:stfld.assetId@IL_028A
+E02PROBE step:ldloca@IL_028F operand=VariableDefinition
+E02PROBE emit:get_item@IL_0293
+E02PROBE emit:ldfld.amount@IL_0298
+E02PROBE emit:stfld.amount@IL_029D
+E02PROBE step:ldloca@IL_02A2 operand=VariableDefinition
+E02PROBE emit:get_item@IL_02A6
+E02PROBE emit:ldfld.quality@IL_02AB
+E02PROBE emit:stfld.quality@IL_02B0
+E02PROBE step:ldloca@IL_02B5 operand=VariableDefinition
+E02PROBE emit:get_item@IL_02B9
+E02PROBE emit:ldfld.state@IL_02BE
+E02PROBE emit:stfld.state@IL_02C3
+E02PROBE step:ldloca@IL_02C8 operand=VariableDefinition
+E02PROBE emit:get_point@IL_02CC
+E02PROBE emit:stfld.point@IL_02D1
+E02PROBE step:ldloca@IL_02D6 operand=VariableDefinition
+E02PROBE emit:get_instanceID@IL_02DA
+E02PROBE emit:stfld.instanceID@IL_02DF
+E02PROBE step:ldloca@IL_02E4 operand=VariableDefinition
+E02PROBE emit:stfld.sortOrder@IL_02E8
+E02PROBE reloc:scratch-arg2@IL_02ED
+E02PROBE emit:Add@IL_02F4
+E02PROBE step:ldloca@IL_02F9 operand=VariableDefinition
+E02PROBE emit:MoveNext@IL_02FB
+E02PROBE emit:brtrue@IL_0300
+E02PROBE emit:leave@IL_0305
+E02PROBE step:ldloca@IL_0307 operand=VariableDefinition
+E02PROBE emit:constrained@IL_0309
+E02PROBE emit:Dispose@IL_030F
+E02PROBE structured:endfinally@IL_0314
+E02PROBE reloc:pending-arg1@IL_0315
+E02PROBE reloc:pending-arg1@IL_031A
+E02PROBE reloc:scratch-arg2@IL_031F
+E02PROBE emit:get_Item@IL_0325
+E02PROBE emit:FindInsertionIndex@IL_032A
+E02PROBE reloc:scratch-arg2@IL_032F
+E02PROBE emit:InsertRange@IL_0334
+E02PROBE reloc:player-nop@IL_0163
+E02PROBE reloc:player-chain-nop@IL_0164
+E02PROBE reloc:player-chain-nop@IL_0169
+E02PROBE reloc:loaded-arg6@IL_0171
+E02PROBE emit:ldfld.isItemsLoaded@IL_0176
+E02PROBE emit:brtrue@IL_017B
+E02PROBE reloc:player-nop@IL_0180
+E02PROBE skip:callvirt@IL_0181
+E02PROBE skip:callvirt@IL_0186
+E02PROBE skip:brfalse.s@IL_018B
+E02PROBE skip:ldarg.0@IL_018D
+E02PROBE skip:ldloc.3@IL_018E
+E02PROBE skip:conv.u1@IL_018F
+E02PROBE skip:ldloc.s@IL_0190
+E02PROBE skip:conv.u1@IL_0192
+E02PROBE skip:call@IL_0193
+E02PROBE reloc:player-nop@IL_0198
+E02PROBE reloc:player-chain-nop@IL_0199
+E02PROBE reloc:player-chain-nop@IL_019E
+E02PROBE reloc:loaded-arg6@IL_01A6
+E02PROBE emit:stfld.isItemsLoaded@IL_01AC
+E02PROBE reloc:sort-arg5@IL_01B5
+E02PROBE skip:call@IL_01BC
+E02PROBE skip:brfalse.s@IL_01C1
+E02PROBE skip:ldarg.0@IL_01C3
+E02PROBE skip:ldarg.1@IL_01C4
+E02PROBE skip:callvirt@IL_01C5
+E02PROBE skip:ldfld@IL_01CA
+E02PROBE skip:callvirt@IL_01CF
+E02PROBE skip:ldloc.3@IL_01D4
+E02PROBE skip:conv.u1@IL_01D5
+E02PROBE skip:ldloc.s@IL_01D6
+E02PROBE skip:conv.u1@IL_01D8
+E02PROBE skip:ldloc.s@IL_01D9
+E02PROBE skip:call@IL_01DB
+E02PROBE skip:br@IL_01E0
+E02PROBE reloc:regions-nop@IL_01E5
+E02PROBE reloc:region-arg0@IL_01ED
+E02PROBE reloc:destroy-arg7@IL_01F2
+E02PROBE reloc:regions-nop@IL_01F7
+E02PROBE reloc:region-arg0@IL_01FF
+E02PROBE emit:stfld.isNetworked@IL_0205
+E02PROBE reloc:regions-nop@IL_020A
+E02PROBE reloc:region-arg0@IL_0212
+E02PROBE emit:ldfld.items@IL_0217
+E02PROBE emit:get_Count@IL_021C
+E02PROBE emit:ble@IL_0222
+E02PROBE reloc:scratch-arg2@IL_0227
+E02PROBE emit:Clear@IL_022C
+E02PROBE reloc:regions-nop@IL_0231
+E02PROBE reloc:region-arg0@IL_0239
+E02PROBE emit:ldfld.items@IL_023E
+E02PROBE emit:GetEnumerator@IL_0243
+E02PROBE emit:br@IL_024A
+E02PROBE step:ldloca@IL_024F operand=VariableDefinition
+E02PROBE emit:get_Current@IL_0251
+E02PROBE step:ldloca@IL_0258 operand=VariableDefinition
+E02PROBE emit:initobj@IL_025A
+E02PROBE step:ldloca@IL_0260 operand=VariableDefinition
+E02PROBE emit:stfld.region_x@IL_0264
+E02PROBE step:ldloca@IL_0269 operand=VariableDefinition
+E02PROBE emit:stfld.region_y@IL_026E
+E02PROBE step:ldloca@IL_0273 operand=VariableDefinition
+E02PROBE emit:stfld.sortOrder@IL_0277
+E02PROBE step:ldloca@IL_027C operand=VariableDefinition
+E02PROBE emit:get_item@IL_0280
+E02PROBE emit:get_id@IL_0285
+E02PROBE emit:stfld.assetId@IL_028A
+E02PROBE step:ldloca@IL_028F operand=VariableDefinition
+E02PROBE emit:get_item@IL_0293
+E02PROBE emit:ldfld.amount@IL_0298
+E02PROBE emit:stfld.amount@IL_029D
+E02PROBE step:ldloca@IL_02A2 operand=VariableDefinition
+E02PROBE emit:get_item@IL_02A6
+E02PROBE emit:ldfld.quality@IL_02AB
+E02PROBE emit:stfld.quality@IL_02B0
+E02PROBE step:ldloca@IL_02B5 operand=VariableDefinition
+E02PROBE emit:get_item@IL_02B9
+E02PROBE emit:ldfld.state@IL_02BE
+E02PROBE emit:stfld.state@IL_02C3
+E02PROBE step:ldloca@IL_02C8 operand=VariableDefinition
+E02PROBE emit:get_point@IL_02CC
+E02PROBE emit:stfld.point@IL_02D1
+E02PROBE step:ldloca@IL_02D6 operand=VariableDefinition
+E02PROBE emit:get_instanceID@IL_02DA
+E02PROBE emit:stfld.instanceID@IL_02DF
+E02PROBE step:ldloca@IL_02E4 operand=VariableDefinition
+E02PROBE emit:stfld.sortOrder@IL_02E8
+E02PROBE reloc:scratch-arg2@IL_02ED
+E02PROBE emit:Add@IL_02F4
+E02PROBE step:ldloca@IL_02F9 operand=VariableDefinition
+E02PROBE emit:MoveNext@IL_02FB
+E02PROBE emit:brtrue@IL_0300
+E02PROBE emit:leave@IL_0305
+E02PROBE step:ldloca@IL_0307 operand=VariableDefinition
+E02PROBE emit:constrained@IL_0309
+E02PROBE emit:Dispose@IL_030F
+E02PROBE structured:endfinally@IL_0314
+E02PROBE reloc:pending-arg1@IL_0315
+E02PROBE reloc:pending-arg1@IL_031A
+E02PROBE reloc:scratch-arg2@IL_031F
+E02PROBE emit:get_Item@IL_0325
+E02PROBE emit:FindInsertionIndex@IL_032A
+E02PROBE reloc:scratch-arg2@IL_032F
+E02PROBE emit:InsertRange@IL_0334
+E02PROBE saved-EH=1
+E02PROBE probe-saved=D:\Agent-工作目录\DevelopMyUNMultiplayerModAndModloader\SteamP2PFriends-0.2.4-Experimental\SteamP2PFriendsNativeLeafProbe.dll
+E02PROBE probe-generated=true
+E02PROBE pendingAfter=2 loaded=True networked=True
+  PASS [PureMemory] E02 ProbeLeafMechanical
+  PASS [PureMemory] E02B1 StepFiveFirstExitCleanupShared
+  PASS [PureMemory] E02C1 NewInstanceIdLifecycle
+  PASS [PureMemory] R01 V1 BudgetedConsumptionAndReentry
+  PASS [PureMemory] R01 V1 ModeledPickupDoesNotResurrect
+  PASS [PureMemory] R01 V1 AfterSnapshotFailureQuarantines
+  PASS [PureMemory] E02C2 InvokeAndClassifyMatrix
+  PASS [PureMemory] E02C3 RegionInstanceQuarantineGate
+  PASS [PureMemory] E02D1 PendingBatchShapeMatrix
+  PASS [PureMemory] E02D2 PendingWindowSharedDetection
+  PASS [PureMemory] E02D3 SpawnSignatureNegativeShapes
+  PASS [PureMemory] E02D4 VerifyRegisteredNegativeProofs
+  PASS [PureMemory] R1 VerifyRegisteredSiblingCoexist
+  PASS [PureMemory] R2A ReadModeWriterSource
+  PASS [PureMemory] R2B PrefixStepFiveModeSplit
+  PASS [PureMemory] R2C WrapperModeSplitClassification
+  PASS [PureMemory] R2C DestroyModelReadFailureWaits
+  PASS [PureMemory] R2C DestroyPartialModelFailureWaits
+  PASS [PureMemory] R2C DestroyOrderCoexistence
+  PASS [PureMemory] R2C DispatchIncrementClassification
+  PASS [PureMemory] R3 StepFiveCommittedPhysicalBinding
+  PASS [PureMemory] R3 ConsumerCommittedPhysicalBinding
+  PASS [PureMemory] E02B2 GuestExitUnbindsOriginal
+  PASS [PureMemory] IT128 AdmissionRebuiltPerSession
+  PASS [PureMemory] IT122 SingleIdentityDeleteKeepsOther
+  PASS [PureMemory] IT106 UnknownIdentityRejected
+  PASS [PureMemory] IT107 HostStepFiveEnterOnce
+  PASS [PureMemory] IT108 PartialConsumeAboveMinimum
+  PASS [PureMemory] IT110 RemovePresentedClearsSameId
+  PASS [PureMemory] IT111 GuestStepFiveNoHostPresent
+  PASS [PureMemory] IT118 GuestStepFiveFirstBaselineOnce
+  PASS [PureMemory] IT112 SeamEnterThenStepFive
+  PASS [PureMemory] IT113 PickupRejectKeepsPresentation
+  PASS [PureMemory] IT114 FullBudgetConsume
+  PASS [PureMemory] IT116 DropAfterPickupSingle
+
+--- [PureMemory / Domain 4/8: Adapters / Zombie Domain (M3 + M4)] ---
+  PASS [PureMemory] M3Z01 FirstAcquire
+  PASS [PureMemory] M3Z02 GenerationCommit
+  PASS [PureMemory] M3Z03 ReleaseHysteresis
+  PASS [PureMemory] M3Z04 DemandCancelsRelease
+  PASS [PureMemory] M3Z05 StaleSession
+  PASS [PureMemory] M3Z06 StaleGeneration
+  PASS [PureMemory] M3Z07 DemandMismatch
+  PASS [PureMemory] M3Z08 QuarantineRecovery
+  PASS [PureMemory] M3Z09 BoundIsolation
+  PASS [PureMemory] M3Z10 ReleaseIdempotence
+  PASS [PureMemory] M3Z11 NativeDemandIsolation
+  PASS [PureMemory] M3Z12 QuarantineReleaseGate
+  PASS [PureMemory] M4Z01 InitialSnapshot
+  PASS [PureMemory] M4Z02 StaleGenerationResync
+  PASS [PureMemory] M4Z03 AbortRetry
+  PASS [PureMemory] M4Z04 RelevanceReentry
+  PASS [PureMemory] M4Z05 ReconnectInvalidation
+  PASS [PureMemory] M4Z06 OverlappingSnapshots
+  PASS [PureMemory] M4Z07 BoundsDoNotCrossCommit
+  PASS [PureMemory] M4Z08 ExplicitCapability
+  PASS [PureMemory] M4Z09 DeltaSequenceMonotonic
+  PASS [PureMemory] M4Z10 ExactDisconnect
+  PASS [PureMemory] DG1 EligibilityTruthTable
+  PASS [PureMemory] DG2 ListenHostPeiNotBlocked
+  PASS [PureMemory] DG3 ListenHostPartStatesFailClosed
+  PASS [PureMemory] DG4 GuardPassObservation
+  PASS [PureMemory] IGP3 ItemEligibilityListenHostVsSingleplayer
+  PASS [PureMemory] IGP1 ItemDespawnObservation
+  PASS [PureMemory] IGP2 ItemRespawnObservation
+
+--- [PureMemory / Domain 5/8: Adapters / Animal Domain (M5)] ---
+  PASS [PureMemory] M5A01 FirstAcquire
+  PASS [PureMemory] M5A02 GenerationCommit
+  PASS [PureMemory] M5A03 ReleaseHysteresis
+  PASS [PureMemory] M5A04 DemandCancelsRelease
+  PASS [PureMemory] M5A05 StaleSession
+  PASS [PureMemory] M5A06 StaleGeneration
+  PASS [PureMemory] M5A07 BoundIsolation
+  PASS [PureMemory] M5A08 ReleaseIdempotence
+  PASS [PureMemory] M5A09 DisconnectCleansLease
+  PASS [PureMemory] M5A10 DemandMismatchQuarantine
+  PASS [PureMemory] M5S01 InitialSnapshot
+  PASS [PureMemory] M5S02 DuplicateIgnored
+  PASS [PureMemory] M5S03 StaleGenerationResync
+  PASS [PureMemory] M5S04 ReconnectInvalidation
+  PASS [PureMemory] M5S05 OverlappingSnapshots
+  PASS [PureMemory] M5S06 BoundsDoNotCrossCommit
+  PASS [PureMemory] M5S07 DisconnectCleansObserver
+
+--- [PureMemory / Domain 6/8: Adapters / Collision & Resource Domains (M6)] ---
+  PASS [PureMemory] M6C01 FirstAcquire
+  PASS [PureMemory] M6C02 ReleaseHysteresis
+  PASS [PureMemory] M6C03 DemandCancelsRelease
+  PASS [PureMemory] M6C04 CommitRelease
+  PASS [PureMemory] M6C05 StaleSession
+  PASS [PureMemory] M6C06 StaleGeneration
+  PASS [PureMemory] M6C07 MultipleRegions
+  PASS [PureMemory] M6C08 DisconnectCleanup
+  PASS [PureMemory] CEP01 Execution Port Seam
+  PASS [PureMemory] CEP02 Receipt Identity
+  PASS [PureMemory] CEP03 Receipt Replacement
+  PASS [PureMemory] CEP04 Receipt Scoped Release
+  PASS [PureMemory] CEP05 Fail Closed Release
+  PASS [PureMemory] CEP06 Release Idempotence
+  PASS [PureMemory] CEP07 Host Demand
+  PASS [PureMemory] CEP08 Override Domain
+  PASS [PureMemory] CEP09 Stale Receipt
+  PASS [PureMemory] CEP10 Release Receipt Diagnostic
+  PASS [PureMemory] CEP11 Unowned Override Fail Closed
+  PASS [PureMemory] CEP12 Release Rejection Observable
+  PASS [PureMemory] CEP13 Demand Still Present
+  PASS [PureMemory] CEP14 Receipt Actual Generation
+  PASS [PureMemory] CEP15 Production Store Session Boundary
+  PASS [PureMemory] CEP16 Empty Store Receipt Release
+  PASS [PureMemory] CEP17 Lifecycle Tick Forward
+  PASS [PureMemory] CEP18 NeverAcquired First Acquire
+  PASS [PureMemory] CEP19 Generation Source Bootstrap
+  PASS [PureMemory] CEP20 Missing Receipt Explicit
+  PASS [PureMemory] CEP21 Rejection Dual Identity
+  PASS [PureMemory] CEP22 Success Full Identity
+  PASS [PureMemory] CEP23 CrossSession Generations
+  PASS [PureMemory] CEP24 Real Gate Foreign Session
+  PASS [PureMemory] CEP25 Stale Receipt Dual Naming
+  PASS [PureMemory] CSC01 IdenticalProjections
+  PASS [PureMemory] CSC02 HostAddedCoverage
+  PASS [PureMemory] CSC03 GuestMissingForbidden
+  PASS [PureMemory] CSC04 PendingGuestExpected
+  PASS [PureMemory] CSC05 LifecycleGapExpected
+  PASS [PureMemory] CSC06 StaticChurnForbidden
+  PASS [PureMemory] CSC07 CrossObserverRelease
+  PASS [PureMemory] CSC08 UnattributedDemand
+  PASS [PureMemory] CSC09 OutOfBoundsRegion
+  PASS [PureMemory] CSC10 ForeignDomain
+  PASS [PureMemory] CSC11 AggregateKeyAttribution
+  PASS [PureMemory] CSC12 HostAndPendingGuest
+  PASS [PureMemory] CSC13 DepartedObserverExpected
+  PASS [PureMemory] CSC14 UnexplainedLegacyForbidden
+  PASS [PureMemory] CSC15 DeferredNotDeparture
+  PASS [PureMemory] CSC16 DeferredRetentionInBoth
+  PASS [PureMemory] CSC17 DeferredClaimantExplains
+  PASS [PureMemory] M6R01 TreeOreAcquire
+  PASS [PureMemory] M6R02 ResourceHysteresis
+  PASS [PureMemory] M6R03 ResourceDemandCancel
+  PASS [PureMemory] M6R04 ResourceCommitRelease
+  PASS [PureMemory] M6R05 ResourceStaleSession
+  PASS [PureMemory] M6R06 ResourceStaleGeneration
+  PASS [PureMemory] M6R07 ResourceIsolation
+  PASS [PureMemory] M6R08 ResourceDisconnect
+  PASS [PureMemory] M6S01 ResourceInitialSnapshot
+  PASS [PureMemory] M6S02 ResourceDuplicateIgnored
+  PASS [PureMemory] M6S03 ResourceStaleGenResync
+  PASS [PureMemory] M6S04 ResourceReconnectToken
+  PASS [PureMemory] M6S05 ResourceOverlapping
+  PASS [PureMemory] M6S06 ResourceDisconnectClean
+  PASS [PureMemory] M6S07 ResourceStaleDisconnect
+  PASS [PureMemory] M6S08 ResourceNativeDataPlane
+  PASS [PureMemory] M6S09 ResourceOldBaseline
+  PASS [PureMemory] M6S10 ResourceGenerationOverflow
+  PASS [PureMemory] M6S11 ResourceStaleRemoveTolerated
+  PASS [PureMemory] M6H01 HarvestDeadGen
+  PASS [PureMemory] M6H02 HarvestMultiDead
+  PASS [PureMemory] M6H03 HarvestAliveRevive
+  PASS [PureMemory] M6H04 HarvestSnapshotDead
+  PASS [PureMemory] M6H05 HarvestDeltaSeq
+  PASS [PureMemory] M6H06 HarvestReconnect
+  PASS [PureMemory] M6H07 HarvestIsolation
+  PASS [PureMemory] M6H08 HarvestSessionReset
+  PASS [PureMemory] M6P01 ResourceUnionAcquire
+  PASS [PureMemory] M6P02 ResourceReleaseHysteresis
+  PASS [PureMemory] M6P03 ResourceReentry
+  PASS [PureMemory] M6P04 ResourceReconnectReset
+  PASS [PureMemory] M6P05 ResourceGenerationFlow
+  PASS [PureMemory] M6P06 ResourceSameFrameReentry
+  PASS [PureMemory] M6P07 ResourceRealAdapterSeam
+  PASS [PureMemory] M6P08 ResourceStaleGeneration
+  PASS [PureMemory] M6P09 ResourceReleaseRetry
+  PASS [PureMemory] M6P11 ResourceReplicationEnterRollback
+  PASS [PureMemory] M6P12 ResourceReplicationExitRollback
+  PASS [PureMemory] M6P13 ResourceMultiRegionEnterCompensation
+  PASS [PureMemory] M6P14 ResourceMultiRegionExitCompensation
+  PASS [PureMemory] M6P15 ResourceAcquireFailureIsolated
+  PASS [PureMemory] M6P16 ResourceGenerationReaderFailure
+  PASS [PureMemory] M6P17 ResourceDisconnectCompensation
+  PASS [PureMemory] M6P18 ResourceReleaseCompensation
+  PASS [PureMemory] M6P19 ResourceReleaseRejection
+  PASS [PureMemory] M6P20 ResourceSnapshotRestore
+  PASS [PureMemory] M6P21 ResourceAcquireSideEffectIsolated
+  PASS [PureMemory] M6P22 ResourceSessionInitFailClosed
+  PASS [PureMemory] M6P23 ResourceReplicationRestore
+  PASS [PureMemory] M6P24 ResourceGenerationRegressionRetained
+  PASS [PureMemory] M6P25 ResourceReleaseGenerationRegressionRetained
+  PASS [PureMemory] M6P26 ResourceSessionEndLifecycleFailure
+  PASS [PureMemory] M6P27 ResourceSessionEndReplicationFailure
+  PASS [PureMemory] M6P28 ResourceAcquireGenerationRegression
+  PASS [PureMemory] M6P29 ResourceExitGenerationRegression
+  PASS [PureMemory] M6P30 ResourceRepairRequiredLock
+  PASS [PureMemory] M6P31 ResourceCaptureFailureIsolation
+  PASS [PureMemory] M6P32 ResourceSnapshotUnavailableDeferredRetry
+  PASS [PureMemory] M6P33 ResourceRollbackRestoresRetryRegistration
+  PASS [PureMemory] M6P34 ResourceDeferredOnlyRegionExit
+  PASS [PureMemory] M6P35 ResourceStaleExitTolerated
+  PASS [PureMemory] M6P36 ResourceProductionRadiusShape
+  PASS [PureMemory] M6P37 ResourceHysteresisConstant
+  PASS [PureMemory] M6P38 ResourceDeferredRetrySchedule
+  PASS [PureMemory] M6P39 ResourceFailedRetrySchedule
+  PASS [PureMemory] M6P40 ResourceRetryQualificationKept
+  PASS [PureMemory] M6P41 ResourceOverlapRetainsLease
+  PASS [PureMemory] M6P42 ResourceSharedProjection
+  PASS [PureMemory] M6P43 ResourcePolicyIdentity
+  PASS [PureMemory] M6P44 ResourceEligibilityPolicy
+  PASS [PureMemory] M6P45 ResourceRemovalClearsProjection
+  PASS [PureMemory] M6P46 ResourceSessionBoundaryClearsFact
+  PASS [PureMemory] M6O01 ResourceObservabilityFields
+  PASS [PureMemory] M6O02 ResourceFallbackExplicit
+  PASS [PureMemory] M6O03 ResourceReceiveDecisionBoundary
+  PASS [PureMemory] M6O04 ResourceControlledObservationValues
+  PASS [PureMemory] M6O05 WorldSyncReflectionReasons
+  PASS [PureMemory] M6O06 WorldSyncNullRegionFailClosed
+  PASS [PureMemory] M6O07 ObservationBeforeQuota
+  PASS [PureMemory] M6O08 ReceiveBeforeQuota
+  PASS [PureMemory] M6O09 HarvestNativePostcondition
+  PASS [PureMemory] M6O10 HarvestRegistrationIdempotent
+  PASS [PureMemory] M6O11 ConnectionOverflowTeardown
+  PASS [PureMemory] M6O12 SessionEndCleanupFinally
+  PASS [PureMemory] M6O13 ResourceEndLogAfterCleanup
+  PASS [PureMemory] M6O14 DeltaRejectPerCall
+  PASS [PureMemory] M6R09 ResourceSessionEnd
+  PASS [PureMemory] M7B01 BarricadeAcquire
+  PASS [PureMemory] M7B02 BarricadePlace
+  PASS [PureMemory] M7B03 BarricadeDamage
+  PASS [PureMemory] M7B04 BarricadeDeltaSeq
+  PASS [PureMemory] M7B05 BarricadeHysteresis
+  PASS [PureMemory] M7B06 BarricadeStaleSession
+  PASS [PureMemory] M7B07 BarricadeReconnect
+  PASS [PureMemory] M7B08 BarricadeDisconnect
+  PASS [PureMemory] M7S01 StructureAcquire
+  PASS [PureMemory] M7S02 StructurePlace
+  PASS [PureMemory] M7S03 StructureDamage
+  PASS [PureMemory] M7S04 StructureSalvage
+  PASS [PureMemory] M7S05 StructureHysteresis
+  PASS [PureMemory] M7S06 StructureStaleSession
+  PASS [PureMemory] M7S07 StructureReconnect
+  PASS [PureMemory] M7S08 StructureDisconnect
+
+--- [PureMemory / Domain 7/8: Adapters / Security Domain (Whitelist & Route B)] ---
+  PASS [PureMemory] WL1 Bootstrap
+  PASS [PureMemory] WL2 BootstrapSaveFailure
+  PASS [PureMemory] WL3 BootstrapLoadFailure
+  PASS [PureMemory] WL4 BootstrapContainsFailure
+  PASS [PureMemory] WL5 AddSaveFailure
+  PASS [PureMemory] WL6 AddLoadFailure
+  PASS [PureMemory] WL7 AddContainsFailure
+  PASS [PureMemory] WL8 AddSnapshotFailure
+  PASS [PureMemory] WL9 RemoveSaveFailure
+  PASS [PureMemory] WL9a RevokeCommitBeforeKick
+  PASS [PureMemory] WL9b RevokeFailureNoDisconnect
+  PASS [PureMemory] WL9c NativeContainsRaw
+  PASS [PureMemory] WL10 RemoveNoOp
+  PASS [PureMemory] WL11 RemoveSnapshotFailure
+  PASS [PureMemory] WL12 AddSelf
+  PASS [PureMemory] WL13 RemoveSelf
+  PASS [PureMemory] WL14 AddInvalidLocal
+  PASS [PureMemory] WL15 RemoveInvalidLocal
+  PASS [PureMemory] WL16 JudgeEqualsLocal
+  PASS [PureMemory] WL17 PersistenceFault
+  PASS [PureMemory] B1 HandshakePermit
+  PASS [PureMemory] B2 WorldEntry
+  PASS [PureMemory] B3 TrustedVisitor
+  PASS [PureMemory] B4 ConcurrentGuests
+  PASS [PureMemory] B5 Approve
+  PASS [PureMemory] B6 PersistFailure
+  PASS [PureMemory] B7 DisconnectReject
+  PASS [PureMemory] B8 TimeoutLayout
+  PASS [PureMemory] B9 Revoke
+  PASS [PureMemory] B10 RevokePersistFailure
+  PASS [PureMemory] B12 InputSanitizer
+
+--- [PureMemory / Domain 8/8: Platform UI, Readiness & Compatibility] ---
+  PASS [PureMemory] E1 EntryEarlyMenu
+  PASS [PureMemory] E2 EntryLifecycleFailure
+  PASS [PureMemory] E3 EntryIdempotentReset
+  PASS [PureMemory] E4 HandshakeCompatibilityGate
+  PASS [PureMemory] P1 PersonaEmpty
+  PASS [PureMemory] P2 PersonaControls
+  PASS [PureMemory] P3 PersonaTruncate
+  PASS [PureMemory] P4 PersonaValid
+  PASS [PureMemory] P5 PersonaFormat
+  PASS [PureMemory] P6 PersonaInvalid
+  PASS [PureMemory] IUI1 Exact
+  PASS [PureMemory] IUI2 StaleRendered
+  PASS [PureMemory] IUI3 StalePending
+  PASS [PureMemory] IUI4 Identity
+  PASS [PureMemory] JR1 SteamIdPortClassifiesAsSteamP2P
+  PASS [PureMemory] JR2 ForbiddenSuffixesStayVanilla
+  PASS [PureMemory] JR3 DirectIpAndDnsKeepOwnPortStripping
+  PASS [PureMemory] JR4 SteamIdRouteCarriesDirectPagePassword
+  PASS [PureMemory] JR5 HostMenuInputResolvesSessionPassword
+  PASS [PureMemory] JR6 RuntimePasswordClearedOnSessionEnd
+
+=== Evidence Class: StaticIL ===
+  PASS [StaticIL] ID StaticIL
+  PASS [StaticIL] Resource/Collision StaticIL
+  PASS [StaticIL] Resource Production Control StaticIL
+  PASS [StaticIL] Diagnostics Wiring Routes By Domain
+  PASS [StaticIL] Resource Authority Retirement StaticIL
+  PASS [StaticIL] Resource Harvest Registration StaticIL
+  PASS [StaticIL] Resource Harvest Four Hook State
+  PASS [StaticIL] Resource Harvest Identity State
+  PASS [StaticIL] Resource Harvest Rollback State
+  PASS [StaticIL] Resource Harvest Unpatch Failure State
+  PASS [StaticIL] Resource Harvest Rollback Knowledge
+  PASS [StaticIL] Resource Generation Reader No Guess
+  PASS [StaticIL] Resource Radius Source No Shared Default
+  PASS [StaticIL] Resource Failure Classification
+  PASS [StaticIL] Resource Acquire Failure Helper Message
+  PASS [StaticIL] Resource Single Region Entry Classification
+  PASS [StaticIL] Resource Native Snapshot Fail Closed
+  PASS [StaticIL] Resource Native Restore Atomic
+  PASS [StaticIL] Item/Zombie StaticIL
+  PASS [StaticIL] T04 ModuleOwnershipStaticIL
+  PASS [StaticIL] T07 AnimalStructureOwnershipStaticIL
+  PASS [StaticIL] M1I06 CurrentU3IL
+  PASS [StaticIL] M2I09 CurrentU3ReplicationGate
+  PASS [StaticIL] ZG1 RespawnDedicatedCallSiteUnique
+  PASS [StaticIL] ZG2 RespawnGateTranspilerContract
+  PASS [StaticIL] IG1 ItemUpdateDedicatedCallSiteUnique
+  PASS [StaticIL] IG2 ItemUpdateGateTranspilerContract
+  PASS [StaticIL] B11 AuthoritativeGates
+  PASS [StaticIL] Harmony HC1 Observer
+  PASS [StaticIL] Harmony HC2 ForeignTranspiler
+  PASS [StaticIL] Harmony HC3 TransportExclusive
+  PASS [StaticIL] Inventory IUI5 Reflection
+  PASS [StaticIL] Inventory IUI6 Production
+  PASS [StaticIL] Collision RC1 AnimationRestore
+  PASS [StaticIL] Collision RC2 PolicyBeforeActivation
+  PASS [StaticIL] Demand Projection StaticIL
+  PASS [StaticIL] Demand Single Spatial Authority
+  PASS [StaticIL] Demand No Native Dependency
+  PASS [StaticIL] Demand No Shared Default Radius
+  PASS [StaticIL] Demand Engine Does Not Write Domain
+  PASS [StaticIL] Demand Resource Policy Declaration
+  PASS [StaticIL] Demand Eligibility Delegated To Policy
+  PASS [StaticIL] Lifecycle Orchestration StaticIL
+  PASS [StaticIL] Lifecycle Seam Holds No State Machine
+  PASS [StaticIL] Lifecycle Engine Reaches Native Only Via Port
+  PASS [StaticIL] Lifecycle Engine Consumes Typed Demand
+  PASS [StaticIL] Lifecycle Resource Policy Declaration
+  PASS [StaticIL] Lifecycle Single Domain Registration
+  PASS [StaticIL] Lifecycle No Domain Branch
+  PASS [StaticIL] Control Plane Readiness StaticIL
+  PASS [StaticIL] Readiness Retry Transaction Scope
+  PASS [StaticIL] Readiness Deferred Demand Never Releases
+  PASS [StaticIL] Readiness Session Identity Gate
+  PASS [StaticIL] Readiness Per-Record Sample Admission
+  PASS [StaticIL] Readiness Outer Catch Does Not End Session
+  PASS [StaticIL] Readiness Bounded Fault Heartbeat
+  PASS [StaticIL] Readiness Zombie Fault Bypasses Log Quota
+  PASS [StaticIL] Readiness Shared Fault Channel
+  PASS [StaticIL] Collision Shadow StaticIL
+  PASS [StaticIL] Collision Policy Declaration
+  PASS [StaticIL] Collision Presence Eligibility
+  PASS [StaticIL] Collision Shadow PureMemory
+  PASS [StaticIL] Collision Legacy Snapshot ReadOnly
+  PASS [StaticIL] Collision Shadow No Native Write
+  PASS [StaticIL] Collision Legacy Writer And Shadow No Production Calls
+  PASS [StaticIL] Collision Shadow No Production Consumer
+  PASS [StaticIL] Collision Deferred Demand Domain Isolation
+  PASS [StaticIL] Collision Cutover Retires Legacy Harmony
+  PASS [StaticIL] Collision Execution StaticIL
+  PASS [StaticIL] Collision Port Shape
+  PASS [StaticIL] Collision Port No Roster Scan
+  PASS [StaticIL] Collision Receipt Domain
+  PASS [StaticIL] Collision No Production Registration
+SFP IL frame=1 callback=1 reconcile=1 clock=1 sharedFlush=1 itemFlush=0
+  PASS [StaticIL] Item Execution StaticIL
+  PASS [StaticIL] GBA05 Guest Binding Admission Wiring
+  PASS [StaticIL] GBA06 Native Runner Protocol Rejects Invalid Evidence
+  PASS [StaticIL] GBA07 Native Runner Pins Routes To Current Module
+  PASS [StaticIL] GBA08 Settlement Wait Retains Delivery Until Admission
+NIL02 FindClient SteamPlayerID operators: == 0, != 0
+  PASS [StaticIL] NIL02 FindClient Native Null Operators
+NIL03 core FindClient calls bind=1, unbind=1; wrappers=2; handlers=0
+  PASS [StaticIL] NIL03 Bind Unbind Share Lookup
+  PASS [StaticIL] Item Port Shape
+  PASS [StaticIL] Item Demand Policy StaticIL
+  PASS [StaticIL] Item Port No Roster Scan
+  PASS [StaticIL] Item Preparation Authority Exists
+  PASS [StaticIL] Item Receipt Domain StaticIL
+  PASS [StaticIL] Item Production Coordinator Wiring
+  PASS [StaticIL] Item Native Action And Gate
+  PASS [StaticIL] Item Demand Cycle Destroy Binding
+  PASS [StaticIL] Item Demand Cycle Native Binding
+  PASS [StaticIL] Item Coordinator Native Actions
+  PASS [StaticIL] Item Settlement Consumption Gate
+  PASS [StaticIL] Item Pickup Distance Binding
+  PASS [StaticIL] Item Host Step5 Settlement Gate
+  PASS [StaticIL] Item Step5 Destroy Gates
+  PASS [StaticIL] Item Region Prefix Finalizer Registration
+  PASS [StaticIL] Item Region Prefix Legacy Exception Propagation
+  PASS [StaticIL] Item Destroy Wrapper Mode-First Order
+  PASS [StaticIL] Item Owned Pending Transpiler Chain
+  PASS [StaticIL] Item Settlement Registration PatchInfo
+
+=== Evidence Class: BuildArtifact ===
+  Self-reported Fingerprint: version=0.2.4.10 assemblyVersion=0.2.4.10 fileVersion=0.2.4.10 mvid=58277318-8897-4147-b9a2-9bb6fd3e9f49 dllSha256=02FA2AFD442D074FF584B01503AE8A1AC6FB33DE9CD55CC698CB8916924AC6C7 pluginGuid=com.yu80rice.steamp2pfriends caseId=SPF-0.2.4.10-Experimental-ItemSlice-Cutover caseIdSource=build-metadata candidateRole=Cutover buildCaseId=SPF-0.2.4.10-Experimental-ItemSlice-Cutover evidence=self-reported
+  PASS [BuildArtifact] BuildArtifact Fingerprint Shape
+  PASS [BuildArtifact] BuildArtifact Slice Identity
+  PASS [BuildArtifact] BuildArtifact Candidate Role
+  PASS [BuildArtifact] BuildArtifact Independent Verifier
+  PASS [BuildArtifact] BuildArtifact Shared Case-ID
+  PASS [BuildArtifact] BuildArtifact Case-ID Fallback
+  PASS [BuildArtifact] BuildArtifact Test Metadata
+  PASS [BuildArtifact] BuildArtifact Full Log Identity
+  PASS [BuildArtifact] BuildArtifact Rejects Incomplete Log
+
+=== Evidence Class: Runtime ===
+  PENDING Runtime evidence: SP, listen-host, U3DS, P2P
+
+===============================================================
+=== Final Result: 635/635 PASS (Failed: 0) ===
+=== native runtime routes: NIL01=1; GBA01=1 (each required exactly once) ===
+===============================================================

@@ -1,0 +1,1 @@
+"C:/Program Files/dotnet/dotnet.exe" msbuild SteamP2PFriends.csproj /t:Build /p:Configuration=Release /v:minimal

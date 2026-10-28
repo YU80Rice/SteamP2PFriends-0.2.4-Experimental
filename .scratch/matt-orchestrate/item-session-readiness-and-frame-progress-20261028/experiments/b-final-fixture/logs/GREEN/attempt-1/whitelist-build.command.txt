@@ -1,0 +1,1 @@
+"C:/Program Files/dotnet/dotnet.exe" msbuild WhitelistTests/SteamP2PFriends.WhitelistTests.csproj /t:Build /p:Configuration=Release /v:minimal

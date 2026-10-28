@@ -63,7 +63,28 @@ namespace SteamP2PFriends.WhitelistTests
                 && Test_GuestBindingAdmissionWiring()
                 && Test_CoordinatorCallsNativeBridgeAndPreparationChain()
                 && Test_DirectConstructionAndRegistrationEvolutionContract()
-                && Test_SessionBoundaryRetiresLegacyItemWriter();
+                && Test_SessionBoundaryRetiresLegacyItemWriter()
+                && Test_ProductionFrameProgressWiring();
+        }
+
+        internal static bool Test_ProductionFrameProgressWiring()
+        {
+            Type coordinator = typeof(SteamP2PFriendsPlugin).Assembly.GetType(
+                "SteamP2PFriends.MultiObserver.MultiObserverShadowCoordinator");
+            MethodInfo tick = coordinator?.GetMethod("Tick", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo frame = coordinator?.GetMethod("RunActiveFrame", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo reconcile = coordinator?.GetMethod("ReconcileCurrentObservers", BindingFlags.Static | BindingFlags.NonPublic);
+            if (tick == null || frame == null || reconcile == null) return false;
+            int frameCalls = IlContractProbe.CountMethodCalls(tick, coordinator.FullName, "RunActiveFrame");
+            int callbackCalls = IlContractProbe.CountCallsWhere(frame, called => called.Name == "Invoke");
+            int productionReconcileCalls = IlContractProbe.CountAssemblyMethodCalls(
+                coordinator.Assembly, coordinator.FullName, "ReconcileCurrentObservers");
+            int clockCalls = IlContractProbe.CountMethodCalls(frame, coordinator.FullName, "AdvanceEngineClock");
+            int sharedFlushes = IlContractProbe.CountMethodCalls(reconcile, "SteamP2PFriends.MultiObserver.Lifecycle.LifecycleOrchestrationEngine", "Flush");
+            int itemFlushes = IlContractProbe.CountMethodCalls(reconcile, "SteamP2PFriends.Adapters.Item.ItemProductionControlSeam", "Flush");
+            Console.WriteLine($"SFP IL frame={frameCalls} callback={callbackCalls} reconcile={productionReconcileCalls} clock={clockCalls} sharedFlush={sharedFlushes} itemFlush={itemFlushes}");
+            return frameCalls == 1 && callbackCalls == 1 && productionReconcileCalls == 1 && clockCalls == 1
+                && sharedFlushes == 1 && itemFlushes == 0;
         }
 
         internal static bool Test_PortShapeAndIdentity()

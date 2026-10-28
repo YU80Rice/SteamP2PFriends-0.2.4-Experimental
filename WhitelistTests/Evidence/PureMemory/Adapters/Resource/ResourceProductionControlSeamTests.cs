@@ -1238,7 +1238,7 @@ namespace SteamP2PFriends.WhitelistTests
             return observedInSession && clearedOnEnd && clearedOnBegin && rebuiltInNewSession;
         }
 
-        private sealed class FakeResourceAdapters
+        internal sealed class FakeResourceAdapters
         {
             internal uint Generation = 1U;
             internal readonly FakeLifecycleAdapter Lifecycle;
@@ -1252,7 +1252,7 @@ namespace SteamP2PFriends.WhitelistTests
             }
         }
 
-        private sealed class FakeLifecycleAdapter : ILifecycleDomainAdapter,
+        internal sealed class FakeLifecycleAdapter : ILifecycleDomainAdapter,
             IReversibleObserverDisconnectAdapter, IReversibleRegionLifecycleAdapter
         {
             internal readonly List<LeaseTicket> Acquires = new List<LeaseTicket>();
@@ -1369,7 +1369,7 @@ namespace SteamP2PFriends.WhitelistTests
             internal int ReleaseCount { get; }
         }
 
-        private readonly struct DisconnectEvent
+        internal readonly struct DisconnectEvent
         {
             internal DisconnectEvent(ulong observerId, ulong connectionToken)
             {
@@ -1381,7 +1381,7 @@ namespace SteamP2PFriends.WhitelistTests
             internal ulong ConnectionToken { get; }
         }
 
-        private sealed class FakeReplicationAdapter : IStateReplicationAdapter,
+        internal sealed class FakeReplicationAdapter : IStateReplicationAdapter,
             IReversibleObserverReplicationAdapter
         {
             internal readonly List<ReplicationEvent> Entered = new List<ReplicationEvent>();
@@ -1449,7 +1449,7 @@ namespace SteamP2PFriends.WhitelistTests
             internal List<ReplicationEvent> Exited { get; }
         }
 
-        private readonly struct ReplicationEvent
+        internal readonly struct ReplicationEvent
         {
             internal ReplicationEvent(ulong observerId, ulong connectionToken, RegionKey regionKey, uint regionGeneration)
             {

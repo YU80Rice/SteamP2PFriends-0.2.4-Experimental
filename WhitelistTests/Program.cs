@@ -196,6 +196,8 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT39 ReturnClearsBeforeRestock", ItemPreparationAndFirstDemandTests.Test_IT39_ReturnClearsAllExpiredBeforeAnyRestock, ref total, ref passed, ref failed);
             RunTest("IT40 SurvivorAgeAndFailedRestock", ItemPreparationAndFirstDemandTests.Test_IT40_SurvivorAgeKeptAndFailedRestockStops, ref total, ref passed, ref failed);
             RunTest("IT41 ReturnWaitAndDeliver", ItemPreparationAndFirstDemandTests.Test_IT41_ReturnWaitsAndDeliversWithoutFailureBudget, ref total, ref passed, ref failed);
+            RunTest("SFP03 RealFrameGateProgressesBoundedSettlement", ItemPreparationAndFirstDemandTests.Test_SFP03_RealFrameGateProgressesBoundedSettlement, ref total, ref passed, ref failed);
+            RunTest("SFP05 FrameClockUsesOneDeltaPerFrame", ItemPreparationAndFirstDemandTests.Test_SFP05_FrameClockUsesOneDeltaPerFrame, ref total, ref passed, ref failed);
             RunTest("IT42 HysteresisReentrySettles", ItemPreparationAndFirstDemandTests.Test_IT42_HysteresisReentryStillSettlesBeforePresent, ref total, ref passed, ref failed);
             RunTest("IT43 LastDemandFinishesQuiet", ItemPreparationAndFirstDemandTests.Test_IT43_LastDemandLeavesFinishesWithoutList, ref total, ref passed, ref failed);
             RunTest("IT44 UnreadyPickupRejected", ItemPreparationAndFirstDemandTests.Test_IT44_UnreadyPickupDoesNotWriteOrDelete, ref total, ref passed, ref failed);
@@ -260,6 +262,7 @@ namespace SteamP2PFriends.WhitelistTests
             RunTest("IT89 FullMapCycleRetired", ItemWriterCutoverTests.Test_IT89_ListenHostFullMapCycleDoesNotDrive, ref total, ref passed, ref failed);
             RunTest("IT90 LegacyEligibilityRetired", ItemWriterCutoverTests.Test_IT90_OwnedSessionRejectsLegacyEligibilityAndFallback, ref total, ref passed, ref failed);
             RunTest("IT91 SessionSwitchIsolation", ItemWriterCutoverTests.Test_IT91_SessionSwitchDropsOldConnectionAndDoesNotRepeatPrepare, ref total, ref passed, ref failed);
+            RunTest("SFP01 ResourceStartedEngineInitializesItemPerWorld", ItemWriterCutoverTests.Test_SFP01_ResourceStartedEngineStillInitializesItemPerWorld, ref total, ref passed, ref failed);
             RunTest("IT92 LegacyCycleStaysRetired", ItemWriterCutoverTests.Test_IT92_ListenHostLegacyCycleStaysRetiredAfterSessionEnd, ref total, ref passed, ref failed);
             RunTest("IT93 WorldChangeIsolation", ItemWriterCutoverTests.Test_IT93_WorldChangeIsolatesOldItemSessionWithoutFallback, ref total, ref passed, ref failed);
             RunTest("IT94 EligibilityStaysRetired", ItemWriterCutoverTests.Test_IT94_ListenHostEligibilityStaysRetiredWhenWriterUnowned, ref total, ref passed, ref failed);

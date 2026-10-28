@@ -661,6 +661,9 @@ namespace SteamP2PFriends.Adapters.Item
         }
         public ItemPreparationStatus Status => _status;
         public bool IsReady => _status == ItemPreparationStatus.Ready;
+        internal bool IsPreparedFor(SessionEpoch epoch, string worldIdentity) =>
+            IsReady && _sessionEpoch.Equals(epoch)
+            && string.Equals(_worldIdentity, worldIdentity, StringComparison.Ordinal);
         public int PreparedRegionCount => _preparedRegions.Count;
         public byte WorldSize => _worldSize;
         public string WorldIdentity => _worldIdentity;

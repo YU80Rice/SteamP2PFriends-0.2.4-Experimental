@@ -31,6 +31,8 @@ namespace SteamP2PFriends.Adapters.Item
         private readonly ItemReturnSettlement _settlement;
         private ItemStepFiveAdmission _admission;
         private IItemStepFiveNative _native;
+        private SessionEpoch _initializedSessionEpoch;
+        private bool _hasInitializedSession;
 
         public ItemProductionControlSeam(
             ItemPreparationAuthority preparationAuthority,
@@ -171,6 +173,8 @@ namespace SteamP2PFriends.Adapters.Item
         public int ProjectedDemandRegionCount => _projection.GetDemandRegionCount(_policy);
         public bool IsSessionActive => _engine.IsSessionActive;
         public SessionEpoch SessionEpoch => _engine.SessionEpoch;
+        internal bool IsInitializedFor(SessionEpoch epoch) =>
+            _hasInitializedSession && _initializedSessionEpoch.Equals(epoch);
         public int ObserverCount => _engine.ObserverCount(DomainIds.Item);
         public int ActiveLeaseCount => _engine.ActiveLeaseCount(DomainIds.Item);
         public int PendingReleaseCount => _engine.PendingReleaseCount(DomainIds.Item);
@@ -178,6 +182,7 @@ namespace SteamP2PFriends.Adapters.Item
         public int ReentryCount => _engine.ReentryCount(DomainIds.Item);
         public int PendingAcquireRetryCount => _engine.PendingAcquireRetryCount(DomainIds.Item);
         public bool RepairRequired => _engine.IsRepairRequired(DomainIds.Item);
+        internal bool IsWriteSuspended => _engine.IsWriteSuspended;
 
         public ItemPreparationAuthority PreparationAuthority => _preparationAuthority;
         public ItemMetadataStore MetadataStore => _metadataStore;
@@ -185,19 +190,31 @@ namespace SteamP2PFriends.Adapters.Item
 
         public void BeginSession(SessionEpoch sessionEpoch)
         {
+            if (IsInitializedFor(sessionEpoch)) return;
             _engine.BeginSession(sessionEpoch);
             _settlement.ResetIdentity();
             _manualCooldown.Clear();
             _admission = BuildAdmission();
             ItemSettlementGate.StepFiveAdmission = _admission;
+            _initializedSessionEpoch = sessionEpoch;
+            _hasInitializedSession = true;
         }
         public void EndSession()
         {
-            _engine.EndSession();
-            _settlement.ResetIdentity();
-            _manualCooldown.Clear();
-            if (_admission != null && ReferenceEquals(ItemSettlementGate.StepFiveAdmission, _admission))
-                ItemSettlementGate.StepFiveAdmission = null;
+            try
+            {
+                if (IsInitializedFor(_engine.SessionEpoch)) _engine.EndSession();
+            }
+            finally
+            {
+                _settlement.ResetIdentity();
+                _manualCooldown.Clear();
+                _initializedSessionEpoch = default(SessionEpoch);
+                _hasInitializedSession = false;
+                if (_admission != null && ReferenceEquals(ItemSettlementGate.StepFiveAdmission, _admission))
+                    ItemSettlementGate.StepFiveAdmission = null;
+                _admission = null;
+            }
         }
         public void AdvanceTime(float deltaTime) => _engine.AdvanceTime(deltaTime);
         public void Flush(float deltaTime)
@@ -213,10 +230,15 @@ namespace SteamP2PFriends.Adapters.Item
 
         private void StepItemWork()
         {
-            _settlement.Refresh();
-            int used = _settlement.Consume(ItemReturnSettlement.ActionsPerStep);
-            _cycle.Step(used == 0, true);
+            RefreshSettlementDemand();
+            int used = ConsumeFrameSettlement();
+            StepDemandCycle(used == 0);
         }
+
+        internal void RefreshSettlementDemand() => _settlement.Refresh();
+        internal int ConsumeFrameSettlement() =>
+            _settlement.Consume(ItemReturnSettlement.ActionsPerStep);
+        internal void StepDemandCycle(bool settlementIdle) => _cycle.Step(settlementIdle, true);
         public ItemDemandCycle DemandCycle => _cycle;
         public bool IsRegionIsolated(RegionKey region) => _settlement.IsIsolated(region);
         public string LastSettlementFault => _settlement.LastFault;

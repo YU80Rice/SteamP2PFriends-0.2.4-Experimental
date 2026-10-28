@@ -62,9 +62,10 @@ namespace SteamP2PFriends.WhitelistTests
             Type heartbeat = ProductionType(HeartbeatTypeName);
             MethodInfo faultEntry = ProductionMethod(CoordinatorTypeName, "HandleTickFailure");
             MethodInfo tick = ProductionMethod(CoordinatorTypeName, "Tick");
+            MethodInfo reconcile = ProductionMethod(CoordinatorTypeName, "ReconcileCurrentObservers");
             MethodInfo recovered = ProductionMethod(CoordinatorTypeName, "ReportSharedFaultRecovered");
             if (coordinator == null || heartbeat == null || faultEntry == null
-                || tick == null || recovered == null)
+                || tick == null || reconcile == null || recovered == null)
             {
                 return false;
             }
@@ -74,7 +75,7 @@ namespace SteamP2PFriends.WhitelistTests
                     called => called.Name == "ReportSharedFaultHeartbeat") >= 1
                 && IlContractProbe.CountCallsWhere(faultEntry,
                     called => called.Name == "SafeWarn") == 0;
-            bool tickClosesLoop = IlContractProbe.CountCallsWhere(tick,
+            bool tickClosesLoop = IlContractProbe.CountCallsWhere(reconcile,
                     called => called.Name == "ReportSharedFaultRecovered") >= 1;
             // 恢复闭环必须由「故障 episode 是否活跃」决定，不能由心跳是否仍在运行决定：
             // 心跳用尽（Exhausted）后仍在故障中，恢复时同样要写闭环。

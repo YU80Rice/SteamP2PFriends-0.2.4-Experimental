@@ -3,6 +3,7 @@ using SDG.NetTransport;
 using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Core.Identity;
 using SteamP2PFriends.MultiObserver.Demand;
+using SteamP2PFriends.MultiObserver;
 using SteamP2PFriends.MultiObserver.Lifecycle;
 using SteamP2PFriends.MultiObserver.SPI;
 using System;
@@ -1933,6 +1934,160 @@ namespace SteamP2PFriends.WhitelistTests
                 return held && delivered && seam.PendingAcquireRetryCount == 0 && !seam.RepairRequired;
             }
             finally { ItemCycleThresholds.Override = null; }
+        }
+
+        internal static bool Test_SFP03_RealFrameGateProgressesBoundedSettlement()
+        {
+            var bridge = new TestNativeItemWarehouseBridge();
+            var preparation = new ItemPreparationAuthority(bridge);
+            var metadata = new ItemMetadataStore();
+            int preparationSubmissions = 0;
+            bridge.OnSubmitGeneration = (_, __) => preparationSubmissions++;
+            float now = 0f;
+            var deliveries = new List<ulong>();
+            var port = new ItemExecutionPort(preparation, metadata, _ => 1U, CreateTestPolicy(), () => now,
+                null, id => id == 1001UL, _ => deliveries.Add(1001UL), (id, token, region) => deliveries.Add(id));
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            DemandPolicy policy = ItemDemandPolicy.Create(0, (byte)Regions.WORLD_SIZE);
+            projection.Register(policy);
+            var shared = new LifecycleOrchestrationEngine(projection, DefaultLifecycleDiagnostics.Instance);
+            var seam = new ItemProductionControlSeam(preparation, metadata, port, projection, policy, 2f, shared);
+            ItemProductionMode savedMode = MultiObserverShadowCoordinator.ItemProductionMode;
+            bool savedSuppress = ItemLegacyCycleGate.SuppressFullMapWriter;
+            var nextAtField = typeof(MultiObserverShadowCoordinator).GetField("_nextReconcileAt",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var progressField = typeof(MultiObserverShadowCoordinator).GetField("_itemFrameProgressAllowed",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (nextAtField == null || progressField == null) return false;
+            object savedNextAt = nextAtField.GetValue(null), savedProgress = progressField.GetValue(null);
+            nextAtField.SetValue(null, 0f);
+            progressField.SetValue(null, false);
+            MultiObserverShadowCoordinator.BindItemAuthorityProduction(seam, preparation);
+            ItemCycleThresholds.Override = new ItemCycleThresholds(10f, 60f, 99f, 0f, true);
+            try
+            {
+                bridge.InputsAvailable = false;
+                if (!MultiObserverShadowCoordinator.BeginItemAuthoritySession(301UL, "frame|srv|PEI", now)) return false;
+                for (uint id = 1; id <= 12; id++) bridge.GenerateNaturalItem(0, 0, CreateTestItemData(id, false, 0f));
+                bridge.InputsAvailable = true;
+                if (!MultiObserverShadowCoordinator.BeginItemAuthoritySession(301UL, "frame|srv|PEI", now)) return false;
+                bool lateInputsPrepared = preparation.IsPreparedFor(new SessionEpoch(301UL), "frame|srv|PEI")
+                    && preparationSubmissions == Regions.WORLD_SIZE * Regions.WORLD_SIZE;
+                MultiObserverShadowCoordinator.ObserveItemAuthority(1001UL, 201UL, 0, 0);
+                shared.Flush(0f);
+                seam.RemoveObserver(1001UL);
+                shared.AdvanceTime(2f);
+                shared.Flush(0f);
+                now = 40f;
+                int beforeReturn = deliveries.Count, reconcileCalls = 0;
+                Func<bool> reconcile = () =>
+                {
+                    reconcileCalls++;
+                    MultiObserverShadowCoordinator.ObserveItemAuthority(1001UL, 201UL, 0, 0);
+                    shared.Flush(0f);
+                    return true;
+                };
+                const float frame = 1f / 60f;
+                bool heldBeforeFinish = false, bounded = true, noPartialDelivery = true;
+                bool duplicateBeginPreserved = false;
+                for (int i = 0; i < 21; i++)
+                {
+                    int previous = bridge.Regions[(0, 0)].Count;
+                    now += frame;
+                    MultiObserverShadowCoordinator.RunActiveFrame(now, frame, reconcile);
+                    int remaining = bridge.Regions[(0, 0)].Count;
+                    if (i == 0)
+                    {
+                        heldBeforeFinish = deliveries.Count == beforeReturn;
+                        int itemsAfterFirstFrame = remaining;
+                        duplicateBeginPreserved = MultiObserverShadowCoordinator.BeginItemAuthoritySession(
+                            301UL, "frame|srv|PEI", now)
+                            && preparationSubmissions == Regions.WORLD_SIZE * Regions.WORLD_SIZE
+                            && itemsAfterFirstFrame == bridge.Regions[(0, 0)].Count;
+                    }
+                    if (previous - remaining > 1) bounded = false;
+                    if (remaining > 0 && deliveries.Count != beforeReturn) noPartialDelivery = false;
+                }
+                Console.WriteLine($"SFP03 latePrepared={lateInputsPrepared} duplicateBegin={duplicateBeginPreserved} callback={reconcileCalls} items={bridge.Regions[(0, 0)].Count} deliveries={deliveries.Count - beforeReturn} held={heldBeforeFinish} bounded={bounded} partial={noPartialDelivery} fault={seam.LastSettlementFault ?? "none"}");
+                return lateInputsPrepared && duplicateBeginPreserved && heldBeforeFinish && bounded
+                    && noPartialDelivery && reconcileCalls == 1 && bridge.Regions[(0, 0)].Count == 0
+                    && deliveries.Count == beforeReturn + 1 && !seam.RepairRequired;
+            }
+            finally
+            {
+                ItemCycleThresholds.Override = null;
+                MultiObserverShadowCoordinator.EndItemAuthoritySession();
+                MultiObserverShadowCoordinator.BindItemAuthorityProduction(null, null);
+                MultiObserverShadowCoordinator.ItemProductionMode = savedMode;
+                ItemLegacyCycleGate.SuppressFullMapWriter = savedSuppress;
+                nextAtField.SetValue(null, savedNextAt);
+                progressField.SetValue(null, savedProgress);
+            }
+        }
+
+        internal static bool Test_SFP05_FrameClockUsesOneDeltaPerFrame()
+        {
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            DemandPolicy resourcePolicy = SteamP2PFriends.Adapters.Resource.ResourceDemandPolicy.Create(0, (byte)Regions.WORLD_SIZE);
+            DemandPolicy itemPolicy = ItemDemandPolicy.Create(0, (byte)Regions.WORLD_SIZE);
+            projection.Register(resourcePolicy);
+            projection.Register(itemPolicy);
+            var shared = new LifecycleOrchestrationEngine(projection, DefaultLifecycleDiagnostics.Instance);
+            var adapters = new ResourceProductionControlSeamTests.FakeResourceAdapters();
+            var resource = new SteamP2PFriends.Adapters.Resource.ResourceProductionControlSeam(
+                adapters.Lifecycle, adapters.Replication, _ => adapters.Generation, projection,
+                resourcePolicy, 2f, shared);
+            var bridge = new TestNativeItemWarehouseBridge();
+            var preparation = new ItemPreparationAuthority(bridge);
+            var metadata = new ItemMetadataStore();
+            var port = new ItemExecutionPort(preparation, metadata, _ => 1U, ItemLifecyclePolicy.Create(), () => 0f,
+                null, _ => false, _ => { }, (_, __, ___) => { });
+            var item = new ItemProductionControlSeam(preparation, metadata, port, projection, itemPolicy, 2f, shared);
+            var field = typeof(MultiObserverShadowCoordinator).GetField("ResourceProduction",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (field == null) return false;
+            object savedResource = field.GetValue(null);
+            ItemProductionMode savedMode = MultiObserverShadowCoordinator.ItemProductionMode;
+            bool savedSuppress = ItemLegacyCycleGate.SuppressFullMapWriter;
+            var nextAtField = typeof(MultiObserverShadowCoordinator).GetField("_nextReconcileAt",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var progressField = typeof(MultiObserverShadowCoordinator).GetField("_itemFrameProgressAllowed",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (nextAtField == null || progressField == null) return false;
+            object savedNextAt = nextAtField.GetValue(null), savedProgress = progressField.GetValue(null);
+            int callbacks = 0, releaseFrame = 0;
+            nextAtField.SetValue(null, 0f);
+            progressField.SetValue(null, false);
+            MultiObserverShadowCoordinator.BindItemAuthorityProduction(item, preparation);
+            field.SetValue(null, resource);
+            try
+            {
+                resource.BeginSession(new SessionEpoch(305UL));
+                if (!MultiObserverShadowCoordinator.BeginItemAuthoritySession(305UL, "clock|srv|PEI")) return false;
+                resource.UpdateObserver(1001UL, 2001UL, 20, 20);
+                resource.RemoveObserver(1001UL);
+                float now = 0f;
+                for (int frame = 1; frame <= 12; frame++)
+                {
+                    now += 0.25f;
+                    MultiObserverShadowCoordinator.RunActiveFrame(now, 0.25f,
+                        () => { callbacks++; shared.Flush(0f); return true; });
+                    if (adapters.Lifecycle.Releases.Count > 0) { releaseFrame = frame; break; }
+                }
+                return callbacks >= 2 && releaseFrame >= 8 && releaseFrame <= 12
+                    && adapters.Lifecycle.Releases.Count == 1;
+            }
+            finally
+            {
+                MultiObserverShadowCoordinator.EndItemAuthoritySession();
+                resource.EndSession();
+                field.SetValue(null, savedResource);
+                MultiObserverShadowCoordinator.BindItemAuthorityProduction(null, null);
+                MultiObserverShadowCoordinator.ItemProductionMode = savedMode;
+                ItemLegacyCycleGate.SuppressFullMapWriter = savedSuppress;
+                nextAtField.SetValue(null, savedNextAt);
+                progressField.SetValue(null, savedProgress);
+            }
         }
 
         internal static bool Test_IT42_HysteresisReentryStillSettlesBeforePresent()

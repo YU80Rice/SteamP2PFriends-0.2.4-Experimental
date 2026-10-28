@@ -107,6 +107,7 @@ namespace SteamP2PFriends.MultiObserver
         private static ulong _nextConnectionToken;
         private static float _nextReconcileAt;
         private static float _nextSummaryAt;
+        private static bool _itemFrameProgressAllowed;
         private static int _eventLogCount;
         private static int _summaryLogCount;
         private static string _hostSessionId;
@@ -167,6 +168,11 @@ namespace SteamP2PFriends.MultiObserver
         internal static bool BeginItemAuthoritySession(ulong sessionEpoch, string worldIdentity, float now = 0f)
         {
             if (sessionEpoch == 0UL || string.IsNullOrEmpty(worldIdentity)) return false;
+            bool sameInitializedSession = _itemWriterOwned && _itemWriterEpoch == sessionEpoch
+                && string.Equals(_itemWriterWorld, worldIdentity, StringComparison.Ordinal)
+                && ItemProduction != null
+                && ItemProduction.IsInitializedFor(Core.Identity.SessionEpoch.FromNative(sessionEpoch));
+            if (!sameInitializedSession) _itemFrameProgressAllowed = false;
             if (_itemWriterOwned
                 && (_itemWriterEpoch != sessionEpoch
                     || !string.Equals(_itemWriterWorld, worldIdentity, StringComparison.Ordinal)))
@@ -175,13 +181,11 @@ namespace SteamP2PFriends.MultiObserver
                 ReleaseItemAuthorityWriter();
             }
             if (!TrySelectItemAuthorityWriter(sessionEpoch, worldIdentity)) return false;
-            if (ItemProduction != null && ItemProduction.IsSessionActive
-                && ItemProduction.SessionEpoch.Value == sessionEpoch)
-                return true;
             var epoch = Core.Identity.SessionEpoch.FromNative(sessionEpoch);
             ItemPreparation?.BindCoreSession(epoch, worldIdentity);
-            ItemProduction?.BeginSession(epoch);
-            if (ItemPreparation != null && !ItemPreparation.IsReady
+            if (ItemProduction != null && !ItemProduction.IsInitializedFor(epoch))
+                ItemProduction.BeginSession(epoch);
+            if (ItemPreparation != null && !ItemPreparation.IsPreparedFor(epoch, worldIdentity)
                 && ItemPreparation.Status != ItemPreparationStatus.Failed)
             {
                 byte worldSize = checked((byte)Regions.WORLD_SIZE);
@@ -192,6 +196,7 @@ namespace SteamP2PFriends.MultiObserver
 
         internal static void EndItemAuthoritySession()
         {
+            _itemFrameProgressAllowed = false;
             ItemProduction?.EndSession();
             ReleaseItemAuthorityWriter();
         }
@@ -469,35 +474,30 @@ namespace SteamP2PFriends.MultiObserver
                     SafeInfo($"session-begin epoch={Ledger.SessionEpoch} world={worldIdentity}");
             }
 
-            if (ItemProductionMode == ItemProductionMode.Candidate && ItemPreparation != null && !ItemPreparation.IsReady)
+            if (ItemProductionMode == ItemProductionMode.Candidate && ItemPreparation != null
+                && !ItemPreparation.IsPreparedFor(Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch), worldIdentity))
             {
                 TryPrepareItemFullMap(worldIdentity, now);
             }
 
-            ResourceProduction?.AdvanceTime(Time.deltaTime);
+            RunActiveFrame(now, Time.deltaTime, () => ReconcileCurrentObservers(now));
+        }
 
-            if (now < _nextReconcileAt)
-            {
-                return;
-            }
-            _nextReconcileAt = now + ReconcileIntervalSeconds;
-
+        private static bool ReconcileCurrentObservers(float now)
+        {
             CaptureResult capture = CaptureSamples();
             ObserverSampleAdmissionPlan plan = ObserverSampleAdmission.Plan(
                 capture.Records, capture.IsBatchUsable, capture.BatchFailureReason);
             if (plan.IsBatchRejected)
             {
-                // 整批不可判定：本拍不提交也不移除任何人，并把已知观察者登记为暂缓。
                 SafeMismatch("capture-rejected",
                     "capture-rejected reason=" + capture.BatchFailureReason
                     + "; observers retained as deferred demand");
                 DeferKnownObservers("capture-batch-rejected:" + capture.BatchFailureReason);
-                return;
+                return false;
             }
             ClearMismatch("capture-rejected");
             ClearMismatch("capture-incomplete");
-
-            // 暂缓集只构造一次：连接身份续用、资源侧删除豁免与追踪集合三处共用同一份。
             var deferred = new HashSet<ulong>(plan.DeferredObserverIds);
             CommitConnectionIdentities(capture, deferred);
             if (deferred.Count > 0)
@@ -506,31 +506,15 @@ namespace SteamP2PFriends.MultiObserver
                     + " admissible=" + plan.AdmissibleObserverIds.Count
                     + " unknownIdentity=" + (!plan.AllowAbsenceRemoval).ToString().ToLowerInvariant());
             }
-
-            IReadOnlyList<ShadowTransition> transitions =
-                Ledger.Reconcile(
-                    capture.Samples,
-                    Regions.WORLD_SIZE,
-                    ItemManager.ITEM_REGIONS,
-                    plan.AllowAbsenceRemoval);
+            IReadOnlyList<ShadowTransition> transitions = Ledger.Reconcile(
+                capture.Samples, Regions.WORLD_SIZE, ItemManager.ITEM_REGIONS, plan.AllowAbsenceRemoval);
             ReconcileResourceProduction(capture.Samples, deferred, plan);
             ReconcileCollisionProduction(capture.Samples, deferred, plan);
             ReconcileItemProduction(capture.Samples, deferred, plan);
-            ControlPlaneLifecycle?.AdvanceTime(Time.deltaTime);
             ControlPlaneLifecycle?.Flush(0f);
-            ResourceProduction?.Flush(0f);
             ItemLegacyCycleGate.SuppressFullMapWriter = ItemProductionMode == ItemProductionMode.Candidate;
-            if (ItemProductionMode == ItemProductionMode.Candidate)
-            {
-                ItemProduction?.Flush(0f);
-            }
-
             foreach (ShadowTransition transition in transitions)
-            {
-                SafeEvent(
-                    $"transition={transition.Kind} observer={Mask(transition.ObserverId)} {transition.Detail}");
-            }
-
+                SafeEvent($"transition={transition.Kind} observer={Mask(transition.ObserverId)} {transition.Detail}");
             AuditNativeState();
             if (now >= _nextSummaryAt)
             {
@@ -538,47 +522,61 @@ namespace SteamP2PFriends.MultiObserver
                 int pendingCount = 0;
                 IReadOnlyList<ObserverShadowSnapshot> observers = Ledger.SnapshotObservers();
                 foreach (ObserverShadowSnapshot observer in observers)
-                {
                     if (!observer.GameplayAuthorized) pendingCount++;
-                }
-
                 if (_summaryLogCount < SessionSummaryLogLimit)
                 {
                     _summaryLogCount++;
-                    // 两个需求计数口径不同：resourceDemandRegions 是接缝已物化租约的区域数，
-                    // resourceProjectedDemandRegions 是共享投影引擎按政策算出的需求区域数。
-                    // 二者长期分叉即为「有投影、未物化」的信号（暂缓/失败重试路径），应查明原因。
-                    SafeInfo(
-                        $"summary={_summaryLogCount}/{SessionSummaryLogLimit} epoch={Ledger.SessionEpoch} " +
-                        $"observers={Ledger.ObserverCount} pendingObservers={pendingCount} " +
-                        $"itemDemandRegions={Ledger.ItemDemandRegionCount} " +
-                        $"zombieDemandBounds={Ledger.ZombieDemandBoundCount} " +
-                        $"resourceDemandRegions={ResourceProduction?.DemandRegionCount ?? 0} " +
-                        $"resourceProjectedDemandRegions={ResourceProduction?.ProjectedDemandRegionCount ?? 0} " +
-                        $"resourceRadiusSource={ResourceProduction?.DemandPolicy.RadiusSource ?? "none"} " +
-                        $"resourceActiveLeases={ResourceProduction?.ActiveLeaseCount ?? 0} " +
-                        $"resourcePendingReleases={ResourceProduction?.PendingReleaseCount ?? 0} " +
-                        $"resourceDeferredObservers={ResourceProduction?.DeferredObserverCount ?? 0} " +
-                        $"resourceWritesSuspended=" +
-                        (ResourceProduction?.IsWriteSuspended ?? false).ToString().ToLowerInvariant() + " " +
-                        $"collisionDemandRegions={ControlPlaneLifecycle?.DemandRegionCount(DomainIds.Collision) ?? 0} " +
-                        $"collisionActiveLeases={ControlPlaneLifecycle?.ActiveLeaseCount(DomainIds.Collision) ?? 0} " +
-                        $"collisionPendingReleases={ControlPlaneLifecycle?.PendingReleaseCount(DomainIds.Collision) ?? 0} " +
-                        $"collisionRadiusSource={_collisionDemandPolicy?.RadiusSource ?? "none"} " +
-                        "collisionWriter=CollisionExecutionPort controlPlane=active " +
-                        $"itemDemandRegions={ItemProduction?.DemandRegionCount ?? 0} " +
-                        $"itemActiveLeases={ItemProduction?.ActiveLeaseCount ?? 0} " +
-                        $"itemPendingReleases={ItemProduction?.PendingReleaseCount ?? 0} " +
-                        $"itemRadiusSource={_itemDemandPolicy?.RadiusSource ?? "none"} " +
-                        $"itemWriter={(ItemProductionMode == ItemProductionMode.Candidate ? "suppressed" : "legacy")} " +
-                        $"itemCandidate={(ItemProductionMode == ItemProductionMode.Candidate ? "active" : "dormant")}");
+                    SafeInfo($"summary={_summaryLogCount}/{SessionSummaryLogLimit} epoch={Ledger.SessionEpoch} "
+                        + $"observers={Ledger.ObserverCount} pendingObservers={pendingCount} "
+                        + $"itemDemandRegions={Ledger.ItemDemandRegionCount} "
+                        + $"zombieDemandBounds={Ledger.ZombieDemandBoundCount} "
+                        + $"resourceDemandRegions={ResourceProduction?.DemandRegionCount ?? 0} "
+                        + $"resourceProjectedDemandRegions={ResourceProduction?.ProjectedDemandRegionCount ?? 0} "
+                        + $"resourceRadiusSource={ResourceProduction?.DemandPolicy.RadiusSource ?? "none"} "
+                        + $"resourceActiveLeases={ResourceProduction?.ActiveLeaseCount ?? 0} "
+                        + $"resourcePendingReleases={ResourceProduction?.PendingReleaseCount ?? 0} "
+                        + $"resourceDeferredObservers={ResourceProduction?.DeferredObserverCount ?? 0} "
+                        + $"resourceWritesSuspended={(ResourceProduction?.IsWriteSuspended ?? false).ToString().ToLowerInvariant()} "
+                        + $"collisionDemandRegions={ControlPlaneLifecycle?.DemandRegionCount(DomainIds.Collision) ?? 0} "
+                        + $"collisionActiveLeases={ControlPlaneLifecycle?.ActiveLeaseCount(DomainIds.Collision) ?? 0} "
+                        + $"collisionPendingReleases={ControlPlaneLifecycle?.PendingReleaseCount(DomainIds.Collision) ?? 0} "
+                        + $"collisionRadiusSource={_collisionDemandPolicy?.RadiusSource ?? "none"} "
+                        + "collisionWriter=CollisionExecutionPort controlPlane=active "
+                        + $"itemDemandRegions={ItemProduction?.DemandRegionCount ?? 0} "
+                        + $"itemActiveLeases={ItemProduction?.ActiveLeaseCount ?? 0} "
+                        + $"itemPendingReleases={ItemProduction?.PendingReleaseCount ?? 0} "
+                        + $"itemRadiusSource={_itemDemandPolicy?.RadiusSource ?? "none"} "
+                        + $"itemWriter={(ItemProductionMode == ItemProductionMode.Candidate ? "suppressed" : "legacy")} "
+                        + $"itemCandidate={(ItemProductionMode == ItemProductionMode.Candidate ? "active" : "dormant")}");
                 }
             }
-
-            // 共享面本拍走通：确认恢复并解除故障挂起（身份挂起由身份门自己把守，不在这里解除）。
             ReportSharedFaultRecovered();
             if (IdentityGate.IsReady) ResourceProduction?.ResumeWrites("shared-fault-cleared");
             FaultBackoff.MarkSuccess();
+            return true;
+        }
+
+        internal static void RunActiveFrame(float now, float deltaTime, Func<bool> reconcileCurrentObservers)
+        {
+            if (reconcileCurrentObservers == null) throw new ArgumentNullException(nameof(reconcileCurrentObservers));
+            AdvanceEngineClock(deltaTime);
+            bool reconcileDue = now >= _nextReconcileAt;
+            if (reconcileDue)
+            {
+                _nextReconcileAt = now + ReconcileIntervalSeconds;
+                _itemFrameProgressAllowed = false;
+                if (!reconcileCurrentObservers()) return;
+                _itemFrameProgressAllowed = true;
+            }
+            if (!_itemFrameProgressAllowed || ItemProductionMode != ItemProductionMode.Candidate
+                || !_itemWriterOwned || ItemProduction == null || ItemPreparation == null
+                || !ItemProduction.IsSessionActive
+                || !ItemProduction.IsInitializedFor(ItemProduction.SessionEpoch)
+                || ItemProduction.IsWriteSuspended || ItemProduction.RepairRequired
+                || !ItemPreparation.IsPreparedFor(ItemProduction.SessionEpoch, _itemWriterWorld)) return;
+            if (reconcileDue) ItemProduction.RefreshSettlementDemand();
+            int used = ItemProduction.ConsumeFrameSettlement();
+            if (reconcileDue) ItemProduction.StepDemandCycle(used == 0);
         }
 
         internal static void NotifyHostSessionStarted(string sessionId)
@@ -1134,6 +1132,7 @@ namespace SteamP2PFriends.MultiObserver
 
         private static void ResetManagedState(bool resetLogQuotas)
         {
+            _itemFrameProgressAllowed = false;
             Connections.Clear();
             ResourceObservers.Clear();
             CollisionObservers.Clear();
@@ -1330,16 +1329,21 @@ namespace SteamP2PFriends.MultiObserver
         private static void TryPrepareItemFullMap(string worldIdentity, float now)
         {
             if (ItemProductionMode != ItemProductionMode.Candidate) return;
-            if (ItemPreparation == null || ItemPreparation.IsReady || Ledger.SessionEpoch == 0UL)
+            if (ItemPreparation == null || ItemProduction == null || !ItemProduction.IsSessionActive
+                || Ledger.SessionEpoch == 0UL)
                 return;
-            if (ItemPreparation.Status == ItemPreparationStatus.Failed)
+            SessionEpoch epoch = Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch);
+            if (ItemPreparation.IsPreparedFor(epoch, worldIdentity)) return;
+            if (ItemPreparation.Status == ItemPreparationStatus.Failed
+                && ItemPreparation.SessionEpoch.Equals(epoch)
+                && string.Equals(ItemPreparation.WorldIdentity, worldIdentity, StringComparison.Ordinal))
                 return;
 
             try
             {
                 byte worldSize = checked((byte)Regions.WORLD_SIZE);
                 bool prepared = ItemPreparation.PrepareFullMap(
-                    Core.Identity.SessionEpoch.FromNative(Ledger.SessionEpoch),
+                    epoch,
                     worldIdentity,
                     worldSize,
                     ItemProduction?.MetadataStore,
@@ -1378,6 +1382,11 @@ namespace SteamP2PFriends.MultiObserver
         private static void AdvanceEngineClock()
         {
             ResourceProduction?.AdvanceTime(Time.deltaTime);
+        }
+
+        private static void AdvanceEngineClock(float deltaTime)
+        {
+            ResourceProduction?.AdvanceTime(deltaTime);
         }
 
         private static void SafeMismatch(string key, string detail)

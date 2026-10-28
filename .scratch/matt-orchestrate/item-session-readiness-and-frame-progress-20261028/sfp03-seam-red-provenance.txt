@@ -1,0 +1,10 @@
+SFP03 seam baseline execution transcript
+Source: parent native rollout `C:\Users\The New Age\.codex\sessions\2026\10\28\rollout-2026-10-28T00-30-19-01a17e32-c56c-7de2-85b9-33010a59d147.jsonl`, event_msg ordinal 1394 (CommandExecution, timestamp 2026-10-27T16:52:08.801Z) and associated command output in ordinal 1395.
+Command: `& 'C:/Program Files/dotnet/dotnet.exe' msbuild WhitelistTests/SteamP2PFriends.WhitelistTests.csproj /t:Build /p:Configuration=Release /v:minimal`; then `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .scratch/matt-orchestrate/item-session-readiness-and-frame-progress-20261028/sfp03-target.ps1`; child exit captured as `CHILD_EXIT=$LASTEXITCODE`.
+Candidate at that point: baseline + A fix + behavior-preserving B seam (pre-frame-consumer change). The test exercised the actual production seam; 20 subsequent 1/60 s frames remained under the 1 s reconcile cadence.
+Exact target output:
+SFP03 setup active=True lease=False demand=0 origin=Natural benchmark=0 respawn=0 now=2
+SFP03 callback=1 items=11 deliveries=0 held=True fault=none
+target=Test_SFP03_RealFrameGateProgressesBoundedSettlement result=False
+CHILD_EXIT=1
+Interpretation: one due reconcile action was consumed; 11 expired natural items remained and the waiter received no result within the sub-second frame sequence. This is the B seam red. The output was recovered directly from the parent native rollout, not regenerated. The earlier target's test harness was subsequently strengthened; current Green evidence must be judged separately.

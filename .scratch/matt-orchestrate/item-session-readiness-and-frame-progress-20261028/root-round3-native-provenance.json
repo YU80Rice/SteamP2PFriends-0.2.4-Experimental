@@ -1,0 +1,13 @@
+{
+  "parentNativeThreadId": "01a17e32-c56c-7de2-85b9-33010a59d147",
+  "parentRollout": "C:/Users/The New Age/.codex/sessions/2026/10/28/rollout-2026-10-28T00-30-19-01a17e32-c56c-7de2-85b9-33010a59d147.jsonl",
+  "startedEvents": [
+    {"ordinal": 3516, "timestamp": "2026-10-28T00:29:43.137Z", "nativeThreadId": "01a17fe9-a8c7-70a1-86f0-fe83277fadaa", "agentPath": "/root/sfp_round3_standards", "model": "gpt-6-luna", "reasoningEffort": "high", "callId": "call_c3f33a8a6f4140a38242bd5b827b7367"},
+    {"ordinal": 3522, "timestamp": "2026-10-28T00:29:48.842Z", "nativeThreadId": "01a17fe9-c114-7f33-9a45-8a59614680b3", "agentPath": "/root/sfp_round3_spec", "model": "gpt-6-luna", "reasoningEffort": "high", "callId": "call_ca10a0934dc24748b900884f7bf22c69"}
+  ],
+  "children": [
+    {"nativeThreadId": "01a17fe9-a8c7-70a1-86f0-fe83277fadaa", "rollout": "C:/Users/The New Age/.codex/sessions/2026/10/28/rollout-2026-10-28T08-29-42-01a17fe9-a8c7-70a1-86f0-fe83277fadaa.jsonl", "parentThreadId": "01a17e32-c56c-7de2-85b9-33010a59d147", "cwd": "D:/Agent-工作目录/DevelopMyUNMultiplayerModAndModloader/SteamP2PFriends-0.2.4-Experimental", "model": "gpt-6-luna", "effort": "high", "turnId": "01a17fe9-ad61-71b2-aba1-466285e54066", "verdict": "CLEAN"},
+    {"nativeThreadId": "01a17fe9-c114-7f33-9a45-8a59614680b3", "rollout": "C:/Users/The New Age/.codex/sessions/2026/10/28/rollout-2026-10-28T08-29-48-01a17fe9-c114-7f33-9a45-8a59614680b3.jsonl", "parentThreadId": "01a17e32-c56c-7de2-85b9-33010a59d147", "cwd": "D:/Agent-工作目录/DevelopMyUNMultiplayerModAndModloader/SteamP2PFriends-0.2.4-Experimental", "model": "gpt-6-luna", "effort": "high", "turnId": "01a17fe9-c3a9-7b73-bdb2-8e9423eea04f", "verdict": "CLEAN"}
+  ],
+  "sourceNote": "Parent SubAgentActivity.started records and child session_meta/turn_context/full final were read from native rollouts. Collaboration-agent labels alone were not used as provenance."
+}

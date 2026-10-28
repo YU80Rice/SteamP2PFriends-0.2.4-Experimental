@@ -6,6 +6,7 @@ using SteamP2PFriends.MultiObserver.Lifecycle;
 using SteamP2PFriends.MultiObserver.SPI;
 using SteamP2PFriends.Adapters.Item;
 using SteamP2PFriends.Adapters.Item.Patches;
+using SteamP2PFriends.Adapters.Resource;
 using SteamP2PFriends.Host;
 using SteamP2PFriends.MultiObserver;
 using System.Reflection;
@@ -133,6 +134,70 @@ namespace SteamP2PFriends.WhitelistTests
                 return first && noRepeat && dropped && switched
                     && MultiObserverShadowCoordinator.GetItemConnectionGeneration(1001UL) == 22UL
                     && !MultiObserverShadowCoordinator.TryManualItemRecovery(1001UL, 11UL, new RegionKey(0, 0));
+            }
+            finally
+            {
+                MultiObserverShadowCoordinator.EndItemAuthoritySession();
+                MultiObserverShadowCoordinator.BindItemAuthorityProduction(null, null);
+            }
+        }
+
+        internal static bool Test_SFP01_ResourceStartedEngineStillInitializesItemPerWorld()
+        {
+            var projection = new DemandProjectionEngine(new ObserverSpatialAuthority());
+            var shared = new LifecycleOrchestrationEngine(projection, DefaultLifecycleDiagnostics.Instance);
+            var resource = new ResourceProductionControlSeamTests.FakeResourceAdapters();
+            DemandPolicy resourcePolicy = ResourceDemandPolicy.Create(0, (byte)Regions.WORLD_SIZE);
+            DemandPolicy policy = ItemDemandPolicy.Create(0, (byte)Regions.WORLD_SIZE);
+            projection.Register(resourcePolicy);
+            projection.Register(policy);
+            var resourceSeam = new ResourceProductionControlSeam(resource.Lifecycle, resource.Replication,
+                _ => resource.Generation, projection, resourcePolicy,
+                2f, shared);
+            var bridge = new ItemPreparationAndFirstDemandTests.TestNativeItemWarehouseBridge();
+            var preparation = new ItemPreparationAuthority(bridge);
+            var metadata = new ItemMetadataStore();
+            var execution = new ItemExecutionPort(preparation, metadata, _ => 1U, ItemLifecyclePolicy.Create());
+            var seam = new ItemProductionControlSeam(preparation, metadata, execution, projection, policy, 2f, shared);
+            MultiObserverShadowCoordinator.BindItemAuthorityProduction(seam, preparation);
+            ItemStepFiveAdmission staleAdmission = seam.Admission;
+            int submissions = 0;
+            bridge.OnSubmitGeneration = (_, __) => submissions++;
+            try
+            {
+                resourceSeam.BeginSession(new SessionEpoch(201UL));
+                bool first = MultiObserverShadowCoordinator.BeginItemAuthoritySession(201UL, "one|srv|PEI");
+                var firstAdmission = seam.Admission;
+                var request = new ItemStepFiveRequest(1001UL, 11UL, new RegionKey(0, 0), 0,
+                    Regions.WORLD_SIZE, true);
+                staleAdmission.Admit(request, new ItemStepFiveLoadedProjection(_ => { }));
+                bool staleRejected = seam.ObserverCount == 0;
+                bool firstWorldReady = first && !ReferenceEquals(staleAdmission, firstAdmission)
+                    && preparation.IsReady && preparation.SessionEpoch.Value == 201UL
+                    && preparation.WorldIdentity == "one|srv|PEI" && submissions == Regions.WORLD_SIZE * Regions.WORLD_SIZE;
+                MultiObserverShadowCoordinator.ObserveItemAuthority(1001UL, 11UL, 0, 0);
+                firstAdmission.Admit(new ItemStepFiveRequest(1001UL, 11UL, new RegionKey(1, 1), 0,
+                    Regions.WORLD_SIZE, false), new ItemStepFiveLoadedProjection(_ => { }));
+                bool firstAdmissionCurrent = shared.GetDemand(DomainIds.Item, new RegionKey(0, 0)) == 0
+                    && shared.GetDemand(DomainIds.Item, new RegionKey(1, 1)) == 1;
+                resourceSeam.BeginSession(new SessionEpoch(202UL));
+                int endsBeforeItemBegin = resource.Lifecycle.SessionEnds;
+                bool second = MultiObserverShadowCoordinator.BeginItemAuthoritySession(202UL, "two|srv|Russia");
+                bool secondWorldReady = second && resourceSeam.IsSessionActive && seam.SessionEpoch.Value == 202UL
+                    && preparation.IsReady && preparation.SessionEpoch.Value == 202UL
+                    && preparation.WorldIdentity == "two|srv|Russia" && submissions == 2 * Regions.WORLD_SIZE * Regions.WORLD_SIZE
+                    && resource.Lifecycle.SessionEnds == endsBeforeItemBegin;
+                var staleWorldRequest = new ItemStepFiveRequest(2002UL, 22UL, new RegionKey(0, 0), 0,
+                    Regions.WORLD_SIZE, false);
+                firstAdmission.Admit(staleWorldRequest, new ItemStepFiveLoadedProjection(_ => { }));
+                bool oldAdmissionRejected = seam.ObserverCount == 0;
+                MultiObserverShadowCoordinator.ObserveItemAuthority(2002UL, 22UL, 0, 0);
+                seam.Admission.Admit(new ItemStepFiveRequest(2002UL, 22UL, new RegionKey(2, 2), 0,
+                    Regions.WORLD_SIZE, false), new ItemStepFiveLoadedProjection(_ => { }));
+                bool currentAdmission = shared.GetDemand(DomainIds.Item, new RegionKey(0, 0)) == 0
+                    && shared.GetDemand(DomainIds.Item, new RegionKey(2, 2)) == 1;
+                return staleRejected && firstWorldReady && firstAdmissionCurrent && secondWorldReady
+                    && oldAdmissionRejected && currentAdmission;
             }
             finally
             {
