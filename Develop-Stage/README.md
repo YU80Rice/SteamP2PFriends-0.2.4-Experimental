@@ -1,6 +1,6 @@
 # Develop-Stage（开发阶段归档）
 
-本目录保存已冻结的历史开发阶段快照。**归档版本不可回写**；每次归档是一份整树副本，
+本目录保存已冻结的历史开发阶段快照。**归档版本不可回写**；每次归档默认是一份整树副本（0.2.4.11 经用户确认只归档发布包，目录内已注明）；
 附带阶段身份与证据来源。0.2.4.0–0.2.4.4含`ACCEPTANCE-MANIFEST.md`，0.2.4.5–0.2.4.7采用本索引及冻结记录；0.2.4.9另含归档清单和逐文件SHA-256。
 
 | 快照 | 状态 | 说明 |
@@ -15,10 +15,11 @@
 | `SteamP2PFriends-0.2.4.7` | 冻结 | M7 Barricade / Structure 复制阶段归档 |
 | `SteamP2PFriends-0.2.4.9`（本地归档） | 冻结（2026-10-08） | C-P1 Resource/Collision共享控制面与Collision关单；886文件原样复制并核对哈希 |
 | `SteamP2PFriends-0.2.4.10-Partial-BLOCKED-20261009-0130`（本地归档） | 历史中止快照（2026-10-09） | 当时Item第01票交付不合格，920文件与已有日志/产物保留；不代表当前0.2.4.10状态 |
+| `SteamP2PFriends-0.2.4.11`（发布包归档） | 冻结（2026-11-16） | 0.2.4.11 发布包、DLL、说明与 manifest；**非整树副本**，整树见提交 `c3f96bc` |
 
 ## 当前版本
 
-- live版本为`0.2.4.10 / Experimental`（见`Build/Version.props`）；本阶段物品修复与1H+2G目标体验验收完成，发布包见`publishi/0.2.4.10/`。10月9日的Partial/BLOCKED仅是历史记录，后续修复和验收见`audit/README.md`。
+- live版本为`0.2.4.11 / Experimental`（见`Build/Version.props`）；队伍跨局恢复已随发布包交付，视觉卡顿与开火音频仍在校修，发布包见`publishi/0.2.4.11/`。10月9日的Partial/BLOCKED仅是历史记录，后续修复和验收见`audit/README.md`。
 - 0.2.4.9已按用户请求保留整树及已有DLL；0.2.4.8没有独立快照，本轮不从当前树补造历史版本。
 - 每个快照的差异、票据引用与证据归档位置，见 `audit/README.md` 索引与
   `docs/architecture/migration-manifest.md`。

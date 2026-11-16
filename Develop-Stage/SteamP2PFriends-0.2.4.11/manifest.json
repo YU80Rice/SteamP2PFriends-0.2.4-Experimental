@@ -1,0 +1,38 @@
+{
+  "plugin": "SteamP2PFriends",
+  "version": "0.2.4.11",
+  "channel": "Experimental",
+  "tag": "0.2.4.11",
+  "implementationCommit": "c3f96bc",
+  "sourceDll": "bin/Release/SteamP2PFriends.dll (rebuilt -t:Rebuild from c3f96bc)",
+  "dllBytes": 1593856,
+  "dllSha256": "01C8BB75CC4200F7750F68A1151E05CEAF1EFF1BF8B5777E25073D78636BB5CE",
+  "dllMvid": "819ae1d6-b106-47f8-8f04-8eb678e9c734",
+  "targetFramework": "net472",
+  "architecture": "AnyCPU (ILOnly)",
+  "archive": "SteamP2PFriends-0.2.4.11.zip",
+  "archiveBytes": 523693,
+  "archiveSha256": "79DC02B76B4C8EDCD47D497ACEA5174A4ECC646023703D633857880F8E197537",
+  "entries": [
+    "BepInEx/",
+    "BepInEx/plugins/",
+    "BepInEx/plugins/SteamP2PFriends.dll"
+  ],
+  "sourceBindings": {
+    "Core/Config/PluginConfig.cs": "2c4374d608320f6a62a0e93fc6377740a08da7ff1a886b64afa84481e7119bba",
+    "Core/Registration/SteamP2PFriendsPlugin.PatchRegistrationDiagnosticsModules.cs": "f99095d7d8e441ec6fdb082e71acd6cd484276265903f530c0cdddf95aef09e0",
+    "WhitelistTests/Evidence/Runtime/GunshotHostAudioTests.cs": "7197386ce5dedf2c14331e6b4b101d93a3c4609e2b5bdf98892d36b763870122",
+    "WhitelistTests/Program.cs": "5fb596d8f692b52a4ca593121efdbab3e04cb77ca31b6c759e4490d651be54bf",
+    "WhitelistTests/Evidence/Runtime/DiagnosticConfigConsolidationTests.cs": "73b4a76cc79d9cbbb353f618f451e3b606801daeef6564eaf613587febcbcf10"
+  },
+  "eol": "LF",
+  "createdUtc": "2026-11-16T06:57:49+00:00",
+  "validation": "exact source bytes; ZIP CRC; expected DLL SHA-256; only required plugin entry",
+  "automated": {
+    "total": 848,
+    "passed": 846,
+    "knownEnvFailures": ["GBA01", "NIL01"]
+  },
+  "runtimeAcceptance": "pending: Bug1 M1-M4; Bug2 S1-S4; Bug3 T1a/T1b/T2-T4",
+  "notes": "Bug3 队伍跨局恢复已交付（主机侧已验证）；Bug1 视觉卡顿与 Bug2 开火音频仍在校修，默认关闭。"
+}

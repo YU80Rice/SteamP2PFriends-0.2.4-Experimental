@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.4.11 Experimental — 2026-11-16
+
+- 修复同一存档跨局重开后房主丢失队伍身份（队伍丢失）的问题：把首次原生 `PlayerQuests.load()` 延迟到组表就绪后恰好执行一次，加载完成前阻断本局保存，避免清空状态写回存档。主机侧生产日志已验证；客机侧呈现与真实存档 fixture 仍待实机验收。
+- 视觉卡顿（主机看客机移动）仍未修复：机制已定位为服务端路径缺少快照插值，本版只加入默认关闭的六格闸门测量，不改变同步路径。
+- 客机开枪声主机侧缺失仍在修复中：主机侧补偿链路已实现但默认关闭（`[Bug2HostGunshot] Enable=true` 可试），2 人局试听未完成。
+- 破坏性变更：三个旧独立 cfg 停用且不迁移，统一并入主配置 `com.yu80rice.steamp2pfriends.cfg`；启动输出 `[Diagnostics]` 自证行。
+- 全量自动化 846/848 PASS（GBA01/NIL01 为本机缺少 Unity SDK 运行时的既有环境失败）。
+- 发布包：`publishi/0.2.4.11/SteamP2PFriends-0.2.4.11.zip`，只含 `BepInEx/plugins/SteamP2PFriends.dll`。
+- [完整发布说明](./publishi/0.2.4.11/RELEASE_NOTES.zh-CN.md)。
+
 ## 0.2.4.10 Experimental — 2026-10-29
 
 - Item接入共享多观察者生命周期，保留原生仓库、复制与拾取事务。
