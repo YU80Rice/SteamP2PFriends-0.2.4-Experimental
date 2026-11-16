@@ -244,6 +244,17 @@ namespace SteamP2PFriends
                     _registrationStageFailed = true;
                     RoleLogger.Error("[Shared]", $"GameplayReadyBitmaskPatch.RegisterManual 失败: {ex}");
                 }
+
+                // Bug3：本地 Host 队伍身份跨局丢失——把首次 Quests.load 延后到 GAME 组表就绪后执行一次。
+                try
+                {
+                    Core.Patches.P2PGroupStateRecovery.P2PGroupStateRecoveryPatch.RegisterManual(_harmony);
+                }
+                catch (System.Exception ex)
+                {
+                    _registrationStageFailed = true;
+                    RoleLogger.Error("[Shared]", $"P2PGroupStateRecoveryPatch.RegisterManual 失败: {ex}");
+                }
             RoleLogger.Info("[Shared]", "[Diag] === v2 审计放行后修复 patch 登记完成 ===");
             return !_registrationStageFailed;
         }

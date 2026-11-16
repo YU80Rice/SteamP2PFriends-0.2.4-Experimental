@@ -6,7 +6,7 @@
     Assembly attributes and runtime fingerprint wiring are generated from this source.
   -->
   <PropertyGroup>
-    <SteamP2PFriendsVersion>0.2.4.10</SteamP2PFriendsVersion>
+    <SteamP2PFriendsVersion>0.2.4.11</SteamP2PFriendsVersion>
     <SteamP2PFriendsReleaseChannel>Experimental</SteamP2PFriendsReleaseChannel>
     <SteamP2PFriendsVersionIdentity>$(SteamP2PFriendsVersion)-$(SteamP2PFriendsReleaseChannel)</SteamP2PFriendsVersionIdentity>
     <SteamP2PFriendsPluginGuid>com.yu80rice.steamp2pfriends</SteamP2PFriendsPluginGuid>

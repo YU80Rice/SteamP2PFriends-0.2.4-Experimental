@@ -243,6 +243,218 @@ namespace SteamP2PFriends.WhitelistTests
             return false;
         }
 
+        internal sealed class IlInstruction
+        {
+            public int Offset;
+            public OpCode OpCode;
+            public int Operand;
+        }
+
+        /// <summary>
+        /// 把方法体 IL 解析成指令序列（含操作数原始值：token / 局部变量索引 / 字面量）。
+        /// 返回 null 表示无方法体或无法解析；调用方必须 fail-closed，不得把 null 当成 0。
+        /// </summary>
+        internal static List<IlInstruction> ReadInstructions(MethodBase method)
+        {
+            if (method == null) return null;
+            byte[] il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il == null) return null;
+            var result = new List<IlInstruction>();
+            int offset = 0;
+            while (offset < il.Length)
+            {
+                int start = offset;
+                ushort value = il[offset++];
+                if (value == 0xfe)
+                {
+                    if (offset >= il.Length) return null;
+                    value = (ushort)(0xfe00 | il[offset++]);
+                }
+                if (!OpCodesByValue.TryGetValue(value, out OpCode opCode)) return null;
+                int operandSize = GetOperandSize(opCode.OperandType, il, offset);
+                if (operandSize < 0 || offset + operandSize > il.Length) return null;
+                result.Add(new IlInstruction
+                {
+                    Offset = start,
+                    OpCode = opCode,
+                    Operand = ReadOperand(opCode, il, offset),
+                });
+                offset += operandSize;
+            }
+            return result;
+        }
+
+        private static int ReadOperand(OpCode opCode, byte[] il, int offset)
+        {
+            switch (opCode.OperandType)
+            {
+                case OperandType.InlineNone: return 0;
+                case OperandType.ShortInlineI:
+                case OperandType.ShortInlineVar:
+                case OperandType.ShortInlineBrTarget: return (sbyte)il[offset];
+                case OperandType.InlineVar: return BitConverter.ToInt16(il, offset);
+                default: return offset + 4 <= il.Length ? BitConverter.ToInt32(il, offset) : 0;
+            }
+        }
+
+        /// <summary>该指令是否是对「声明类型 + 方法名」的调用（call/callvirt 都算）。</summary>
+        internal static bool IsCallTo(IlInstruction instruction, MethodBase owner, string declaringTypeName, string methodName)
+        {
+            if (instruction == null || instruction.OpCode.OperandType != OperandType.InlineMethod) return false;
+            MethodBase called;
+            try { called = owner.Module.ResolveMethod(instruction.Operand); }
+            catch { called = null; }
+            return called != null
+                && called.DeclaringType?.FullName == declaringTypeName
+                && called.Name == methodName;
+        }
+
+        /// <summary>
+        /// 统计「返回值被条件分支消费」的调用点数量（R12-01 判据）。
+        /// 跟踪 call 之后的返回值（跳过 nop）：直接遇到条件分支即采纳；
+        /// 先 stloc 暂存、随后 ldloc 同一局部变量再条件分支也算采纳；
+        /// 先遇到 pop（丢弃）或其它形态一律判未采纳（fail-closed）。
+        /// lookahead=8 的理由：规范写法 `if (!Call(...))` 在 call 之后 1 条指令即分支，
+        /// 允许 8 条只为容纳 stloc/ldloc 暂存与 nop 填充；更远就不再是「该调用结果的即时控制决策」。
+        /// 漏判情形：若编译器把结果先写入字段、经其它方法中转后再判定，本判据会漏判并判红。
+        /// </summary>
+        internal static int CountCallsWithBranchOnResult(
+            MethodBase method, string declaringTypeName, string methodName, int lookahead)
+        {
+            List<IlInstruction> instructions = ReadInstructions(method);
+            if (instructions == null) return -1;
+            int count = 0;
+            for (int i = 0; i < instructions.Count; i++)
+            {
+                if (!IsCallTo(instructions[i], method, declaringTypeName, methodName)) continue;
+                if (ResultFeedsConditionalBranch(instructions, i, lookahead)) count++;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// 统计「实参来自生产者调用」的调用点数量（R12-02 判据）：call 前第一条非 nop 指令必须是对
+        /// producer 的调用，或是一个局部变量的 ldloc 且该变量的 stloc 紧接 producer 调用。
+        /// `ApplyRetryOutcome(new Bug1RetryOutcome())`（newobj/initobj 默认值）因此被判红。
+        /// </summary>
+        internal static int CountCallsWithArgumentFromProducer(
+            MethodBase method, string calleeType, string calleeName, string producerType, string producerName)
+        {
+            List<IlInstruction> instructions = ReadInstructions(method);
+            if (instructions == null) return -1;
+            int count = 0;
+            for (int i = 0; i < instructions.Count; i++)
+            {
+                if (!IsCallTo(instructions[i], method, calleeType, calleeName)) continue;
+                if (ArgumentComesFromProducer(instructions, i, method, producerType, producerName)) count++;
+            }
+            return count;
+        }
+
+        /// <summary>R18-04：判定「call 的返回值是否真的决定了一个条件分支」。internal 供离线用例
+        /// 直接喂入手工构造的 Debug 否定形态（ldloc; ldc.i4.0; ceq; stloc; ldloc; br）做正反证据。</summary>
+        internal static bool ResultFeedsConditionalBranch(List<IlInstruction> instructions, int callIndex, int lookahead)
+        {
+            // R18-04：按数据流判定「call 的返回值是否决定了一个条件分支」。
+            // Release 形态是 call; brtrue；Debug 形态是 call; ldc.i4.0; ceq; stloc L; ldloc L; brfalse，
+            // 也可能出现 call; stloc L; ldloc L; brtrue。三种都落在同一状态机里；call; pop 一律判红。
+            bool pending = true;
+            var tainted = new HashSet<int>();
+            int inspected = 0;
+            for (int i = callIndex + 1; i < instructions.Count && inspected < lookahead; i++)
+            {
+                IlInstruction current = instructions[i];
+                if (current.OpCode.Value == OpCodes.Nop.Value) continue;
+                inspected++;
+                if (current.OpCode == OpCodes.Pop) return false;
+                if (IsConditionalBranch(current.OpCode)) return pending;
+                int local;
+                if (TryGetStoreLocal(current, out local))
+                {
+                    tainted.Add(local);
+                    pending = false;
+                    continue;
+                }
+                if (TryGetLoadLocal(current, out local))
+                {
+                    pending = tainted.Contains(local);
+                    continue;
+                }
+                if (IsInt32Constant(current)) continue;
+                if (IsComparisonOperator(current.OpCode)) continue;
+                if (current.OpCode == OpCodes.Dup) continue;
+                return false;
+            }
+            return false;
+        }
+
+        private static bool ArgumentComesFromProducer(
+            List<IlInstruction> instructions, int callIndex, MethodBase owner, string producerType, string producerName)
+        {
+            int previous = PreviousNonNop(instructions, callIndex - 1);
+            if (previous < 0) return false;
+            IlInstruction argument = instructions[previous];
+            if (IsCallTo(argument, owner, producerType, producerName)) return true;
+            int loadedLocal;
+            if (!TryGetLoadLocal(argument, out loadedLocal)) return false;
+            for (int i = previous - 1; i >= 0; i--)
+            {
+                if (instructions[i].OpCode.Value == OpCodes.Nop.Value) continue;
+                int storedLocal;
+                if (!TryGetStoreLocal(instructions[i], out storedLocal) || storedLocal != loadedLocal) continue;
+                int before = PreviousNonNop(instructions, i - 1);
+                return before >= 0 && IsCallTo(instructions[before], owner, producerType, producerName);
+            }
+            return false;
+        }
+
+        private static int PreviousNonNop(List<IlInstruction> instructions, int index)
+        {
+            for (int i = index; i >= 0; i--)
+            {
+                if (instructions[i].OpCode.Value != OpCodes.Nop.Value) return i;
+            }
+            return -1;
+        }
+
+        private static bool IsConditionalBranch(OpCode opCode)
+        {
+            return opCode.FlowControl == FlowControl.Cond_Branch;
+        }
+
+        /// <summary>R18-04：否定比较会用到的比较算子（只做栈上变换，不引入新来源）。</summary>
+        private static bool IsComparisonOperator(OpCode opCode)
+        {
+            return opCode == OpCodes.Ceq || opCode == OpCodes.Cgt || opCode == OpCodes.Cgt_Un
+                || opCode == OpCodes.Clt || opCode == OpCodes.Clt_Un;
+        }
+
+        /// <summary>R18-04：ldc.i4 系列常量（含 ldc.i4.m1 与短/长形式）。</summary>
+        private static bool IsInt32Constant(IlInstruction instruction)
+        {
+            int value = (ushort)instruction.OpCode.Value;
+            if (value >= 0x15 && value <= 0x1e) return true;
+            return value == 0x1f || value == 0x20;
+        }
+
+        private static bool TryGetLoadLocal(IlInstruction instruction, out int index)
+        {
+            index = -1;
+            int value = (ushort)instruction.OpCode.Value;
+            if (value >= 0x06 && value <= 0x09) { index = value - 0x06; return true; }
+            if (value == 0x11 || value == 0xfe0c) { index = instruction.Operand; return true; }
+            return false;
+        }
+
+        private static bool TryGetStoreLocal(IlInstruction instruction, out int index)
+        {
+            index = -1;
+            int value = (ushort)instruction.OpCode.Value;
+            if (value >= 0x0a && value <= 0x0d) { index = value - 0x0a; return true; }
+            if (value == 0x13 || value == 0xfe0e) { index = instruction.Operand; return true; }
+            return false;
+        }
+
         internal static int GetOperandSize(OperandType operandType, byte[] il, int offset)
         {
             switch (operandType)

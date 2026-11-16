@@ -268,7 +268,9 @@ namespace SteamP2PFriends.Shared
                 for (int i = 0; i < clients.Count; i++)
                 {
                     SteamPlayer sp = clients[i];
-                    if (sp != null && sp.playerID != null && sp.playerID.steamID == steamId)
+                    // SteamPlayerID 重载了 ==/!=，运算符直接解引用 .steamID（SDK SteamPlayerID.cs:136-139），
+                    // 任一侧为 null 都会先抛 NullReferenceException。故这里必须用 ReferenceEquals 判空。
+                    if (!ReferenceEquals(sp, null) && !ReferenceEquals(sp.playerID, null) && sp.playerID.steamID == steamId)
                         return sp.playerID.characterName;
                 }
             }

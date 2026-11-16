@@ -848,7 +848,9 @@ namespace SteamP2PFriends.Core.Patches.P0EDiagnostic
                 {
                     try
                     {
-                        bool playerIdNull = owner.playerID == null;
+                        // SteamPlayerID 重载了 ==/!= 且直接解引用 .steamID，任一侧为 null 必抛 NRE，
+                        // 因此判空一律用 ReferenceEquals（t48/R8-01 同类修复）。
+                        bool playerIdNull = ReferenceEquals(owner.playerID, null);
                         parts.Add($"playerIdNull={(playerIdNull ? "true" : "false")}");
                     }
                     catch (System.Exception ex) { parts.Add($"playerIdNull=unknown({ex.GetType().Name})"); }
